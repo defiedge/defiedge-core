@@ -22,14 +22,14 @@ contract DefiEdgeStrategy is UniswapPoolActions {
     event Burn(uint256 amount0, uint256 amount1);
 
     constructor(
-        address _aggregator,
+        address _factory,
         address _pool,
         address _operator
     ) {
-        aggregator = _aggregator;
         pool = IUniswapV3Pool(_pool);
-        operator = _operator;
+        factory = _factory;
         managementFee = 0;
+        operator = _operator;
     }
 
     function mint(
@@ -92,10 +92,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         uint256 _amount1Min
     ) external returns (uint256 amount0, uint256 amount1) {
         // check if the user has sufficient shares
-        require(
-            balanceOf(msg.sender) >= _shares,
-            "insufficient shares"
-        );
+        require(balanceOf(msg.sender) >= _shares, "insufficient shares");
 
         uint256 collect0;
         uint256 collect1;
@@ -106,18 +103,16 @@ contract DefiEdgeStrategy is UniswapPoolActions {
                 Tick memory tick = ticks[i];
 
                 // get amounts to be burned based on shares
-                amount0 = tick
-                .amount0
-                .mul(balanceOf(msg.sender))
-                .div(totalSupply());
+                amount0 = tick.amount0.mul(balanceOf(msg.sender)).div(
+                    totalSupply()
+                );
 
-                amount1 = tick
-                .amount1
-                .mul(balanceOf(msg.sender))
-                .div(totalSupply());
+                amount1 = tick.amount1.mul(balanceOf(msg.sender)).div(
+                    totalSupply()
+                );
 
                 // burn liquidity and collect fees
-                (amount0, amount1, ) = burnLiquidity(
+                (amount0, amount1) = burnLiquidity(
                     tick.tickLower,
                     tick.tickUpper,
                     amount0,
@@ -166,7 +161,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         );
 
         // burn shares
-        burnShare(msg.sender, _shares);
+        _burn(msg.sender, _shares);
 
         // transfer tokens
         if (amount0 > 0) {

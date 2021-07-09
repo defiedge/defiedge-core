@@ -82,14 +82,8 @@ contract UniswapPoolActions is
         int24 _tickUpper,
         uint256 _amount0,
         uint256 _amount1
-    )
-        internal
-        returns (
-            uint256 collect0,
-            uint256 collect1,
-            uint128 liquidity
-        )
-    {
+    ) internal returns (uint256 collect0, uint256 collect1) {
+        uint128 liquidity;
         // calculate current liquidity
         liquidity = LiquidityHelper.getLiquidityForAmounts(
             address(pool),
@@ -135,23 +129,15 @@ contract UniswapPoolActions is
      * @notice Burns all the liquidity and collects fees
      * @param _ticks Array of the ticks
      */
-    function burnAllLiquidity(Tick[] memory _ticks)
-        internal
-        returns (
-            uint256 collect0,
-            uint256 collect1,
-            uint128 liquidity
-        )
-    {
+    function burnAllLiquidity(Tick[] memory _ticks) internal {
+        uint256 collect0;
+        uint256 collect1;
+
         for (uint256 i = 0; i < ticks.length; i++) {
             Tick memory tick = _ticks[i];
 
             // Burn liquidity for range order
-            (
-                uint256 amount0,
-                uint256 amount1,
-                uint128 burnedLiquidity
-            ) = burnLiquidity(
+            (uint256 amount0, uint256 amount1) = burnLiquidity(
                 tick.tickLower,
                 tick.tickUpper,
                 tick.amount0,
@@ -160,7 +146,6 @@ contract UniswapPoolActions is
 
             collect0 = collect0.add(amount0);
             collect1 = collect1.add(amount1);
-            liquidity = liquidity + burnedLiquidity;
         }
     }
 
@@ -214,6 +199,7 @@ contract UniswapPoolActions is
         }
     }
 
+    // swaps exact input amount
     function swapExactInput(
         bool _zeroToOne,
         int256 _amount,
@@ -274,6 +260,9 @@ contract UniswapPoolActions is
         }
     }
 
+    /**
+     * @notice Get's assets under management with realtime fees
+     */
     function getAUMWithFees()
         internal
         returns (uint256 amount0, uint256 amount1)

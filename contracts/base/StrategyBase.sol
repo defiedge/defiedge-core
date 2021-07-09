@@ -3,7 +3,6 @@ pragma solidity =0.7.6;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "../libraries/UniswapV3Oracle.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
@@ -18,7 +17,8 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
 
     address public operator;
     address pendingOperator;
-    address public aggregator;
+
+    address public factory;
 
     struct Tick {
         uint256 amount0;
@@ -27,8 +27,10 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
         int24 tickUpper;
     }
 
+    // store ticks
     Tick[] public ticks;
 
+    // Uniswap pool for the strategy
     IUniswapV3Pool public pool;
 
     // Modifiers
@@ -67,6 +69,14 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
         }
     }
 
+    /**
+     * @dev Calculates the shares to be given for specific position
+     * @param _pool Address of the pool
+     * @param _amount0 Amount of token0
+     * @param _amount1 Amount of token1
+     * @param _totalAmount0 Total amount of token0
+     * @param _totalAmount1 Total amount of token1
+     */
     function calculateShares(
         address _pool,
         uint256 _amount0,
@@ -130,10 +140,6 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
 
         // issue shares
         _mint(_user, share);
-    }
-
-    function burnShare(address _user, uint256 _shares) internal {
-        _burn(_user, _shares);
     }
 
     /**
