@@ -18,7 +18,6 @@ contract DefiEdgeStrategy is UniswapPoolActions {
 
     // events
     event Mint(uint256 amount0, uint256 amount1);
-
     event Burn(uint256 amount0, uint256 amount1);
 
     constructor(
@@ -32,6 +31,14 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         operator = _operator;
     }
 
+    /**
+     * @notice Adds liquidity to the primary range
+     * @param _amount0 Amount of token0
+     * @param _amount1 Amount of token1
+     * @param _amount0Min Minimum amount of token0 to be minted
+     * @param _amount1Min Minimum amount of token1 to be minted
+     * @param _minShare Minimum amount of shares to be received to the user
+     */
     function mint(
         uint256 _amount0,
         uint256 _amount1,
@@ -86,6 +93,12 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         emit Mint(amount0, amount1);
     }
 
+    /**
+     * @notice Burn liquidity and transfer tokens back to the user
+     * @param _shares Shares to be burned
+     * @param _amount0Min Mimimum amount of token0 to be received
+     * @param _amount1Min Minimum amount of token1 to be received
+     */
     function burn(
         uint256 _shares,
         uint256 _amount0Min,
