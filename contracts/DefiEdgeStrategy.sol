@@ -27,7 +27,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         address _operator
     ) {
         pool = IUniswapV3Pool(_pool);
-        factory = _factory;
+        factory = IFactory(_factory);
         managementFee = 0;
         operator = _operator;
     }

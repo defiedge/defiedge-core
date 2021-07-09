@@ -5,6 +5,12 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "../libraries/UniswapV3Oracle.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
+interface IFactory {
+    function feeTo() external view returns (address);
+
+    function PROTOCOL_FEE() external view returns (uint256);
+}
+
 contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
     using SafeMath for uint256;
 
@@ -18,7 +24,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
     address public operator;
     address pendingOperator;
 
-    address public factory;
+    IFactory public factory;
 
     struct Tick {
         uint256 amount0;
@@ -131,12 +137,11 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
             _mint(feeTo, managerShare);
         }
 
-        // // TODO: Implement protocol fees
-        // if (feeTo != address(0)) {
-        //     uint256 fee = share.mul(PROTOCOL_FEE).div(1e8);
-        //     share = share.sub(fee);
-        //     IDefiEdgeShareToken.mint(feeTo, managerShare);
-        // }
+        if (feeTo != address(0)) {
+            uint256 fee = share.mul(PROTOCOL_FEE).div(1e8);
+            share = share.sub(fee);
+            IDefiEdgeShareToken.mint(feeTo, managerShare);
+        }
 
         // issue shares
         _mint(_user, share);
