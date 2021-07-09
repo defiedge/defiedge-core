@@ -137,10 +137,10 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
             _mint(feeTo, managerShare);
         }
 
-        if (feeTo != address(0)) {
-            uint256 fee = share.mul(PROTOCOL_FEE).div(1e8);
-            share = share.sub(fee);
-            IDefiEdgeShareToken.mint(feeTo, managerShare);
+        if (factory.feeTo() != address(0)) {
+            uint256 fee = share.mul(factory.PROTOCOL_FEE()).div(1e8);
+            share = share.sub(factory.PROTOCOL_FEE());
+            _mint(feeTo, fee);
         }
 
         // issue shares
