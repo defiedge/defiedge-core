@@ -6,3 +6,4 @@ artifacts
 
 #Envionment Variables
 .env
+.DS_Store
