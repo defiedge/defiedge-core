@@ -7,3 +7,6 @@ artifacts
 #Envionment Variables
 .env
 .DS_Store
+
+crytic-export/
+typechain/

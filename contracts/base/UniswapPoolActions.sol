@@ -268,8 +268,9 @@ contract UniswapPoolActions is
         returns (uint256 amount0, uint256 amount1)
     {
         // get balances of amount0 and amount1
-        amount0 = IERC20(pool.token0()).balanceOf(msg.sender);
-        amount1 = IERC20(pool.token1()).balanceOf(msg.sender);
+        amount0 = IERC20(pool.token0()).balanceOf(address(this));
+        amount1 = IERC20(pool.token1()).balanceOf(address(this));
+
 
         // get fees accumulated in each tick
         for (uint256 i = 0; i < ticks.length; i++) {

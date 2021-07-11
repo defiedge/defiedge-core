@@ -10,7 +10,7 @@ import "hardhat/console.sol";
 // import libraries
 import "../libraries/LiquidityHelper.sol";
 
-contract TestSwap is IUniswapV3SwapCallback, IUniswapV3MintCallback {
+contract Periphery is IUniswapV3SwapCallback, IUniswapV3MintCallback {
     address pool_;
 
     struct SwapCallbackData {

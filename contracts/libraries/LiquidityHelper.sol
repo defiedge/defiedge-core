@@ -32,6 +32,7 @@ library LiquidityHelper {
         uint256 _amount1
     ) internal view returns (uint128 liquidity) {
         IUniswapV3Pool pool = IUniswapV3Pool(_pool);
+
         // get sqrtRatios required to calculate liquidity
         (uint160 sqrtRatioX96, , , , , , ) = pool.slot0();
 

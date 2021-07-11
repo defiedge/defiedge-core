@@ -5,6 +5,8 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "../libraries/UniswapV3Oracle.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
+import "hardhat/console.sol";
+
 interface IFactory {
     function feeTo() external view returns (address);
 
@@ -93,14 +95,16 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
         uint256 totalShares = totalSupply();
         uint256 price = UniswapV3Oracle.consult(_pool, 60);
 
+        console.log("price", price);
+
         if (_totalAmount0 == 0) {
-            share = (_amount1.mul(price).add(_amount0)).div(1000);
+            share = (_amount1.mul(price).add(_amount0)).div(uint256(1000));
         } else if (_totalAmount1 == 0) {
-            share = (_amount0.mul(price).add(_amount1)).div(1000);
+            share = (_amount0.mul(price).add(_amount1)).div(uint256(1000));
         } else {
-            share = totalShares.mul(((_amount0).mul(price).add(_amount1))).div(
-                _totalAmount0.mul(price).add(_totalAmount1)
-            );
+            uint256 numerator = _amount0.mul(price).add(_amount1);
+            uint256 denominator = _totalAmount0.mul(price).add(_totalAmount1);
+            share = totalShares.mul(numerator).div(denominator);
         }
     }
 
@@ -127,6 +131,8 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
             _totalAmount0,
             _totalAmount1
         );
+
+        share = share.div(1e18);
 
         require(share > 0, "invalid shares");
 

@@ -13,6 +13,8 @@ import "./base/StrategyBase.sol";
 
 import "hardhat/console.sol";
 
+// TODO: Add blacklist
+
 contract DefiEdgeStrategy is UniswapPoolActions {
     using SafeMath for uint256;
 
@@ -25,8 +27,8 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         address _pool,
         address _operator
     ) {
-        pool = IUniswapV3Pool(_pool);
         factory = IFactory(_factory);
+        pool = IUniswapV3Pool(_pool);
         managementFee = 0;
         operator = _operator;
     }
@@ -56,6 +58,9 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         // check if strategy has been initialised
         require(initialized, "uninitialised strategy");
 
+        // get total amounts with fees
+        (uint256 totalAmount0, uint256 totalAmount1) = getAUMWithFees();
+
         // index 0 will always be an primary tick
         (amount0, amount1) = mintLiquidity(
             ticks[0].tickLower,
@@ -65,8 +70,8 @@ contract DefiEdgeStrategy is UniswapPoolActions {
             msg.sender
         );
 
-        // get total amounts with fees
-        (uint256 totalAmount0, uint256 totalAmount1) = getAUMWithFees();
+        console.log("mint amount0", amount0);
+        console.log("mint amount1", amount1);
 
         // issue share based on the liquidity added
         share = issueShare(
@@ -77,12 +82,14 @@ contract DefiEdgeStrategy is UniswapPoolActions {
             msg.sender
         );
 
+        console.log("share", share);
+
         // update data in the tick
         ticks[0].amount0 = ticks[0].amount0.add(amount0);
         ticks[0].amount1 = ticks[0].amount1.add(amount1);
 
         // prevent front running of strategy fee
-        require(share >= _minShare, "minimum share check failed");
+        require(share >= _minShare, "min_share_check_failed");
 
         // price slippage check
         require(
@@ -90,6 +97,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
             "Aggregator: Slippage"
         );
 
+        // emit event
         emit Mint(amount0, amount1);
     }
 

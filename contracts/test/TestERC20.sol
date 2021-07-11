@@ -30,7 +30,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * functions have been added to mitigate the well-known issues around setting
  * allowances. See {IERC20-approve}.
  */
-contract ERC20 is Context, IERC20 {
+contract TestERC20 is Context, IERC20 {
     mapping(address => uint256) private _balances;
 
     mapping(address => mapping(address => uint256)) private _allowances;
@@ -50,17 +50,11 @@ contract ERC20 is Context, IERC20 {
      * All two of these values are immutable: they can only be set once during
      * construction.
      */
-    constructor(
-        string memory name_,
-        string memory symbol_,
-        uint8 decimals_,
-        uint256 mintAmt_,
-        address mintTo_
-    ) {
-        _name = name_;
-        _symbol = symbol_;
+    constructor(uint8 decimals_) {
+        _name = "testToken";
+        _symbol = "tstToken";
         _decimals = decimals_;
-        _mint(mintTo_, mintAmt_);
+        _mint(msg.sender, 1000000000 * 1e18);
     }
 
     /**

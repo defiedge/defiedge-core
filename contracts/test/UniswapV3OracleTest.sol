@@ -12,7 +12,7 @@ import "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
 
-library UniswapV3Oracle {
+library UniswapV3OracleTest {
     using SafeMath for uint256;
 
     /**
@@ -50,7 +50,7 @@ library UniswapV3Oracle {
      * @return price Price of the assets calculated from Uniswap V3 Oracle
      */
     function consult(address _pool, uint32 _period)
-        internal
+        public
         view
         returns (uint256 price)
     {
