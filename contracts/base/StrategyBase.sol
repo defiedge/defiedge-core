@@ -59,7 +59,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
      * @param _ticks New ticks
      */
     modifier validTicks(Tick[] memory _ticks) {
-        require(_ticks.length >= 5, "invalid number of ticks");
+        require(_ticks.length <= 5, "invalid number of ticks");
         for (uint256 i = 0; i < _ticks.length; i++) {
             int24 tickLower = _ticks[i].tickLower;
             int24 tickUpper = _ticks[i].tickUpper;
