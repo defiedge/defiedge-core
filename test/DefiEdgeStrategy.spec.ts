@@ -224,9 +224,7 @@ describe("DeFiEdgeStrategy", () => {
         .withArgs("10001029287193511600", "34526162020130243288118");
     });
 
-    it("should revert if amounts added are greater than minimum amounts", async () => {
-      
-    });
+    it("should revert if amounts added are greater than minimum amounts", async () => {});
 
     it("should update data in the ticks", async () => {});
 
@@ -275,17 +273,25 @@ describe("DeFiEdgeStrategy", () => {
           tickUpper: calculateTick(4000, 60),
         },
       ]);
+      
     });
 
     it("should swap and redeploy", async () => {
-      await strategy.rebalance(0, 0, 0, false, [
-        {
-          amount0: expandTo18Decimals(9),
-          amount1: expandTo18Decimals(34521.60981108611),
-          tickLower: calculateTick(2000, 60),
-          tickUpper: calculateTick(4000, 60),
-        },
-      ]);
+      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
+      await strategy.rebalance(
+        10,
+        expandToString(Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9),
+        0,
+        false,
+        [
+          {
+            amount0: expandTo18Decimals(9),
+            amount1: expandTo18Decimals(34521.60981108611),
+            tickLower: calculateTick(2000, 60),
+            tickUpper: calculateTick(4000, 60),
+          },
+        ]
+      );
     });
 
     it("should redeploy without swap", async () => {});

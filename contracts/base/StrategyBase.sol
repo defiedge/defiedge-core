@@ -21,12 +21,13 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
 
     bool public initialized;
 
-    bool public onHold;
-
     address public operator;
     address pendingOperator;
 
     IFactory public factory;
+
+    event ChangeFee(uint256 tier);
+    event ChangeOperator(address operator);
 
     struct Tick {
         uint256 amount0;
@@ -143,6 +144,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
             _mint(feeTo, managerShare);
         }
 
+        // take protocol fee
         if (factory.feeTo() != address(0)) {
             uint256 fee = share.mul(factory.PROTOCOL_FEE()).div(1e8);
             share = share.sub(factory.PROTOCOL_FEE());
@@ -160,10 +162,13 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
     function changeFee(uint256 _tier) public onlyOperator {
         if (_tier == 2) {
             managementFee = 5000000; // 5%
+            emit ChangeFee(_tier);
         } else if (_tier == 1) {
             managementFee = 2000000; // 2%
-        } else {
+            emit ChangeFee(_tier);
+        } else if (_tier == 0) {
             managementFee = 1000000; // 1%
+            emit ChangeFee(_tier);
         }
     }
 
@@ -181,6 +186,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
      */
     function changeOperator(address _operator) external onlyOperator {
         require(_operator != address(0), "invalid operator");
+        require(_operator != operator, "cannot set same operator");
         pendingOperator = _operator;
     }
 
@@ -190,6 +196,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
     function acceptOperator() external {
         require(msg.sender == pendingOperator, "invalid match");
         operator = pendingOperator;
+        emit ChangeOperator(pendingOperator);
     }
 
     /**

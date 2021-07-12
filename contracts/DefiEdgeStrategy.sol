@@ -18,10 +18,17 @@ import "hardhat/console.sol";
 contract DefiEdgeStrategy is UniswapPoolActions {
     using SafeMath for uint256;
 
+    bool public onHold;
+
     // events
     event Mint(uint256 amount0, uint256 amount1);
     event Burn(uint256 amount0, uint256 amount1);
 
+    /**
+     * @param _factory Strategy factory address
+     * @param _pool Address of the pool
+     * @param _operator Address of the strategy operator
+     */
     constructor(
         address _factory,
         address _pool,

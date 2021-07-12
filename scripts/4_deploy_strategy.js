@@ -11,18 +11,18 @@ async function main() {
   console.log("⭐  Deployment Started");
 
   const addresses = {
-    owner: "0xC58F20d4Cd28303A669826b7A03543aEaC6626ba",
-    dai: "0x6b175474e89094c44da98b954eedeac495271d0f",
-    eth: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-    factory: "0xFa681994c6692c820052c7f90862B9072CD84BbA",
-    pool: "0xc2e9f25be6257c210d7adf0d4cd6e3e881ba25f8",
+    owner: "0x22CB224F9FA487dCE907135B57C779F1f32251D4",
+    dai: "0xdbdBc8fd9117872D64a9dA8ab6c9Ae243e45B844",
+    eth: "0x98E652945f92817a924127AEdFB078261490C3fe",
+    factory: "0x5f3951Bc7C8db4ab067c12F5961b07ec1C2e726a",
+    pool: "0x737FC2b8DA21e79000D30641E459e79823e7D1ec",
   };
 
   const dai = await ethers.getContractAt("ERC20", addresses.dai);
   const eth = await ethers.getContractAt("ERC20", addresses.eth);
 
   const factory = await ethers.getContractAt(
-    "StrategyFactory",
+    "DefiEdgeStrategyFactory",
     addresses.factory
   );
 
@@ -30,7 +30,7 @@ async function main() {
 
   await factory.createStrategy(pool.address, addresses.owner);
 
-  const index = await factory.total();
+  const index = await factory.totalIndex();
 
   const strategyAddress = await factory.strategyByIndex(parseInt(index));
   const strategy = await ethers.getContractAt(
