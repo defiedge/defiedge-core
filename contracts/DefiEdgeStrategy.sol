@@ -160,15 +160,15 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         }
 
         // give from unused amounts
-        amount0 = IERC20(pool.token0()).balanceOf(msg.sender);
-        amount1 = IERC20(pool.token1()).balanceOf(msg.sender);
+        amount0 = IERC20(pool.token0()).balanceOf(address(this));
+        amount1 = IERC20(pool.token1()).balanceOf(address(this));
 
         if (amount0 > 0) {
-            amount0 = amount0.mul(balanceOf(msg.sender)).div(totalSupply());
+            amount0 = amount0.mul(balanceOf(address(this))).div(totalSupply());
         }
 
         if (amount1 > 0) {
-            amount1 = amount1.mul(balanceOf(msg.sender)).div(totalSupply());
+            amount1 = amount1.mul(balanceOf(address(this))).div(totalSupply());
         }
 
         // add to total amounts
@@ -183,6 +183,9 @@ contract DefiEdgeStrategy is UniswapPoolActions {
 
         // burn shares
         _burn(msg.sender, _shares);
+
+        console.log("burn amount0", amount0);
+        console.log("burn amount1", amount1);
 
         // transfer tokens
         if (amount0 > 0) {

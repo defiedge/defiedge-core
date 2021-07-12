@@ -85,12 +85,20 @@ contract UniswapPoolActions is
     ) internal returns (uint256 collect0, uint256 collect1) {
         uint128 liquidity;
         // calculate current liquidity
+        // liquidity = LiquidityHelper.getLiquidityForAmounts(
+        //     address(pool),
+        //     _tickLower,
+        //     _tickUpper,
+        //     _amount0 > 100 ? _amount0.sub(100) : _amount0,
+        //     _amount1 > 100 ? _amount1.sub(100) : _amount1
+        // );
+
         liquidity = LiquidityHelper.getLiquidityForAmounts(
             address(pool),
             _tickLower,
             _tickUpper,
-            _amount0 > 100 ? _amount0.sub(100) : _amount0,
-            _amount1 > 100 ? _amount1.sub(100) : _amount1
+            _amount0,
+            _amount1
         );
 
         uint256 tokensBurned0;
@@ -270,7 +278,6 @@ contract UniswapPoolActions is
         // get balances of amount0 and amount1
         amount0 = IERC20(pool.token0()).balanceOf(address(this));
         amount1 = IERC20(pool.token1()).balanceOf(address(this));
-
 
         // get fees accumulated in each tick
         for (uint256 i = 0; i < ticks.length; i++) {

@@ -1,4 +1,5 @@
 import { ethers, waffle } from "hardhat";
+import { BigNumber } from "ethers";
 import chai from "chai";
 
 const TestERC20Factory = ethers.getContractFactory("TestERC20");
@@ -7,7 +8,9 @@ const DefiEdgeStrategyFactoryFactory = ethers.getContractFactory(
   "DefiEdgeStrategyFactory"
 );
 const PeripheryFactory = ethers.getContractFactory("Periphery");
-const UniswapV3OracleTestFactory = ethers.getContractFactory("Periphery");
+const UniswapV3OracleTestFactory = ethers.getContractFactory(
+  "UniswapV3OracleTest"
+);
 
 import { TestERC20 } from "../typechain/TestERC20";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
@@ -23,6 +26,7 @@ import {
   expandTo18Decimals,
   expandToString,
 } from "./utils";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 const { deployContract } = waffle;
 const { expect } = chai;
@@ -31,10 +35,10 @@ describe("DeFiEdgeStrategy", () => {
   let token0: TestERC20;
   let token1: TestERC20;
   let pool: UniswapV3Pool;
-  let signers: { address: string }[];
+  let signers: SignerWithAddress[];
   let factory;
   let strategy: DefiEdgeStrategy;
-  let periphery;
+  let periphery: Periphery;
   let oracle: UniswapV3OracleTest;
 
   beforeEach(async () => {
@@ -97,6 +101,11 @@ describe("DeFiEdgeStrategy", () => {
     // add liquidity to the pool
     await token0.approve(periphery.address, expandTo18Decimals(50000000));
     await token1.approve(periphery.address, expandTo18Decimals(150000000000));
+
+    // transfer tokens to second user for testing
+    await token0.transfer(signers[1].address, expandTo18Decimals(1500000));
+    await token1.transfer(signers[1].address, expandTo18Decimals(1500000));
+
     await periphery.mintLiquidity(
       pool.address,
       calculateTick(3000, 60),
@@ -170,16 +179,54 @@ describe("DeFiEdgeStrategy", () => {
     });
 
     it("should issue shares based on the formula", async () => {
-      const price = await oracle.consult(pool.address, 60);
-      console.log(price);
       expect(await strategy.balanceOf(signers[0].address)).to.equal(
         "105003372553055218640335"
       );
     });
 
-    it("should revert if the strategy is not initialized", async () => {});
+    it("should issue shares based on fees accumulated", async () => {
+      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
 
-    it("should revert if amounts dded are greater than minimum amounts", async () => {});
+      // let the pool earn some fees
+      await periphery.swap(
+        pool.address,
+        false,
+        "100000000000000000000000",
+        expandToString(Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9)
+      );
+
+      // give approval
+      await token0
+        .connect(signers[1])
+        .approve(strategy.address, expandTo18Decimals(150000000000));
+      await token1
+        .connect(signers[1])
+        .approve(strategy.address, expandTo18Decimals(150000000000));
+
+      // mint shares
+      await strategy
+        .connect(signers[1])
+        .mint(expandTo18Decimals(10), expandTo18Decimals(35000), 0, 0, 0);
+
+      const shares = await strategy.balanceOf(signers[1].address);
+      const totalSupply = await strategy.totalSupply();
+
+      // calculate the amounts user should receive, it should be more than the added amounts
+      const amount0 =
+        (Number((await strategy.ticks(0)).amount0) * Number(shares)) /
+        Number(totalSupply);
+      const amount1 =
+        (Number((await strategy.ticks(0)).amount1) * Number(shares)) /
+        Number(totalSupply);
+
+      expect(await strategy.burn(shares, 0, 0))
+        .to.emit(strategy, "Burn")
+        .withArgs("10001029287193511600", "34526162020130243288118");
+    });
+
+    it("should revert if amounts added are greater than minimum amounts", async () => {
+      
+    });
 
     it("should update data in the ticks", async () => {});
 
@@ -205,9 +252,41 @@ describe("DeFiEdgeStrategy", () => {
   });
 
   describe("#Rebalance", async () => {
-    it("should redeploy the amounts if on hold", async () => {});
+    beforeEach("Add Liquidity", async () => {
+      await token0.approve(strategy.address, expandTo18Decimals(1000000));
+      await token1.approve(strategy.address, expandTo18Decimals(1000000));
 
-    it("should swap and redeploy", async () => {});
+      await strategy.mint(
+        expandTo18Decimals(10),
+        expandTo18Decimals(35000),
+        0,
+        0,
+        0
+      );
+    });
+
+    it("should redeploy the amounts if on hold", async () => {
+      await strategy.hold();
+      await strategy.rebalance(0, 0, 0, false, [
+        {
+          amount0: expandTo18Decimals(9),
+          amount1: expandTo18Decimals(34521.60981108611),
+          tickLower: calculateTick(2000, 60),
+          tickUpper: calculateTick(4000, 60),
+        },
+      ]);
+    });
+
+    it("should swap and redeploy", async () => {
+      await strategy.rebalance(0, 0, 0, false, [
+        {
+          amount0: expandTo18Decimals(9),
+          amount1: expandTo18Decimals(34521.60981108611),
+          tickLower: calculateTick(2000, 60),
+          tickUpper: calculateTick(4000, 60),
+        },
+      ]);
+    });
 
     it("should redeploy without swap", async () => {});
   });
