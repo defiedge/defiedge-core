@@ -27,6 +27,12 @@ contract DefiEdgeStrategyFactory {
     uint256 public PROTOCOL_FEE; // 1e8 means 100%
     address public feeTo; // receive protocol fees here
 
+    // mapping of whitelisted pools
+    mapping(address => bool) public whitelistedPools;
+
+    // mapping of blacklisted strategies
+    mapping(address => bool) public denied;
+
     // Modifiers
     modifier onlyGovernance() {
         require(
@@ -49,6 +55,8 @@ contract DefiEdgeStrategyFactory {
         external
         returns (address strategy)
     {
+        // check if pool is whitelisted
+        require(whitelistedPools[_pool], "pool is not whitelisted");
         strategy = address(
             new DefiEdgeStrategy(address(this), _pool, _operator)
         );
@@ -89,5 +97,37 @@ contract DefiEdgeStrategyFactory {
     function acceptOperator() external {
         require(msg.sender == pendingGovernance, "invalid match");
         governance = pendingGovernance;
+    }
+
+    /**
+     * @notice Whitelists pools
+     * @param _pool Address of the pool
+     */
+    function whitelistPool(address _pool) external onlyGovernance() {
+        whitelistedPools[_pool] = true;
+    }
+
+    /**
+     * @notice Blacklists previously whitelisted pool
+     * @param _pool Address of the pool
+     */
+    function blacklistPool(address _pool) external onlyGovernance() {
+        whitelistedPools[_pool] = false;
+    }
+
+    /**
+     * @notice Adds strategy to Denylist, rebalance and add liquidity will be stopped
+     * @param _strategy Address of the strategy
+     */
+    function deny(address _strategy) external onlyGovernance() {
+        denied[_strategy] = true;
+    }
+
+    /**
+     * @notice Allows strategy to operate again
+     * @param _strategy Address of the strategy
+     */
+    function allowAgain(address _strategy) external onlyGovernance() {
+        denied[_strategy] = false;
     }
 }

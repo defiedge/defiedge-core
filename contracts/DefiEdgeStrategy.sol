@@ -65,6 +65,15 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         // check if strategy has been initialised
         require(initialized, "uninitialised strategy");
 
+        // check of pool is whitelisted or not
+        require(
+            factory.whitelistedPool(address(pool)),
+            "pool is not whitelisted"
+        );
+
+        // check if strategy is in denylist
+        require(!factory.denied(address(this)), "strategy is in denylist");
+
         // get total amounts with fees
         (uint256 totalAmount0, uint256 totalAmount1) = getAUMWithFees();
 
@@ -191,9 +200,6 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         // burn shares
         _burn(msg.sender, _shares);
 
-        console.log("burn amount0", amount0);
-        console.log("burn amount1", amount1);
-
         // transfer tokens
         if (amount0 > 0) {
             TransferHelper.safeTransfer(pool.token0(), msg.sender, amount0);
@@ -218,6 +224,15 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         bool _zeroToOne,
         Tick[] memory _ticks
     ) external onlyOperator whenInitialized validTicks(_ticks) {
+        // check if pool is whitelisted
+        require(
+            factory.whitelistedPool(address(pool)),
+            "pool is not whitelisted"
+        );
+
+        // check if strategy is not in denylist
+        require(!factory.denied(address(this)), "strategy is in denylist");
+
         if (onHold) {
             // set onHold to false
             onHold = false;
@@ -283,6 +298,13 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         onHold = true;
         burnAllLiquidity(ticks);
         delete ticks;
+    }
+
+    /**
+     * @notice Gets current ticks and it's amounts
+     */
+    function getTicks() public view returns (Tick[] memory) {
+        return ticks;
     }
 
     /**

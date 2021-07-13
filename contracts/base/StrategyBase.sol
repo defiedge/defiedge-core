@@ -10,6 +10,10 @@ import "hardhat/console.sol";
 interface IFactory {
     function feeTo() external view returns (address);
 
+    function whitelistedPool(address) external view returns (bool);
+
+    function denied(address) external view returns (bool);
+
     function PROTOCOL_FEE() external view returns (uint256);
 }
 
@@ -96,8 +100,6 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
     ) internal view returns (uint256 share) {
         uint256 totalShares = totalSupply();
         uint256 price = UniswapV3Oracle.consult(_pool, 60);
-
-        console.log("price", price);
 
         if (_totalAmount0 == 0) {
             share = (_amount1.mul(price).add(_amount0)).div(uint256(1000));
