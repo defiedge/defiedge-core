@@ -12,7 +12,7 @@ async function main() {
   const userB = config.userB;
   const owner = config.owner;
 
-  const TestToken = await ethers.getContractFactory("ERC20");
+  const TestToken = await ethers.getContractFactory("TestToken");
 
   console.log("⭐  Deployment Started");
 
@@ -28,7 +28,7 @@ async function main() {
   // deploy ETH
   const eth = await TestToken.deploy(
     "testETH",
-    "ETH2",
+    "ETH",
     18,
     "100000000000000000000000000000",
     owner

@@ -73,6 +73,8 @@ describe("DeFiEdgeStrategy", () => {
       await DefiEdgeStrategyFactoryFactory
     ).deploy(signers[0].address)) as DefiEdgeStrategyFactory;
 
+    await factory.whitelistPool(pool.address);
+
     // create strategy
     await factory.createStrategy(pool.address, signers[0].address);
 
@@ -155,6 +157,14 @@ describe("DeFiEdgeStrategy", () => {
         0,
         0
       );
+
+      // await strategy.mint(
+      //   expandTo18Decimals(100),
+      //   expandTo18Decimals(35000),
+      //   0,
+      //   0,
+      //   0
+      // );
     });
 
     it("should revert if minimum share is less than minted share", async () => {
@@ -221,7 +231,7 @@ describe("DeFiEdgeStrategy", () => {
 
       expect(await strategy.burn(shares, 0, 0))
         .to.emit(strategy, "Burn")
-        .withArgs("10001029287193511600", "34526162020130243288118");
+        .withArgs("10001029287193511600", "34526162020130243288217");
     });
 
     it("should revert if amounts added are greater than minimum amounts", async () => {});
@@ -273,25 +283,48 @@ describe("DeFiEdgeStrategy", () => {
           tickUpper: calculateTick(4000, 60),
         },
       ]);
-      
     });
 
     it("should swap and redeploy", async () => {
       const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
+
+      console.log("price", sqrtRatioX96);
       await strategy.rebalance(
-        10,
+        expandToString(8.400990641396713e21),
         expandToString(Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9),
-        0,
+        "1000000",
         false,
         [
           {
-            amount0: expandTo18Decimals(9),
-            amount1: expandTo18Decimals(34521.60981108611),
-            tickLower: calculateTick(2000, 60),
-            tickUpper: calculateTick(4000, 60),
+            amount0: expandToString(1.278292038812931e19),
+            amount1: expandToString(2.5475673945054873e22),
+            tickLower: calculateTick(2498.9, 60),
+            tickUpper: calculateTick(4014.2, 60),
           },
         ]
       );
+
+      const ticks = await strategy.getTicks();
+
+      console.log(ticks);
+
+      let totalAmount0 = 0,
+        totalAmount1 = 0;
+
+      // get amounts from ticks
+      for (let tick in ticks) {
+        totalAmount0 += Number(ticks[tick].amount0);
+        totalAmount1 += Number(ticks[tick].amount1);
+      }
+
+      // get unused amounts
+      totalAmount0 += Number(await token0.balanceOf(strategy.address));
+      totalAmount1 += Number(await token1.balanceOf(strategy.address));
+
+      console.log({
+        totalAmount0,
+        totalAmount1,
+      });
     });
 
     it("should redeploy without swap", async () => {});

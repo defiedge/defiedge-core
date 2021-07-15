@@ -58,7 +58,7 @@ library UniswapV3Oracle {
 
         uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(tick);
 
-        uint256 ratioX192 = uint256(sqrtRatioX96) * sqrtRatioX96;
+        uint256 ratioX192 = uint256(sqrtRatioX96).mul(sqrtRatioX96);
 
         price = FullMath.mulDiv(ratioX192, 1e18, 1 << 192);
     }

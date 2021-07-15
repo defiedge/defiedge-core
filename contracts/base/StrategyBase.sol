@@ -10,7 +10,7 @@ import "hardhat/console.sol";
 interface IFactory {
     function feeTo() external view returns (address);
 
-    function whitelistedPool(address) external view returns (bool);
+    function whitelistedPools(address) external view returns (bool);
 
     function denied(address) external view returns (bool);
 
@@ -101,14 +101,20 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
         uint256 totalShares = totalSupply();
         uint256 price = UniswapV3Oracle.consult(_pool, 60);
 
+        console.log("price", price);
+
         if (_totalAmount0 == 0) {
-            share = (_amount1.mul(price).add(_amount0)).div(uint256(1000));
+            share = (_amount1.mul(price).add(_amount0)).div(uint256(1000)).div(
+                1e18
+            );
         } else if (_totalAmount1 == 0) {
-            share = (_amount0.mul(price).add(_amount1)).div(uint256(1000));
+            share = (_amount0.mul(price).add(_amount1)).div(uint256(1000)).div(
+                1e18
+            );
         } else {
-            uint256 numerator = _amount0.mul(price).add(_amount1);
+            uint256 numerator = _amount0.mul((price)).add(_amount1);
             uint256 denominator = _totalAmount0.mul(price).add(_totalAmount1);
-            share = totalShares.mul(numerator).div(denominator);
+            share = (totalShares.mul(numerator).div(denominator));
         }
     }
 
@@ -136,7 +142,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
             _totalAmount1
         );
 
-        share = share.div(1e18);
+        console.log("issued shares", share);
 
         require(share > 0, "invalid shares");
 

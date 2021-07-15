@@ -84,14 +84,6 @@ contract UniswapPoolActions is
         uint256 _amount1
     ) internal returns (uint256 collect0, uint256 collect1) {
         uint128 liquidity;
-        // calculate current liquidity
-        // liquidity = LiquidityHelper.getLiquidityForAmounts(
-        //     address(pool),
-        //     _tickLower,
-        //     _tickUpper,
-        //     _amount0 > 100 ? _amount0.sub(100) : _amount0,
-        //     _amount1 > 100 ? _amount1.sub(100) : _amount1
-        // );
 
         liquidity = LiquidityHelper.getLiquidityForAmounts(
             address(pool),
@@ -138,23 +130,60 @@ contract UniswapPoolActions is
      * @param _ticks Array of the ticks
      */
     function burnAllLiquidity(Tick[] memory _ticks) internal {
-        uint256 collect0;
-        uint256 collect1;
+        uint256 totalCollected0;
+        uint256 totalCollected1;
 
-        for (uint256 i = 0; i < ticks.length; i++) {
+        uint256 totalBurned0;
+        uint256 totalBurned1;
+
+        for (uint256 i = 0; i < _ticks.length; i++) {
             Tick memory tick = _ticks[i];
 
-            // Burn liquidity for range order
-            (uint256 amount0, uint256 amount1) = burnLiquidity(
-                tick.tickLower,
-                tick.tickUpper,
-                tick.amount0,
-                tick.amount1
+            (uint128 currentLiquidity, , , , ) = pool.positions(
+                PositionKey.compute(
+                    address(this),
+                    tick.tickLower,
+                    tick.tickUpper
+                )
             );
 
-            collect0 = collect0.add(amount0);
-            collect1 = collect1.add(amount1);
+            uint256 tokensBurned0;
+            uint256 tokensBurned1;
+
+            // burn liquidity
+            if (currentLiquidity > 0) {
+                (tokensBurned0, tokensBurned1) = pool.burn(
+                    tick.tickLower,
+                    tick.tickUpper,
+                    currentLiquidity
+                );
+            }
+
+            // collect fees
+            (uint256 collect0, uint256 collect1) = pool.collect(
+                address(this),
+                tick.tickLower,
+                tick.tickUpper,
+                type(uint128).max,
+                type(uint128).max
+            );
+
+            totalBurned0 = totalBurned0.add(tokensBurned0);
+            totalBurned1 = totalBurned1.add(tokensBurned1);
+
+            totalCollected0 = totalCollected0.add(collect0);
+            totalCollected1 = totalCollected1.add(collect1);
         }
+
+        emit FeesClaimed(
+            msg.sender,
+            totalCollected0 > totalBurned0
+                ? uint256(totalCollected0).sub(totalBurned0)
+                : 0,
+            totalCollected1 > totalBurned1
+                ? uint256(totalCollected1).sub(totalBurned1)
+                : 0
+        );
     }
 
     /**
@@ -279,6 +308,9 @@ contract UniswapPoolActions is
         amount0 = IERC20(pool.token0()).balanceOf(address(this));
         amount1 = IERC20(pool.token1()).balanceOf(address(this));
 
+        uint256 totalAmount0;
+        uint256 totalAmount1;
+
         // get fees accumulated in each tick
         for (uint256 i = 0; i < ticks.length; i++) {
             Tick memory tick = ticks[i];
@@ -306,8 +338,11 @@ contract UniswapPoolActions is
             );
 
             // add fees to the amounts
-            amount0 = amount0.add(tokensOwed0);
-            amount1 = amount1.add(tokensOwed1);
+            totalAmount0 = totalAmount0.add(tokensOwed0).add(tick.amount0);
+            totalAmount1 = totalAmount1.add(tokensOwed1).add(tick.amount1);
         }
+
+        amount0 = amount0.add(totalAmount0);
+        amount1 = amount0.add(totalAmount1);
     }
 }

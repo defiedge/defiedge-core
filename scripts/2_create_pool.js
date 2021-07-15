@@ -11,8 +11,8 @@ async function main() {
   const factoryAddress = config.uniswapFactory;
 
   const tokens = {
-    dai: config.dai,
-    eth: config.eth,
+    dai: "0xF9A48E4386b30975247300330522F1eD521ab532",
+    eth: "0x8c620793ca7A7f25D2725cC779D94430274Cf1C1",
   };
 
   const dai = await ethers.getContractAt("ERC20", tokens.dai);
@@ -35,8 +35,8 @@ async function main() {
   const pool = await ethers.getContractAt("UniswapV3Pool", poolAddress);
 
   // set reserves at ETH price of 3500 DAI per ETh
-  const initialEthReserve = "28571428571400000000";
-  const initialDaiReserve = "100000000000000000000000";
+  const initialEthReserve = "285714285714000000000";
+  const initialDaiReserve = "1000000000000000000000000";
 
   // select the reserve amounts based on the tokens
   let reserve0, reserve1;

@@ -62,12 +62,14 @@ contract DefiEdgeStrategy is UniswapPoolActions {
             uint256 share
         )
     {
+        console.log("strategy address", address(this));
+
         // check if strategy has been initialised
         require(initialized, "uninitialised strategy");
 
         // check of pool is whitelisted or not
         require(
-            factory.whitelistedPool(address(pool)),
+            factory.whitelistedPools(address(pool)),
             "pool is not whitelisted"
         );
 
@@ -97,8 +99,6 @@ contract DefiEdgeStrategy is UniswapPoolActions {
             totalAmount1,
             msg.sender
         );
-
-        console.log("share", share);
 
         // update data in the tick
         ticks[0].amount0 = ticks[0].amount0.add(amount0);
@@ -137,7 +137,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         // burn liquidity based on shares from existing ticks
         if (ticks.length != 0) {
             for (uint256 i = 0; i < ticks.length; i++) {
-                Tick memory tick = ticks[i];
+                Tick storage tick = ticks[i];
 
                 // get amounts to be burned based on shares
                 amount0 = tick.amount0.mul(balanceOf(msg.sender)).div(
@@ -156,22 +156,26 @@ contract DefiEdgeStrategy is UniswapPoolActions {
                     amount1
                 );
 
-                // get deployed amounts
-                amount0 = tick.amount0 > amount0
-                    ? tick.amount0.sub(amount0)
-                    : amount0;
+                // add to total amounts
+                collect0 = collect0.add(amount0);
+                collect1 = collect1.add(amount1);
 
-                amount1 = tick.amount1 > amount1
-                    ? tick.amount1.sub(amount1)
-                    : amount1;
+                // get burned amounts
+                amount0 = amount0 != 0 ? tick.amount0.sub(amount0) : 0;
+                amount1 = amount1 != 0 ? tick.amount1.sub(amount1) : 0;
+
+                // // get burned amounts
+                // amount0 = tick.amount0 > amount0
+                //     ? tick.amount0.sub(amount0)
+                //     : amount0;
+
+                // amount1 = tick.amount1 > amount1
+                //     ? tick.amount1.sub(amount1)
+                //     : amount1;
 
                 // update data in the tick
                 tick.amount0 = amount0;
                 tick.amount1 = amount1;
-
-                // add to total amounts
-                collect0 = collect0.add(amount0);
-                collect1 = collect1.add(amount1);
             }
         }
 
@@ -226,7 +230,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
     ) external onlyOperator whenInitialized validTicks(_ticks) {
         // check if pool is whitelisted
         require(
-            factory.whitelistedPool(address(pool)),
+            factory.whitelistedPools(address(pool)),
             "pool is not whitelisted"
         );
 
@@ -236,15 +240,42 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         if (onHold) {
             // set onHold to false
             onHold = false;
-            // deploy between ticks
-            redeploy(_ticks);
-        } else if (_swapAmount > 0) {
-            // set unhold to false
-            onHold = false;
-
             // burn all liquidity
             burnAllLiquidity(ticks);
+            // deploy between ticks
+            redeploy(
+                _swapAmount,
+                _sqrtPriceLimitX96,
+                _allowedPriceSlippage,
+                _zeroToOne,
+                _ticks
+            );
+        } else {
+            // set hold true
+            onHold = false;
+            // burn all liquidity
+            burnAllLiquidity(ticks);
+            // redeploy to the amounts specified
+            redeploy(
+                _swapAmount,
+                _sqrtPriceLimitX96,
+                _allowedPriceSlippage,
+                _zeroToOne,
+                _ticks
+            );
+        }
+    }
 
+    function redeploy(
+        uint256 _swapAmount,
+        uint160 _sqrtPriceLimitX96,
+        uint256 _allowedPriceSlippage,
+        bool _zeroToOne,
+        Tick[] memory _ticks
+    ) internal {
+        // delete ticks
+        delete ticks;
+        if (_swapAmount > 0) {
             uint256 amountOut;
 
             // swap tokens
@@ -255,39 +286,43 @@ contract DefiEdgeStrategy is UniswapPoolActions {
                 _sqrtPriceLimitX96
             );
 
-            // redeploy using ticks
-            redeploy(_ticks);
+            // redeploy the liquidity
+            for (uint256 i = 0; i < _ticks.length; i++) {
+                Tick memory tick = _ticks[i];
+
+                // mint liquidity
+                (uint256 amount0, uint256 amount1) = mintLiquidity(
+                    tick.tickLower,
+                    tick.tickUpper,
+                    tick.amount0,
+                    tick.amount1,
+                    address(this)
+                );
+
+                // push to ticks array
+                ticks.push(
+                    Tick(amount0, amount1, tick.tickLower, tick.tickUpper)
+                );
+            }
         } else {
-            // set hold true
-            onHold = false;
+            // redeploy the liquidity
+            for (uint256 i = 0; i < _ticks.length; i++) {
+                Tick memory tick = _ticks[i];
 
-            // burn all liquidity
-            burnAllLiquidity(ticks);
+                // mint liquidity
+                (uint256 amount0, uint256 amount1) = mintLiquidity(
+                    tick.tickLower,
+                    tick.tickUpper,
+                    tick.amount0,
+                    tick.amount1,
+                    address(this)
+                );
 
-            // redeploy to the amounts specified
-            redeploy(_ticks);
-        }
-    }
-
-    function redeploy(Tick[] memory _ticks) internal {
-        // delete ticks
-        delete ticks;
-
-        // redeploy the liquidity
-        for (uint256 i = 0; i < _ticks.length; i++) {
-            Tick memory tick = _ticks[i];
-
-            // mint liquidity
-            (uint256 amount0, uint256 amount1) = mintLiquidity(
-                tick.tickLower,
-                tick.tickUpper,
-                tick.amount0,
-                tick.amount1,
-                address(this)
-            );
-
-            // push to ticks array
-            ticks.push(Tick(amount0, amount1, tick.tickLower, tick.tickUpper));
+                // push to ticks array
+                ticks.push(
+                    Tick(amount0, amount1, tick.tickLower, tick.tickUpper)
+                );
+            }
         }
     }
 

@@ -12,10 +12,10 @@ async function main() {
 
   const addresses = {
     owner: "0x22CB224F9FA487dCE907135B57C779F1f32251D4",
-    dai: "0xdbdBc8fd9117872D64a9dA8ab6c9Ae243e45B844",
-    eth: "0x98E652945f92817a924127AEdFB078261490C3fe",
-    factory: "0x041a74836f122216425c44f65a25451c0CBc6C2f",
-    pool: "0x737FC2b8DA21e79000D30641E459e79823e7D1ec",
+    dai: "0xF9A48E4386b30975247300330522F1eD521ab532",
+    eth: "0x8c620793ca7A7f25D2725cC779D94430274Cf1C1",
+    factory: "0x0B4C26554c52D1b800B45eFe59c7a5a53cE4317B",
+    pool: "0x5Ae8Ea43Ff765F59f4E12f7a1Ef088322a2D6562",
   };
 
   const dai = await ethers.getContractAt("ERC20", addresses.dai);
@@ -28,6 +28,7 @@ async function main() {
 
   const pool = await ethers.getContractAt("UniswapV3Pool", addresses.pool);
 
+  await factory.whitelistPool(pool.address);
   await factory.createStrategy(pool.address, addresses.owner);
 
   const index = await factory.totalIndex();
@@ -41,12 +42,12 @@ async function main() {
   let tickUpper, tickLower;
   if (dai.address < eth.address) {
     // add initial liquidity to start the pool
-    tickUpper = calculateTick(0.0006666666666666666, 60);
-    tickLower = calculateTick(0.0005555555555555556, 60);
+    tickUpper = calculateTick(0.00028571428571428574, 60);
+    tickLower = calculateTick(0.00022222222222222223, 60);
   } else {
     // add initial liquidity to start the pool
-    tickLower = calculateTick(1500, 60);
-    tickUpper = calculateTick(1800, 60);
+    tickLower = calculateTick(3000, 60);
+    tickUpper = calculateTick(4500, 60);
   }
 
   await strategy.initialize([[0, 0, tickLower, tickUpper]]);

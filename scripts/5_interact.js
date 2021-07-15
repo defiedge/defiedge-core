@@ -13,27 +13,45 @@ async function main() {
   console.log("⭐  Interaction Started");
 
   const addresses = {
-    aggregator: "0xFF3E4153eC40fDF7A8D6cAbEa79093a04a0FfF8E",
-    dai: "0xdbdBc8fd9117872D64a9dA8ab6c9Ae243e45B844",
-    eth: "0x98E652945f92817a924127AEdFB078261490C3fe",
-    pool: "0x737FC2b8DA21e79000D30641E459e79823e7D1ec",
-    strategy: "0x839A70C2678fB6CC55F9DFd8d5EAd7f34A938a90",
+    owner: "0x22CB224F9FA487dCE907135B57C779F1f32251D4",
+    dai: "0xF9A48E4386b30975247300330522F1eD521ab532",
+    eth: "0x8c620793ca7A7f25D2725cC779D94430274Cf1C1",
+    pool: "0x5Ae8Ea43Ff765F59f4E12f7a1Ef088322a2D6562",
+    strategy: "0xF1008bF4692683f3ae5c513851482038f726A7B7",
   };
 
-  aggregator = await ethers.getContractAt("Aggregator", addresses.aggregator);
+  pool = await ethers.getContractAt("UniswapV3Pool", addresses.pool);
+  strategy = await ethers.getContractAt("DefiEdgeStrategy", addresses.strategy);
 
-  // const dai = await ethers.getContractAt("ERC20", config.dai);
-  // const eth = await ethers.getContractAt("ERC20", config.eth);
+  const dai = await ethers.getContractAt("TestERC20", addresses.dai);
+  const eth = await ethers.getContractAt("TestERC20", addresses.eth);
 
-  // const balanceOfDai = await dai.balanceOf(config.owner);
-  // const balanceOfEth = await dai.balanceOf(config.owner);
+  // const balanceOfDai = await dai.balanceOf(addresses.owner);
+  // const balanceOfEth = await eth.balanceOf(addresses.owner);
 
-  // await dai.approve(aggregator.address, balanceOfDai);
-  // await eth.approve(aggregator.address, balanceOfEth);
+  // await dai.approve(strategy.address, balanceOfDai);
+  // await eth.approve(strategy.address, balanceOfEth);
+
+  const oracle = await pool.observe([0, 60]);
+  const ticks = await strategy.getTicks();
+  const daiUnused0 = await dai.balanceOf(strategy.address);
+  const ethUnused1 = await eth.balanceOf(strategy.address);
+  const totalShares = await strategy.totalSupply();
+
+  console.log({
+    daiunused: daiUnused0,
+    ethunused: ethUnused1,
+  });
+  console.log("oracle", oracle);
+  console.log("ticks", ticks);
+  console.log("totalShares", totalShares);
+
+  // await rebalance();
+  // await addLiquidity();
+
+  // aggregator = await ethers.getContractAt("Aggregator", addresses.aggregator);
 
   // pool = await ethers.getContractAt("UniswapV3Pool", addresses.pool);
-
-  // strategy = await ethers.getContractAt("DefiEdgeStrategy", addresses.strategy);
 
   // const feeTo = await aggregator.feeTo();
   // const feeToStrategy = await strategy.feeTo()
@@ -49,23 +67,23 @@ async function main() {
   //   await aggregator.shares(strategy.address, feeToStrategy)
   // );
 
-  console.log(
-    "balance",
-    await getDefaultProvider().getBalance(
-      "0xC58F20d4Cd28303A669826b7A03543aEaC6626ba"
-    )
-  );
+  // console.log(
+  //   "balance",
+  //   await getDefaultProvider().getBalance(
+  //     "0xC58F20d4Cd28303A669826b7A03543aEaC6626ba"
+  //   )
+  // );
 
-  const [owner, addr1] = await ethers.getSigners();
+  // const [owner, addr1] = await ethers.getSigners();
 
-  const tx = await owner.sendTransaction({
-    to: "0xC58F20d4Cd28303A669826b7A03543aEaC6626ba",
-    value: ethers.utils.parseEther("0"),
-    nonce: 26,
-    gasPrice: BigNumber.from(100000000000),
-  });
+  // const tx = await owner.sendTransaction({
+  //   to: "0xC58F20d4Cd28303A669826b7A03543aEaC6626ba",
+  //   value: ethers.utils.parseEther("0"),
+  //   nonce: 26,
+  //   gasPrice: BigNumber.from(100000000000),
+  // });
 
-  console.log(tx);
+  // console.log(tx);
 
   // await aggregator.changeFee("1000000");
   // await aggregator.changeFeeTo("0x64bC0E807066f20Ca466897624D3fbb6f0EC5D44");
@@ -160,26 +178,35 @@ async function hold(_strategy) {
   console.log(tx);
 }
 
-async function rebalance(_strategy) {
+async function rebalance() {
   const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
-  const sqrtPriceLimitX96 = sqrtRatioX96 - (sqrtRatioX96 * 10) / 100;
+
+  console.log({ sqrtRatioX96 });
+
+  const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.01;
 
   const tx = await strategy.rebalance(
-    toGwei(0),
+    toGwei(3468.933555922911),
     toGwei(sqrtPriceLimitX96 / 1e18),
     "1000000",
-    true,
-    [[toGwei(22000.10276257899523), toGwei(1), 75960, 82920]]
+    false,
+    [
+      [
+        toGwei(2.847232146631788),
+        toGwei(27543.00590786554),
+        calculateTick(2498.9, 60),
+        calculateTick(4314.2, 60),
+      ],
+    ]
   );
 
   console.log(tx);
 }
 
-async function addLiquidity(_strategy) {
-  const tx = await aggregator.addLiquidity(
-    _strategy,
+async function addLiquidity() {
+  const tx = await strategy.mint(
     "350000000000000000000000",
-    "100000000000000000000000000",
+    "10000000000000000000000000",
     "0",
     "0",
     "0"
