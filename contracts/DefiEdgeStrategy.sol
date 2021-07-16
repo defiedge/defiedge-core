@@ -263,21 +263,21 @@ contract DefiEdgeStrategy is UniswapPoolActions {
 
     // swaps with exact input single functionality
     function swap(
-        bool _zeroToOne,
+        bool _zeroForOne,
         int256 _amount,
         uint160 _sqrtPriceLimitX96
     ) external onlyOperator whenInitialized returns (uint256 amountOut) {
         (int256 amount0, int256 amount1) = pool.swap(
             address(this),
-            _zeroToOne,
+            _zeroForOne,
             _amount,
             _sqrtPriceLimitX96,
             abi.encode(
-                SwapCallbackData({pool: address(pool), zeroToOne: _zeroToOne})
+                SwapCallbackData({pool: address(pool), zeroToOne: _zeroForOne})
             )
         );
 
-        return uint256(-(_zeroToOne ? amount1 : amount0));
+        return uint256(-(_zeroForOne ? amount1 : amount0));
     }
 
     /**
