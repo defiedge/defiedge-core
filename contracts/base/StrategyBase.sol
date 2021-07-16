@@ -69,7 +69,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
             int24 tickUpper = _ticks[i].tickUpper;
 
             // check that two tick upper and tick lowers are not in array cannot be same
-            for (uint256 j = 0; j < _ticks.length; j++) {
+            for (uint256 j = 0; j < i; j++) {
                 if (i != j) {
                     if (tickLower == _ticks[j].tickLower) {
                         require(
