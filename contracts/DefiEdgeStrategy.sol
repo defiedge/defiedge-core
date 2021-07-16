@@ -69,6 +69,8 @@ contract DefiEdgeStrategy is UniswapPoolActions {
             "pool is not whitelisted"
         );
 
+        require(!onHold, "strategy is on hold");
+
         // check if strategy is in denylist
         require(!factory.denied(address(this)), "strategy is in denylist");
 
@@ -136,13 +138,9 @@ contract DefiEdgeStrategy is UniswapPoolActions {
                 Tick storage tick = ticks[i];
 
                 // get amounts to be burned based on shares
-                amount0 = tick.amount0.mul(_shares).div(
-                    totalSupply()
-                );
+                amount0 = tick.amount0.mul(_shares).div(totalSupply());
 
-                amount1 = tick.amount1.mul(_shares).div(
-                    totalSupply()
-                );
+                amount1 = tick.amount1.mul(_shares).div(totalSupply());
 
                 // burn liquidity and collect fees
                 (amount0, amount1) = burnLiquidity(
@@ -174,11 +172,11 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         amount1 = IERC20(pool.token1()).balanceOf(address(this));
 
         if (amount0 > 0) {
-            amount0 = amount0.mul(_shares)).div(totalSupply());
+            amount0 = amount0.mul(_shares).div(totalSupply());
         }
 
         if (amount1 > 0) {
-            amount1 = amount1.mul(_shares)).div(totalSupply());
+            amount1 = amount1.mul(_shares).div(totalSupply());
         }
 
         // add to total amounts
