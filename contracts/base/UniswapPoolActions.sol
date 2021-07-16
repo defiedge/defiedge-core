@@ -213,29 +213,6 @@ contract UniswapPoolActions is
         }
     }
 
-    // swaps with exact input single functionality
-    function swap(
-        bool _zeroToOne,
-        int256 _amount,
-        uint256 _allowedPriceSlippage,
-        uint160 _sqrtPriceLimitX96
-    ) internal returns (uint256 amountOut) {
-        (uint160 sqrtRatioX96, , , , , , ) = pool.slot0();
-
-        (amountOut) = swapExactInput(_zeroToOne, _amount, _sqrtPriceLimitX96);
-
-        (uint160 newSqrtRatioX96, , , , , , ) = pool.slot0();
-
-        uint160 difference = sqrtRatioX96 < newSqrtRatioX96
-            ? sqrtRatioX96 / newSqrtRatioX96
-            : newSqrtRatioX96 / sqrtRatioX96;
-
-        if (_allowedPriceSlippage > 0) {
-            // check price P slippage
-            require(uint256(difference) <= _allowedPriceSlippage.div(1e8));
-        }
-    }
-
     // swaps exact input amount
     function swapExactInput(
         bool _zeroToOne,

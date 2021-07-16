@@ -164,16 +164,6 @@ contract DefiEdgeStrategy is UniswapPoolActions {
                 amount0 = amount0 != 0 ? tick.amount0.sub(amount0) : 0;
                 amount1 = amount1 != 0 ? tick.amount1.sub(amount1) : 0;
 
-                // // get burned amounts
-                // amount0 = tick.amount0 > amount0
-                //     ? tick.amount0.sub(amount0)
-                //     : amount0;
-
-                // amount1 = tick.amount1 > amount1
-                //     ? tick.amount1.sub(amount1)
-                //     : amount1;
-
-                // update data in the tick
                 tick.amount0 = amount0;
                 tick.amount1 = amount1;
             }
@@ -217,17 +207,14 @@ contract DefiEdgeStrategy is UniswapPoolActions {
 
     /**
      * @notice Swaps and updates ticks for rebalancing
-     * @param _swapAmount Amount to be swapped
-     * @param _sqrtPriceLimitX96 The allowed slippage in terms of percentage
-     * @param _allowedPriceSlippage The allowed price movement after the swap
+     * @param _ticks Ticks in which amounts to be deploy
      */
-    function rebalance(
-        uint256 _swapAmount,
-        uint160 _sqrtPriceLimitX96,
-        uint256 _allowedPriceSlippage,
-        bool _zeroToOne,
-        Tick[] memory _ticks
-    ) external onlyOperator whenInitialized validTicks(_ticks) {
+    function rebalance(Tick[] memory _ticks)
+        external
+        onlyOperator
+        whenInitialized
+        validTicks(_ticks)
+    {
         // check if pool is whitelisted
         require(
             factory.whitelistedPools(address(pool)),
@@ -240,89 +227,60 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         if (onHold) {
             // set onHold to false
             onHold = false;
-            // burn all liquidity
-            burnAllLiquidity(ticks);
             // deploy between ticks
-            redeploy(
-                _swapAmount,
-                _sqrtPriceLimitX96,
-                _allowedPriceSlippage,
-                _zeroToOne,
-                _ticks
-            );
+            redeploy(_ticks);
         } else {
             // set hold true
             onHold = false;
             // burn all liquidity
             burnAllLiquidity(ticks);
             // redeploy to the amounts specified
-            redeploy(
-                _swapAmount,
-                _sqrtPriceLimitX96,
-                _allowedPriceSlippage,
-                _zeroToOne,
-                _ticks
-            );
+            redeploy(_ticks);
         }
     }
 
-    function redeploy(
-        uint256 _swapAmount,
-        uint160 _sqrtPriceLimitX96,
-        uint256 _allowedPriceSlippage,
-        bool _zeroToOne,
-        Tick[] memory _ticks
-    ) internal {
+    function redeploy(Tick[] memory _ticks) internal {
         // delete ticks
         delete ticks;
-        if (_swapAmount > 0) {
-            uint256 amountOut;
 
-            // swap tokens
-            (amountOut) = swap(
-                _zeroToOne,
-                int256(_swapAmount),
-                _allowedPriceSlippage,
-                _sqrtPriceLimitX96
+        // redeploy the liquidity
+        for (uint256 i = 0; i < _ticks.length; i++) {
+            Tick memory tick = _ticks[i];
+
+            // mint liquidity
+            (uint256 amount0, uint256 amount1) = mintLiquidity(
+                tick.tickLower,
+                tick.tickUpper,
+                tick.amount0,
+                tick.amount1,
+                address(this)
             );
 
-            // redeploy the liquidity
-            for (uint256 i = 0; i < _ticks.length; i++) {
-                Tick memory tick = _ticks[i];
+            // push to ticks array
+            ticks.push(Tick(amount0, amount1, tick.tickLower, tick.tickUpper));
+        }
+    }
 
-                // mint liquidity
-                (uint256 amount0, uint256 amount1) = mintLiquidity(
-                    tick.tickLower,
-                    tick.tickUpper,
-                    tick.amount0,
-                    tick.amount1,
-                    address(this)
-                );
+    // swaps with exact input single functionality
+    function swap(
+        bool _zeroToOne,
+        int256 _amount,
+        uint256 _allowedPriceSlippage,
+        uint160 _sqrtPriceLimitX96
+    ) external onlyOperator whenInitialized returns (uint256 amountOut) {
+        (uint160 sqrtRatioX96, , , , , , ) = pool.slot0();
 
-                // push to ticks array
-                ticks.push(
-                    Tick(amount0, amount1, tick.tickLower, tick.tickUpper)
-                );
-            }
-        } else {
-            // redeploy the liquidity
-            for (uint256 i = 0; i < _ticks.length; i++) {
-                Tick memory tick = _ticks[i];
+        (amountOut) = swapExactInput(_zeroToOne, _amount, _sqrtPriceLimitX96);
 
-                // mint liquidity
-                (uint256 amount0, uint256 amount1) = mintLiquidity(
-                    tick.tickLower,
-                    tick.tickUpper,
-                    tick.amount0,
-                    tick.amount1,
-                    address(this)
-                );
+        (uint160 newSqrtRatioX96, , , , , , ) = pool.slot0();
 
-                // push to ticks array
-                ticks.push(
-                    Tick(amount0, amount1, tick.tickLower, tick.tickUpper)
-                );
-            }
+        uint160 difference = sqrtRatioX96 < newSqrtRatioX96
+            ? sqrtRatioX96 / newSqrtRatioX96
+            : newSqrtRatioX96 / sqrtRatioX96;
+
+        if (_allowedPriceSlippage > 0) {
+            // check price P slippage
+            require(uint256(difference) <= _allowedPriceSlippage.div(1e8));
         }
     }
 
