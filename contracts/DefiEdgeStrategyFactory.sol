@@ -94,7 +94,7 @@ contract DefiEdgeStrategyFactory {
     /**
      * @notice Change the operator
      */
-    function acceptOperator() external {
+    function acceptGovernance() external {
         require(msg.sender == pendingGovernance, "invalid match");
         governance = pendingGovernance;
     }

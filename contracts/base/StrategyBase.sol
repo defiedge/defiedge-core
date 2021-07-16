@@ -202,7 +202,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
     /**
      * @notice Change the operator
      */
-    function acceptOperator() external {
+    function acceptGovernance() external {
         require(msg.sender == pendingOperator, "invalid match");
         operator = pendingOperator;
         emit ChangeOperator(pendingOperator);
