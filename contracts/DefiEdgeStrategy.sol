@@ -56,17 +56,13 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         uint256 _minShare
     )
         external
+        whenInitialized
         returns (
             uint256 amount0,
             uint256 amount1,
             uint256 share
         )
     {
-        console.log("strategy address", address(this));
-
-        // check if strategy has been initialised
-        require(initialized, "uninitialised strategy");
-
         // check of pool is whitelisted or not
         require(
             factory.whitelistedPools(address(pool)),
