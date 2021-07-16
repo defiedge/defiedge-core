@@ -1,12 +1,12 @@
-const {expect} = require('chai');
+	const {expect} = require('chai');
 
 describe ("StrategyFactory contract", function () {
-    let StratagyFactory , DefiEdgeStrategy, total, _poolAddress, _operatorAddress, _aggregator, _stratagy;
+    let StratagyFactory , owner,DefiEdgeStrategy, total, _poolAddress, _operatorAddress, _aggregator, _stratagy;
 
     beforeEach (async function() {
         StratagyFactory = await ethers.getContractFactory('StrategyFactory');
         DefiEdgeStrategy = await ethers.getContractFactory('DefiEdgeStrategy');
-        [total,_poolAddress,_operatorAddress,_aggregator,_] = await ethers.getSigners();
+        [total,_poolAddress,owner,_operatorAddress,_aggregator,_] = await ethers.getSigners();
         total = await StratagyFactory.deploy(_aggregator.address);
         _stratagy = await DefiEdgeStrategy.deploy(_aggregator.address,_poolAddress.address,_operatorAddress.address)
     });
@@ -39,12 +39,12 @@ describe ("StrategyFactory contract", function () {
         });
     });
 
-    // describe ('Events', function () {
-    //     it ('should match with the strategy address', async function(){
-    //         await total.createStrategy(_poolAddress.address,_operatorAddress.address);
-    //         const Strategy_address= await _stratagy.address;
-    //         const data = await total.strategyByIndex(total.total());
-    //         expect (data).to.equal(Strategy_address);
-    //     })
-    // })
+    describe ('Events', function () {
+        it ('should match with the strategy address', async function(){
+
+            await expect(total.connect(owner).createStrategy(_poolAddress.address,_operatorAddress.address))
+                .to.emit(total,'NewStrategy').withArgs(await total.__strategy,owner.address);
+
+        })
+    })
 });
