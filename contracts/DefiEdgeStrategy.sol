@@ -265,23 +265,19 @@ contract DefiEdgeStrategy is UniswapPoolActions {
     function swap(
         bool _zeroToOne,
         int256 _amount,
-        uint256 _allowedPriceSlippage,
         uint160 _sqrtPriceLimitX96
     ) external onlyOperator whenInitialized returns (uint256 amountOut) {
-        (uint160 sqrtRatioX96, , , , , , ) = pool.slot0();
+        (int256 amount0, int256 amount1) = pool.swap(
+            address(this),
+            _zeroToOne,
+            _amount,
+            _sqrtPriceLimitX96,
+            abi.encode(
+                SwapCallbackData({pool: address(pool), zeroToOne: _zeroToOne})
+            )
+        );
 
-        (amountOut) = swapExactInput(_zeroToOne, _amount, _sqrtPriceLimitX96);
-
-        (uint160 newSqrtRatioX96, , , , , , ) = pool.slot0();
-
-        uint160 difference = sqrtRatioX96 < newSqrtRatioX96
-            ? sqrtRatioX96 / newSqrtRatioX96
-            : newSqrtRatioX96 / sqrtRatioX96;
-
-        if (_allowedPriceSlippage > 0) {
-            // check price P slippage
-            require(uint256(difference) <= _allowedPriceSlippage.div(1e8));
-        }
+        return uint256(-(_zeroToOne ? amount1 : amount0));
     }
 
     /**

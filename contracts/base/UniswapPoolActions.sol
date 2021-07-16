@@ -213,25 +213,6 @@ contract UniswapPoolActions is
         }
     }
 
-    // swaps exact input amount
-    function swapExactInput(
-        bool _zeroToOne,
-        int256 _amount,
-        uint160 sqrtPriceLimitX96
-    ) internal returns (uint256 amountOut) {
-        (int256 amount0, int256 amount1) = pool.swap(
-            address(this),
-            _zeroToOne,
-            _amount,
-            sqrtPriceLimitX96,
-            abi.encode(
-                SwapCallbackData({pool: address(pool), zeroToOne: _zeroToOne})
-            )
-        );
-
-        return uint256(-(_zeroToOne ? amount1 : amount0));
-    }
-
     /**
      * @dev Callback for Uniswap V3 pool.
      */
