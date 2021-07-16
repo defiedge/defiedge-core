@@ -136,11 +136,11 @@ contract DefiEdgeStrategy is UniswapPoolActions {
                 Tick storage tick = ticks[i];
 
                 // get amounts to be burned based on shares
-                amount0 = tick.amount0.mul(balanceOf(msg.sender)).div(
+                amount0 = tick.amount0.mul(_shares).div(
                     totalSupply()
                 );
 
-                amount1 = tick.amount1.mul(balanceOf(msg.sender)).div(
+                amount1 = tick.amount1.mul(_shares).div(
                     totalSupply()
                 );
 
@@ -157,8 +157,12 @@ contract DefiEdgeStrategy is UniswapPoolActions {
                 collect1 = collect1.add(amount1);
 
                 // get burned amounts
-                amount0 = amount0 != 0 ? tick.amount0.sub(amount0) : 0;
-                amount1 = amount1 != 0 ? tick.amount1.sub(amount1) : 0;
+                amount0 = amount0 != 0
+                    ? tick.amount0.sub(amount0)
+                    : tick.amount0;
+                amount1 = amount1 != 0
+                    ? tick.amount1.sub(amount1)
+                    : tick.amount1;
 
                 tick.amount0 = amount0;
                 tick.amount1 = amount1;
@@ -170,11 +174,11 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         amount1 = IERC20(pool.token1()).balanceOf(address(this));
 
         if (amount0 > 0) {
-            amount0 = amount0.mul(balanceOf(address(this))).div(totalSupply());
+            amount0 = amount0.mul(_shares)).div(totalSupply());
         }
 
         if (amount1 > 0) {
-            amount1 = amount1.mul(balanceOf(address(this))).div(totalSupply());
+            amount1 = amount1.mul(_shares)).div(totalSupply());
         }
 
         // add to total amounts
