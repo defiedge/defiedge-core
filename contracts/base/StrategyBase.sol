@@ -101,13 +101,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
         uint256 totalShares = totalSupply();
         uint256 price = UniswapV3Oracle.consult(_pool, 60);
 
-        console.log("price", price);
-
-        if (_totalAmount0 == 0) {
-            share = (_amount1.mul(price).add(_amount0)).div(uint256(1000)).div(
-                1e18
-            );
-        } else if (_totalAmount1 == 0) {
+        if ((_totalAmount0 == 0) || (_totalAmount1 == 0)) {
             share = (_amount0.mul(price).add(_amount1)).div(uint256(1000)).div(
                 1e18
             );
