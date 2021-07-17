@@ -204,7 +204,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
     }
 
     /**
-     * @notice Swaps and updates ticks for rebalancing
+     * @notice Rebalances between the ticks
      * @param _ticks Ticks in which amounts to be deploy
      */
     function rebalance(Tick[] memory _ticks)
@@ -259,7 +259,12 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         }
     }
 
-    // swaps with exact input single functionality
+    /**
+     * @notice Rebalances between the ticks
+     * @param _zeroForOne The direction of the swap
+     * @param _amount Amount to Swap
+     * @param _sqrtPriceLimitX96 Price Slippage
+     */
     function swap(
         bool _zeroForOne,
         int256 _amount,
