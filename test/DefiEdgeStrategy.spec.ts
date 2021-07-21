@@ -150,6 +150,11 @@ describe("DeFiEdgeStrategy", () => {
       await token0.approve(strategy.address, expandTo18Decimals(1000000));
       await token1.approve(strategy.address, expandTo18Decimals(1000000));
 
+      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
+
+      const sqrtPriceLimitX96 =
+        Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9;
+
       await strategy.mint(
         expandTo18Decimals(100),
         expandTo18Decimals(35000),
@@ -157,6 +162,16 @@ describe("DeFiEdgeStrategy", () => {
         0,
         0
       );
+
+      await strategy.hold();
+
+      await strategy.swap(
+        true,
+        expandTo18Decimals(1000000),
+        expandToString(sqrtPriceLimitX96)
+      );
+
+      console.log("swap is complete");
 
       // await strategy.mint(
       //   expandTo18Decimals(100),
@@ -274,35 +289,35 @@ describe("DeFiEdgeStrategy", () => {
     });
 
     it("should redeploy the amounts if on hold", async () => {
-    //   await strategy.hold();
-    //   await strategy.rebalance(0, 0, 0, false, [
-    //     {
-    //       amount0: expandTo18Decimals(9),
-    //       amount1: expandTo18Decimals(34521.60981108611),
-    //       tickLower: calculateTick(2000, 60),
-    //       tickUpper: calculateTick(4000, 60),
-    //     },
-    //   ]);
-    // });
+      //   await strategy.hold();
+      //   await strategy.rebalance(0, 0, 0, false, [
+      //     {
+      //       amount0: expandTo18Decimals(9),
+      //       amount1: expandTo18Decimals(34521.60981108611),
+      //       tickLower: calculateTick(2000, 60),
+      //       tickUpper: calculateTick(4000, 60),
+      //     },
+      //   ]);
+      // });
 
-    // it("should swap and redeploy", async () => {
-    //   const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
+      // it("should swap and redeploy", async () => {
+      //   const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
 
-    //   console.log("price", sqrtRatioX96);
-    //   await strategy.rebalance(
-    //     expandToString(8.400990641396713e21),
-    //     expandToString(Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9),
-    //     "1000000",
-    //     false,
-    //     [
-    //       {
-    //         amount0: expandToString(1.278292038812931e19),
-    //         amount1: expandToString(2.5475673945054873e22),
-    //         tickLower: calculateTick(2498.9, 60),
-    //         tickUpper: calculateTick(4014.2, 60),
-    //       },
-    //     ]
-    //   );
+      //   console.log("price", sqrtRatioX96);
+      //   await strategy.rebalance(
+      //     expandToString(8.400990641396713e21),
+      //     expandToString(Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9),
+      //     "1000000",
+      //     false,
+      //     [
+      //       {
+      //         amount0: expandToString(1.278292038812931e19),
+      //         amount1: expandToString(2.5475673945054873e22),
+      //         tickLower: calculateTick(2498.9, 60),
+      //         tickUpper: calculateTick(4014.2, 60),
+      //       },
+      //     ]
+      //   );
 
       const ticks = await strategy.getTicks();
 

@@ -45,7 +45,7 @@ export default {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 100,
+        runs: 10,
       },
       metadata: {
         bytecodeHash: "none",

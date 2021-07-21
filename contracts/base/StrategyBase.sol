@@ -4,6 +4,7 @@ pragma solidity =0.7.6;
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "../libraries/UniswapV3Oracle.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/math/Math.sol";
 
 import "hardhat/console.sol";
 
@@ -102,9 +103,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
         uint256 price = UniswapV3Oracle.consult(_pool, 60);
 
         if ((_totalAmount0 == 0) || (_totalAmount1 == 0)) {
-            share = (_amount0.mul(price).add(_amount1)).div(uint256(1000)).div(
-                1e18
-            );
+            share = Math.max(_amount0, _amount1);
         } else {
             uint256 numerator = _amount0.mul((price)).add(_amount1);
             uint256 denominator = _totalAmount0.mul(price).add(_totalAmount1);

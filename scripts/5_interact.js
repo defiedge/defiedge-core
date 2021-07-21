@@ -17,34 +17,46 @@ async function main() {
     dai: "0xF9A48E4386b30975247300330522F1eD521ab532",
     eth: "0x8c620793ca7A7f25D2725cC779D94430274Cf1C1",
     pool: "0x5Ae8Ea43Ff765F59f4E12f7a1Ef088322a2D6562",
-    strategy: "0xF1008bF4692683f3ae5c513851482038f726A7B7",
+    strategy: "0x5f83DbE5f1928D05b78EeB03B7ef6b98DdE8A98B",
   };
 
-  pool = await ethers.getContractAt("UniswapV3Pool", addresses.pool);
+  pool = await ethers.getContractAt("UniswapV3Pool", "0xc2e9f25be6257c210d7adf0d4cd6e3e881ba25f8");
   strategy = await ethers.getContractAt("DefiEdgeStrategy", addresses.strategy);
 
-  const dai = await ethers.getContractAt("TestERC20", addresses.dai);
-  const eth = await ethers.getContractAt("TestERC20", addresses.eth);
+  await addLiquidity()
 
-  // const balanceOfDai = await dai.balanceOf(addresses.owner);
-  // const balanceOfEth = await eth.balanceOf(addresses.owner);
+  // const dai = await ethers.getContractAt("TestERC20", addresses.dai);
+  // const eth = await ethers.getContractAt("TestERC20", addresses.eth);
 
-  // await dai.approve(strategy.address, balanceOfDai);
-  // await eth.approve(strategy.address, balanceOfEth);
+  // // const balanceOfDai = await dai.balanceOf(addresses.owner);
+  // // const balanceOfEth = await eth.balanceOf(addresses.owner);
 
-  const oracle = await pool.observe([0, 60]);
-  const ticks = await strategy.getTicks();
-  const daiUnused0 = await dai.balanceOf(strategy.address);
-  const ethUnused1 = await eth.balanceOf(strategy.address);
-  const totalShares = await strategy.totalSupply();
+  // // await dai.approve(strategy.address, balanceOfDai);
+  // // await eth.approve(strategy.address, balanceOfEth);
 
-  console.log({
-    daiunused: daiUnused0,
-    ethunused: ethUnused1,
-  });
-  console.log("oracle", oracle);
-  console.log("ticks", ticks);
-  console.log("totalShares", totalShares);
+  // const oracle = await pool.observe([0, 60]);
+  // const ticks = await strategy.getTicks();
+  // const daiUnused0 = await dai.balanceOf(strategy.address);
+  // const ethUnused1 = await eth.balanceOf(strategy.address);
+  // const totalShares = await strategy.totalSupply();
+  // const userShares = await strategy.balanceOf(addresses.owner);
+
+  // console.log({
+  //   daiunused: daiUnused0,
+  //   ethunused: ethUnused1,
+  // });
+  // console.log("oracle", oracle);
+  // console.log("ticks", ticks);
+  // console.log("totalShares", totalShares);
+  // console.log("userShares", userShares);
+
+  // await removeLiquidity(userShares);
+  // const positionKey = getPositionKey("0x08e521DBa0590bc692c04cd0Db5285fC9Da3DD94", "-77820", "-76080");
+  // const position = await pool.positions(positionKey);
+
+  // console.log("position", position)
+
+  // await swap();
 
   // await rebalance();
   // await addLiquidity();
@@ -129,8 +141,6 @@ async function main() {
   // await addLiquidity(strategy.address);
   // const price = await pool.slot0();
   // console.log(price);
-  // const positionKey = getPositionKey(aggregator.address, "-77340", "-75000");
-  // const position = await pool.positions(positionKey);
 
   // const tx = await aggregator.emergencyBurn(pool.address, "-77280", "-76320")
 
@@ -150,6 +160,26 @@ async function main() {
   console.log({
     strategy: strategy.address,
   });
+}
+
+async function swap() {
+  const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
+
+  const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9;
+  const tx = await strategy.swap(
+    false,
+    "141161158989040510",
+    sqrtPriceLimitX96.toLocaleString("fullwide", { useGrouping: false }),
+    {
+      gasLimit: 1000000,
+    }
+  );
+  console.log(tx);
+}
+
+async function removeLiquidity(_shares) {
+  const tx = await strategy.burn(toGwei(1), 0, 0);
+  console.log(tx);
 }
 
 async function increaseObservationCardinalityNext() {
@@ -205,11 +235,14 @@ async function rebalance() {
 
 async function addLiquidity() {
   const tx = await strategy.mint(
-    "350000000000000000000000",
-    "10000000000000000000000000",
+    "1000000000000000000",
+    "1000000000000000000",
     "0",
     "0",
-    "0"
+    "0",
+    {
+      gasLimit: 1000000,
+    }
   );
   console.log(tx);
 }

@@ -21,8 +21,9 @@ contract DefiEdgeStrategy is UniswapPoolActions {
     bool public onHold;
 
     // events
-    event Mint(uint256 amount0, uint256 amount1);
-    event Burn(uint256 amount0, uint256 amount1);
+    event Mint(address user, uint256 share, uint256 amount0, uint256 amount1);
+    event Burn(address user, uint256 share, uint256 amount0, uint256 amount1);
+    event Rebalance(Tick[] ticks);
 
     /**
      * @param _factory Strategy factory address
@@ -112,7 +113,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         );
 
         // emit event
-        emit Mint(amount0, amount1);
+        emit Mint(msg.sender, share, amount0, amount1);
     }
 
     /**
@@ -200,7 +201,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
             TransferHelper.safeTransfer(pool.token1(), msg.sender, amount1);
         }
 
-        emit Burn(amount0, amount1);
+        emit Burn(msg.sender, _shares, amount0, amount1);
     }
 
     /**
@@ -235,6 +236,8 @@ contract DefiEdgeStrategy is UniswapPoolActions {
             // redeploy to the amounts specified
             redeploy(_ticks);
         }
+
+        emit Rebalance(ticks);
     }
 
     function redeploy(Tick[] memory _ticks) internal {
@@ -270,6 +273,10 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         int256 _amount,
         uint160 _sqrtPriceLimitX96
     ) external onlyOperator whenInitialized returns (uint256 amountOut) {
+        if (ticks.length > 0) {
+            burnAllLiquidity(ticks);
+        }
+
         (int256 amount0, int256 amount1) = pool.swap(
             address(this),
             _zeroForOne,
@@ -312,6 +319,40 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         initialized = true;
         for (uint256 i = 0; i < _ticks.length; i++) {
             ticks.push(Tick(0, 0, _ticks[i].tickLower, _ticks[i].tickUpper));
+        }
+    }
+
+    function emergencyBurn(
+        int24 tickLower,
+        int24 tickUpper,
+        uint128 liquidity
+    ) external onlyOperator {
+        pool.burn(tickLower, tickUpper, liquidity);
+
+        (, , , uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(
+            PositionKey.compute(address(this), tickLower, tickUpper)
+        );
+        pool.collect(
+            address(this),
+            tickLower,
+            tickUpper,
+            uint128(tokensOwed0),
+            uint128(tokensOwed1)
+        );
+    }
+
+    function emergencyWithdraw(
+        address _to,
+        address _token0,
+        address _token1,
+        uint256 _amount0,
+        uint256 _amount1
+    ) external onlyOperator {
+        if (_amount0 > 0) {
+            IERC20(_token0).transfer(_to, _amount0);
+        }
+        if (_amount1 > 0) {
+            IERC20(_token1).transfer(_to, _amount1);
         }
     }
 }
