@@ -17,13 +17,13 @@ async function main() {
     dai: "0xF9A48E4386b30975247300330522F1eD521ab532",
     eth: "0x8c620793ca7A7f25D2725cC779D94430274Cf1C1",
     pool: "0x5Ae8Ea43Ff765F59f4E12f7a1Ef088322a2D6562",
-    strategy: "0x5f83DbE5f1928D05b78EeB03B7ef6b98DdE8A98B",
+    strategy: "0x3e75F3De43A371746987E5CeDd3a5189e7BC289e",
   };
 
   pool = await ethers.getContractAt("UniswapV3Pool", "0xc2e9f25be6257c210d7adf0d4cd6e3e881ba25f8");
   strategy = await ethers.getContractAt("DefiEdgeStrategy", addresses.strategy);
 
-  await addLiquidity()
+  await removeLiquidity()
 
   // const dai = await ethers.getContractAt("TestERC20", addresses.dai);
   // const eth = await ethers.getContractAt("TestERC20", addresses.eth);
@@ -178,7 +178,9 @@ async function swap() {
 }
 
 async function removeLiquidity(_shares) {
-  const tx = await strategy.burn(toGwei(1), 0, 0);
+  const tx = await strategy.burn(toGwei(1), 0, 0, {
+    gasLimit: "1000000"
+  });
   console.log(tx);
 }
 
