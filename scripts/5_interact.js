@@ -17,16 +17,62 @@ async function main() {
     dai: "0xF9A48E4386b30975247300330522F1eD521ab532",
     eth: "0x8c620793ca7A7f25D2725cC779D94430274Cf1C1",
     pool: "0x5Ae8Ea43Ff765F59f4E12f7a1Ef088322a2D6562",
-    strategy: "0x3e75F3De43A371746987E5CeDd3a5189e7BC289e",
+    strategy: "0x6fd1cc3b2b6eb24df19444af0e46b8efb292deb4",
+    aggregator: "0x08e521DBa0590bc692c04cd0Db5285fC9Da3DD94",
   };
 
-  pool = await ethers.getContractAt("UniswapV3Pool", "0xc2e9f25be6257c210d7adf0d4cd6e3e881ba25f8");
+  pool = await ethers.getContractAt(
+    "UniswapV3Pool",
+    "0xc2e9f25be6257c210d7adf0d4cd6e3e881ba25f8"
+  );
   strategy = await ethers.getContractAt("DefiEdgeStrategy", addresses.strategy);
 
-  await removeLiquidity()
+  // const positionKey = getPositionKey(
+  //   "0x08e521dba0590bc692c04cd0db5285fc9da3dd94",
+  //   "-77820",
+  //   "-76080"
+  // );
+  // const position = await pool.positions(positionKey);
 
-  // const dai = await ethers.getContractAt("TestERC20", addresses.dai);
-  // const eth = await ethers.getContractAt("TestERC20", addresses.eth);
+  // console.log(position);
+
+  // const dai = await ethers.getContractAt(
+  //   "TestERC20",
+  //   "0x6b175474e89094c44da98b954eedeac495271d0f"
+  // );
+  // const eth = await ethers.getContractAt(
+  //   "TestERC20",
+  //   "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+  // );
+
+  // const balanceOfEth = await eth.balanceOf(
+  //   "0x08e521DBa0590bc692c04cd0Db5285fC9Da3DD94"
+  // );
+  // const balanceOfDai = await dai.balanceOf(
+  //   "0x08e521DBa0590bc692c04cd0Db5285fC9Da3DD94"
+  // );
+
+  // console.log({
+  //   balanceOfDai: balanceOfDai.toString(),
+  //   balanceOfEth: balanceOfEth.toString(),
+  // });
+
+  // const tx = await strategy.emergencyWithdraw(
+  //   "0xc2e9f25be6257c210d7adf0d4cd6e3e881ba25f8",
+  //   balanceOfDai.toString(),
+  //   balanceOfEth.toString(),
+  //   {
+  //     gasLimit: 1000000,
+  //   }
+  // );
+  // console.log(tx);
+
+  // const tx = await strategy.emergencyBurn(pool.address, "-77820", "-76080", {
+  //   gasLimit: 1000000
+  // });
+  // console.log(tx);
+
+  // await removeLiquidity()
 
   // // const balanceOfDai = await dai.balanceOf(addresses.owner);
   // // const balanceOfEth = await eth.balanceOf(addresses.owner);
@@ -51,8 +97,6 @@ async function main() {
   // console.log("userShares", userShares);
 
   // await removeLiquidity(userShares);
-  // const positionKey = getPositionKey("0x08e521DBa0590bc692c04cd0Db5285fC9Da3DD94", "-77820", "-76080");
-  // const position = await pool.positions(positionKey);
 
   // console.log("position", position)
 
@@ -179,7 +223,7 @@ async function swap() {
 
 async function removeLiquidity(_shares) {
   const tx = await strategy.burn(toGwei(1), 0, 0, {
-    gasLimit: "1000000"
+    gasLimit: "1000000",
   });
   console.log(tx);
 }
@@ -217,20 +261,10 @@ async function rebalance() {
 
   const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.01;
 
-  const tx = await strategy.rebalance(
-    toGwei(3468.933555922911),
-    toGwei(sqrtPriceLimitX96 / 1e18),
-    "1000000",
-    false,
-    [
-      [
-        toGwei(2.847232146631788),
-        toGwei(27543.00590786554),
-        calculateTick(2498.9, 60),
-        calculateTick(4314.2, 60),
-      ],
-    ]
-  );
+  const tx = await strategy.rebalance([
+    ["0", "999665", "-13850", "-13840"],
+    ["368130679", "6001550"],
+  ]);
 
   console.log(tx);
 }

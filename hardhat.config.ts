@@ -37,7 +37,7 @@ export default {
       url: `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
       accounts: [process.env.MAINNET_PRIVATE_KEY],
       gasLimit: 17000000,
-      gasPrice: 40000000000,
+      gasPrice: 25000000000,
     },
   },
   solidity: {
@@ -45,7 +45,7 @@ export default {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 10,
+        runs: 1,
       },
       metadata: {
         bytecodeHash: "none",

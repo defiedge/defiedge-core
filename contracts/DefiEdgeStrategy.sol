@@ -11,9 +11,9 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "./base/UniswapPoolActions.sol";
 import "./base/StrategyBase.sol";
 
-import "hardhat/console.sol";
+import "./libraries/LiquidityHelper.sol";
 
-// TODO: Add blacklist
+import "hardhat/console.sol";
 
 contract DefiEdgeStrategy is UniswapPoolActions {
     using SafeMath for uint256;
@@ -23,22 +23,28 @@ contract DefiEdgeStrategy is UniswapPoolActions {
     // events
     event Mint(address user, uint256 share, uint256 amount0, uint256 amount1);
     event Burn(address user, uint256 share, uint256 amount0, uint256 amount1);
+    event Swap(uint256 amountIn, uint256 amountOut, bool zeroToOne);
+    event Hold();
     event Rebalance(Tick[] ticks);
 
     /**
      * @param _factory Strategy factory address
      * @param _pool Address of the pool
      * @param _operator Address of the strategy operator
+     * @param _ticks Array of the ticks
      */
     constructor(
         address _factory,
         address _pool,
-        address _operator
-    ) {
+        address _operator,
+        Tick[] memory _ticks
+    ) validTicks(_ticks) {
         factory = IFactory(_factory);
         pool = IUniswapV3Pool(_pool);
-        managementFee = 0;
         operator = _operator;
+        for (uint256 i = 0; i < _ticks.length; i++) {
+            ticks.push(Tick(0, 0, _ticks[i].tickLower, _ticks[i].tickUpper));
+        }
     }
 
     /**
@@ -57,23 +63,14 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         uint256 _minShare
     )
         external
-        whenInitialized
+        isValidStrategy
         returns (
             uint256 amount0,
             uint256 amount1,
             uint256 share
         )
     {
-        // check of pool is whitelisted or not
-        require(
-            factory.whitelistedPools(address(pool)),
-            "pool is not whitelisted"
-        );
-
-        require(!onHold, "strategy is on hold");
-
-        // check if strategy is in denylist
-        require(!factory.denied(address(this)), "strategy is in denylist");
+        require(!onHold, "H");
 
         // get total amounts with fees
         (uint256 totalAmount0, uint256 totalAmount1) = getAUMWithFees();
@@ -86,9 +83,6 @@ contract DefiEdgeStrategy is UniswapPoolActions {
             _amount1,
             msg.sender
         );
-
-        console.log("mint amount0", amount0);
-        console.log("mint amount1", amount1);
 
         // issue share based on the liquidity added
         share = issueShare(
@@ -104,14 +98,10 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         ticks[0].amount1 = ticks[0].amount1.add(amount1);
 
         // prevent front running of strategy fee
-        require(share >= _minShare, "min_share_check_failed");
+        require(share >= _minShare, "SC");
 
         // price slippage check
-        require(
-            amount0 >= _amount0Min && amount1 >= _amount1Min,
-            "Aggregator: Slippage"
-        );
-
+        require(amount0 >= _amount0Min && amount1 >= _amount1Min, "S");
         // emit event
         emit Mint(msg.sender, share, amount0, amount1);
     }
@@ -128,10 +118,17 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         uint256 _amount1Min
     ) external returns (uint256 amount0, uint256 amount1) {
         // check if the user has sufficient shares
-        require(balanceOf(msg.sender) >= _shares, "insufficient shares");
+        require(balanceOf(msg.sender) >= _shares, "INS");
 
         uint256 collect0;
         uint256 collect1;
+
+        uint256 unused0;
+        uint256 unused1;
+
+        // give from unused amounts
+        unused0 = IERC20(pool.token0()).balanceOf(address(this));
+        unused1 = IERC20(pool.token1()).balanceOf(address(this));
 
         // burn liquidity based on shares from existing ticks
         if (ticks.length != 0) {
@@ -155,40 +152,29 @@ contract DefiEdgeStrategy is UniswapPoolActions {
                 collect0 = collect0.add(amount0);
                 collect1 = collect1.add(amount1);
 
-                // get burned amounts
-                amount0 = amount0 != 0
+                tick.amount0 = amount0 != 0
                     ? tick.amount0.sub(amount0)
                     : tick.amount0;
-                amount1 = amount1 != 0
+                tick.amount1 = amount1 != 0
                     ? tick.amount1.sub(amount1)
                     : tick.amount1;
-
-                tick.amount0 = amount0;
-                tick.amount1 = amount1;
             }
         }
 
-        // give from unused amounts
-        amount0 = IERC20(pool.token0()).balanceOf(address(this));
-        amount1 = IERC20(pool.token1()).balanceOf(address(this));
-
-        if (amount0 > 0) {
-            amount0 = amount0.mul(_shares).div(totalSupply());
+        if (unused0 > 0) {
+            unused0 = unused0.mul(_shares).div(totalSupply());
         }
 
-        if (amount1 > 0) {
-            amount1 = amount1.mul(_shares).div(totalSupply());
+        if (unused1 > 0) {
+            unused1 = unused1.mul(_shares).div(totalSupply());
         }
 
         // add to total amounts
-        amount0 = collect0.add(amount0);
-        amount1 = collect1.add(amount1);
+        amount0 = collect0.add(unused0);
+        amount1 = collect1.add(unused1);
 
         // check slippage
-        require(
-            _amount0Min <= amount0 && _amount1Min <= amount1,
-            "Aggregator: Slippage"
-        );
+        require(_amount0Min <= amount0 && _amount1Min <= amount1, "S");
 
         // burn shares
         _burn(msg.sender, _shares);
@@ -211,26 +197,13 @@ contract DefiEdgeStrategy is UniswapPoolActions {
     function rebalance(Tick[] memory _ticks)
         external
         onlyOperator
-        whenInitialized
+        isValidStrategy
         validTicks(_ticks)
     {
-        // check if pool is whitelisted
-        require(
-            factory.whitelistedPools(address(pool)),
-            "pool is not whitelisted"
-        );
-
-        // check if strategy is not in denylist
-        require(!factory.denied(address(this)), "strategy is in denylist");
-
         if (onHold) {
-            // set onHold to false
-            onHold = false;
             // deploy between ticks
             redeploy(_ticks);
         } else {
-            // set hold true
-            onHold = false;
             // burn all liquidity
             burnAllLiquidity(ticks);
             // redeploy to the amounts specified
@@ -241,9 +214,10 @@ contract DefiEdgeStrategy is UniswapPoolActions {
     }
 
     function redeploy(Tick[] memory _ticks) internal {
+        // set hold false
+        onHold = false;
         // delete ticks
         delete ticks;
-
         // redeploy the liquidity
         for (uint256 i = 0; i < _ticks.length; i++) {
             Tick memory tick = _ticks[i];
@@ -272,9 +246,12 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         bool _zeroForOne,
         int256 _amount,
         uint160 _sqrtPriceLimitX96
-    ) external onlyOperator whenInitialized returns (uint256 amountOut) {
+    ) external onlyOperator isValidStrategy returns (uint256 amountOut) {
         if (ticks.length > 0) {
+            // burn all liquidity
             burnAllLiquidity(ticks);
+            // delete ticks
+            delete ticks;
         }
 
         (int256 amount0, int256 amount1) = pool.swap(
@@ -287,16 +264,19 @@ contract DefiEdgeStrategy is UniswapPoolActions {
             )
         );
 
-        return uint256(-(_zeroForOne ? amount1 : amount0));
+        amountOut = uint256(-(_zeroForOne ? amount1 : amount0));
+
+        emit Swap(uint256(_amount), amountOut, _zeroForOne);
     }
 
     /**
      * @notice Holds the funds
      */
-    function hold() external onlyOperator whenInitialized {
+    function hold() external onlyOperator {
         onHold = true;
         burnAllLiquidity(ticks);
         delete ticks;
+        emit Hold();
     }
 
     /**
@@ -306,29 +286,13 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         return ticks;
     }
 
-    /**
-     * @notice Initialised the strategy, can be done only once
-     * @param _ticks new ticks in the form of Tick struct
-     */
-    function initialize(Tick[] memory _ticks)
-        external
-        onlyOperator
-        validTicks(_ticks)
-    {
-        require(!initialized, "strategy already initialised");
-        initialized = true;
-        for (uint256 i = 0; i < _ticks.length; i++) {
-            ticks.push(Tick(0, 0, _ticks[i].tickLower, _ticks[i].tickUpper));
-        }
-    }
-
+    // TODO: Make this function work correctly
     function emergencyBurn(
         int24 tickLower,
         int24 tickUpper,
         uint128 liquidity
     ) external onlyOperator {
         pool.burn(tickLower, tickUpper, liquidity);
-
         (, , , uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(
             PositionKey.compute(address(this), tickLower, tickUpper)
         );
@@ -341,18 +305,15 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         );
     }
 
+    // TODO: Remove this function after audit
     function emergencyWithdraw(
-        address _to,
-        address _token0,
-        address _token1,
+        address _pool,
         uint256 _amount0,
         uint256 _amount1
     ) external onlyOperator {
-        if (_amount0 > 0) {
-            IERC20(_token0).transfer(_to, _amount0);
-        }
-        if (_amount1 > 0) {
-            IERC20(_token1).transfer(_to, _amount1);
-        }
+        IUniswapV3Pool pool = IUniswapV3Pool(_pool);
+        // transfer the tokens back
+        TransferHelper.safeTransfer(pool.token0(), msg.sender, _amount0);
+        TransferHelper.safeTransfer(pool.token1(), msg.sender, _amount1);
     }
 }

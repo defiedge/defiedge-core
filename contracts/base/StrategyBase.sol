@@ -2,16 +2,12 @@
 pragma solidity =0.7.6;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "../libraries/UniswapV3Oracle.sol";
+import "../libraries/ShareHelper.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/math/Math.sol";
-
 import "hardhat/console.sol";
 
 interface IFactory {
     function feeTo() external view returns (address);
-
-    function whitelistedPools(address) external view returns (bool);
 
     function denied(address) external view returns (bool);
 
@@ -21,18 +17,19 @@ interface IFactory {
 contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
     using SafeMath for uint256;
 
+    event ChangeFee(uint256 tier);
+    event ChangeOperator(address indexed operator);
+
     uint256 public managementFee;
     address public feeTo;
 
-    bool public initialized;
-
     address public operator;
-    address pendingOperator;
+    address public pendingOperator;
 
     IFactory public factory;
 
-    event ChangeFee(uint256 tier);
-    event ChangeOperator(address operator);
+    // Uniswap pool for the strategy
+    IUniswapV3Pool public pool;
 
     struct Tick {
         uint256 amount0;
@@ -44,18 +41,9 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
     // store ticks
     Tick[] public ticks;
 
-    // Uniswap pool for the strategy
-    IUniswapV3Pool public pool;
-
     // Modifiers
     modifier onlyOperator() {
-        require(msg.sender == operator, "Ownable: caller is not the operator");
-        _;
-    }
-
-    // Modifiers
-    modifier whenInitialized() {
-        require(initialized, "Ownable: strategy not initialized");
+        require(msg.sender == operator, "NO");
         _;
     }
 
@@ -64,7 +52,8 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
      * @param _ticks New ticks
      */
     modifier validTicks(Tick[] memory _ticks) {
-        require(_ticks.length <= 5, "invalid number of ticks");
+        // checks for valid ticks length
+        require(_ticks.length <= 5, "ITL");
         for (uint256 i = 0; i < _ticks.length; i++) {
             int24 tickLower = _ticks[i].tickLower;
             int24 tickUpper = _ticks[i].tickUpper;
@@ -73,10 +62,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
             for (uint256 j = 0; j < i; j++) {
                 if (i != j) {
                     if (tickLower == _ticks[j].tickLower) {
-                        require(
-                            tickUpper != _ticks[j].tickUpper,
-                            "ticks cannot be same"
-                        );
+                        require(tickUpper != _ticks[j].tickUpper, "TS");
                     }
                 }
             }
@@ -85,30 +71,13 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
     }
 
     /**
-     * @dev Calculates the shares to be given for specific position
-     * @param _pool Address of the pool
-     * @param _amount0 Amount of token0
-     * @param _amount1 Amount of token1
-     * @param _totalAmount0 Total amount of token0
-     * @param _totalAmount1 Total amount of token1
+     * @dev Checks if it's valid strategy or not
      */
-    function calculateShares(
-        address _pool,
-        uint256 _amount0,
-        uint256 _amount1,
-        uint256 _totalAmount0,
-        uint256 _totalAmount1
-    ) internal view returns (uint256 share) {
-        uint256 totalShares = totalSupply();
-        uint256 price = UniswapV3Oracle.consult(_pool, 60);
+    modifier isValidStrategy() {
+        // check if strategy is in denylist
+        require(!factory.denied(address(this)), "DL");
 
-        if ((_totalAmount0 == 0) || (_totalAmount1 == 0)) {
-            share = Math.max(_amount0, _amount1);
-        } else {
-            uint256 numerator = _amount0.mul((price)).add(_amount1);
-            uint256 denominator = _totalAmount0.mul(price).add(_totalAmount1);
-            share = (totalShares.mul(numerator).div(denominator));
-        }
+        _;
     }
 
     /**
@@ -127,17 +96,16 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
         address _user
     ) internal returns (uint256 share) {
         // calculate number of shares
-        share = calculateShares(
+        share = ShareHelper.calculateShares(
             address(pool),
             _amount0,
             _amount1,
             _totalAmount0,
-            _totalAmount1
+            _totalAmount1,
+            totalSupply()
         );
 
-        console.log("issued shares", share);
-
-        require(share > 0, "invalid shares");
+        require(share > 0, "IS");
 
         // strategy owner fees
         if (feeTo != address(0) && managementFee > 0) {
@@ -164,14 +132,12 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
     function changeFee(uint256 _tier) public onlyOperator {
         if (_tier == 2) {
             managementFee = 5000000; // 5%
-            emit ChangeFee(_tier);
         } else if (_tier == 1) {
             managementFee = 2000000; // 2%
-            emit ChangeFee(_tier);
         } else if (_tier == 0) {
             managementFee = 1000000; // 1%
-            emit ChangeFee(_tier);
         }
+        emit ChangeFee(managementFee);
     }
 
     /**
@@ -187,16 +153,16 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
      * @param _operator Address of the new operator
      */
     function changeOperator(address _operator) external onlyOperator {
-        require(_operator != address(0), "invalid operator");
-        require(_operator != operator, "cannot set same operator");
+        require(_operator != address(0));
+        require(_operator != operator);
         pendingOperator = _operator;
     }
 
     /**
      * @notice Change the operator
      */
-    function acceptGovernance() external {
-        require(msg.sender == pendingOperator, "invalid match");
+    function acceptOperator() external {
+        require(msg.sender == pendingOperator);
         operator = pendingOperator;
         emit ChangeOperator(pendingOperator);
     }

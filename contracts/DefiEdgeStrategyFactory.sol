@@ -21,7 +21,7 @@ contract DefiEdgeStrategyFactory {
     address public governance;
 
     // pending governance
-    address pendingGovernance;
+    address public pendingGovernance;
 
     // protocol fee
     uint256 public PROTOCOL_FEE; // 1e8 means 100%
@@ -50,15 +50,15 @@ contract DefiEdgeStrategyFactory {
      * @notice Launches strategy contract
      * @param _pool Address of the pool
      * @param _operator Address of the operator
+     * @param _ticks Array of the ticks
      */
-    function createStrategy(address _pool, address _operator)
-        external
-        returns (address strategy)
-    {
-        // check if pool is whitelisted
-        require(whitelistedPools[_pool], "pool is not whitelisted");
+    function createStrategy(
+        address _pool,
+        address _operator,
+        DefiEdgeStrategy.Tick[] memory _ticks
+    ) external returns (address strategy) {
         strategy = address(
-            new DefiEdgeStrategy(address(this), _pool, _operator)
+            new DefiEdgeStrategy(address(this), _pool, _operator, _ticks)
         );
         strategyByIndex[totalIndex.add(1)] = strategy;
         totalIndex = totalIndex.add(1);
@@ -97,22 +97,6 @@ contract DefiEdgeStrategyFactory {
     function acceptGovernance() external {
         require(msg.sender == pendingGovernance, "invalid match");
         governance = pendingGovernance;
-    }
-
-    /**
-     * @notice Whitelists pools
-     * @param _pool Address of the pool
-     */
-    function whitelistPool(address _pool) external onlyGovernance() {
-        whitelistedPools[_pool] = true;
-    }
-
-    /**
-     * @notice Blacklists previously whitelisted pool
-     * @param _pool Address of the pool
-     */
-    function blacklistPool(address _pool) external onlyGovernance() {
-        whitelistedPools[_pool] = false;
     }
 
     /**

@@ -12,7 +12,9 @@ import "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
 
-library UniswapV3Oracle {
+import "@openzeppelin/contracts/math/Math.sol";
+
+library ShareHelperTest {
     using SafeMath for uint256;
 
     /**
@@ -61,5 +63,34 @@ library UniswapV3Oracle {
         uint256 ratioX192 = uint256(sqrtRatioX96).mul(sqrtRatioX96);
 
         price = FullMath.mulDiv(ratioX192, 1e18, 1 << 192);
+    }
+
+    /**
+     * @dev Calculates the shares to be given for specific position
+     * @param _pool Address of the pool
+     * @param _amount0 Amount of token0
+     * @param _amount1 Amount of token1
+     * @param _totalAmount0 Total amount of token0
+     * @param _totalAmount1 Total amount of token1
+     * @param _totalShares Total Number of shares
+     */
+    function calculateShares(
+        address _pool,
+        uint256 _amount0,
+        uint256 _amount1,
+        uint256 _totalAmount0,
+        uint256 _totalAmount1,
+        uint256 _totalShares
+    ) external view returns (uint256 share) {
+        uint256 totalShares = _totalShares;
+        uint256 price = consult(_pool, 60);
+
+        if ((_totalAmount0 == 0) || (_totalAmount1 == 0)) {
+            share = Math.max(_amount0, _amount1);
+        } else {
+            uint256 numerator = _amount0.mul((price)).add(_amount1);
+            uint256 denominator = _totalAmount0.mul(price).add(_totalAmount1);
+            share = (totalShares.mul(numerator).div(denominator));
+        }
     }
 }

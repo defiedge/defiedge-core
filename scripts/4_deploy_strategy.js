@@ -14,7 +14,7 @@ async function main() {
     owner: "0x22CB224F9FA487dCE907135B57C779F1f32251D4",
     dai: "0xF9A48E4386b30975247300330522F1eD521ab532",
     eth: "0x8c620793ca7A7f25D2725cC779D94430274Cf1C1",
-    factory: "0xF7E9007c22D0C606d7378143B5ce0138461031bd",
+    factory: "0x5B2dc16C09e12bbF98192B2219Ba4f63e8b5122E",
     pool: "0x5Ae8Ea43Ff765F59f4E12f7a1Ef088322a2D6562",
   };
 
@@ -29,15 +29,11 @@ async function main() {
   const pool = await ethers.getContractAt("UniswapV3Pool", addresses.pool);
 
   await factory.whitelistPool(pool.address);
-  await factory.createStrategy(pool.address, addresses.owner);
 
-  const index = await factory.totalIndex();
-
-  const strategyAddress = await factory.strategyByIndex(parseInt(index));
-  const strategy = await ethers.getContractAt(
-    "DefiEdgeStrategy",
-    strategyAddress
-  );
+  // const strategy = await ethers.getContractAt(
+  //   "DefiEdgeStrategy",
+  //   strategyAddress
+  // );
 
   let tickUpper, tickLower;
   if (dai.address < eth.address) {
@@ -50,7 +46,15 @@ async function main() {
     tickUpper = calculateTick(4500, 60);
   }
 
-  await strategy.initialize([[0, 0, tickLower, tickUpper]]);
+  await factory.createStrategy(pool.address, addresses.owner, [
+    [0, 0, tickLower, tickUpper],
+  ]);
+
+  const index = await factory.totalIndex();
+  const strategyAddress = await factory.strategyByIndex(parseInt(index));
+  console.log({
+    strategyAddress,
+  });
   console.log("✅ strategy initialised");
 
   // console.log contract config

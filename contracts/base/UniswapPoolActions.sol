@@ -59,7 +59,6 @@ contract UniswapPoolActions is
             _amount0,
             _amount1
         );
-
         // add liquidity to Uniswap pool
         (amount0, amount1) = pool.mint(
             address(this),
