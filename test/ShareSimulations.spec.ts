@@ -82,8 +82,8 @@ describe("Share Simulations", () => {
       {
         amount0: 0,
         amount1: 0,
-        tickLower: calculateTick(2500, 60),
-        tickUpper: calculateTick(3500, 60),
+        tickLower: calculateTick(1 / 3500, 60),
+        tickUpper: calculateTick(1 / 2500, 60),
       },
     ]);
 
@@ -99,8 +99,14 @@ describe("Share Simulations", () => {
     periphery = (await (await PeripheryFactory).deploy()) as Periphery;
 
     // add liquidity to the pool
-    await token0.approve(periphery.address, expandTo18Decimals(50000000));
-    await token1.approve(periphery.address, expandTo18Decimals(150000000000));
+    await token0.approve(
+      periphery.address,
+      expandTo18Decimals(150000000000000)
+    );
+    await token1.approve(
+      periphery.address,
+      expandTo18Decimals(500000000000000)
+    );
 
     // transfer tokens to second user for testing
     await token0.transfer(signers[1].address, expandTo18Decimals(1500000));
@@ -108,10 +114,10 @@ describe("Share Simulations", () => {
 
     await periphery.mintLiquidity(
       pool.address,
-      calculateTick(3000, 60),
-      calculateTick(4000, 60),
-      expandTo18Decimals(50000000),
+      calculateTick(1 / 4000, 60),
+      calculateTick(1 / 3000, 60),
       expandTo18Decimals(150000000000),
+      expandTo18Decimals(50000000),
       signers[0].address
     );
 
@@ -128,7 +134,7 @@ describe("Share Simulations", () => {
     await periphery.swap(
       pool.address,
       false,
-      "10000000000000000000",
+      "100000000000000000",
       expandToString(sqrtPriceLimitX96)
     );
 
@@ -148,21 +154,21 @@ describe("Share Simulations", () => {
 
       console.log("👨‍💻  added by user 1");
       await strategy.mint(
-        expandTo18Decimals(100),
         expandTo18Decimals(350000),
+        expandTo18Decimals(100),
         0,
         0,
         0
       );
 
-      console.log("👨‍💻  rebalancing");
+      // console.log("👨‍💻  rebalancing");
 
       await strategy.rebalance([
         {
-          amount0: expandTo18Decimals(5),
-          amount1: expandTo18Decimals(100),
-          tickLower: calculateTick(2500, 60),
-          tickUpper: calculateTick(3600, 60),
+          amount0: expandTo18Decimals(1),
+          amount1: expandTo18Decimals(1),
+          tickLower: calculateTick(1 / 3600, 60),
+          tickUpper: calculateTick(1 / 2500, 60),
         },
       ]);
 
@@ -174,12 +180,10 @@ describe("Share Simulations", () => {
         .mint(expandTo18Decimals(100), expandTo18Decimals(350000), 0, 0, 0);
 
       console.log("👨‍💻 user 0 is removing");
-      await strategy.connect(signers[0]).burn("345226098110861140131801", 0, 0);
+      await strategy.connect(signers[0]).burn("100000000000000000000", 0, 0);
 
       console.log("👨‍💻  user 1 is removing");
-      await strategy
-        .connect(signers[1])
-        .burn("321551293593280685767694", 0, 0);
+      await strategy.connect(signers[1]).burn("350000000000000000007000", 0, 0);
 
       console.log("totalSupply", await strategy.totalSupply());
     });
@@ -188,6 +192,10 @@ describe("Share Simulations", () => {
 
 async function approve(address: string, from: string | Signer | Provider) {
   // give approval
-  await token0.connect(from).approve(address, expandTo18Decimals(150000000000));
-  await token1.connect(from).approve(address, expandTo18Decimals(150000000000));
+  await token0
+    .connect(from)
+    .approve(address, expandTo18Decimals(1500000000000));
+  await token1
+    .connect(from)
+    .approve(address, expandTo18Decimals(1500000000000));
 }

@@ -4,6 +4,8 @@ pragma abicoder v2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
+import "@openzeppelin/contracts/utils/SafeCast.sol";
+
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 
@@ -20,6 +22,7 @@ contract UniswapPoolActions is
     IUniswapV3SwapCallback
 {
     using SafeMath for uint256;
+    using SafeCast for uint256;
 
     event FeesClaimed(
         address indexed strategy,
@@ -73,48 +76,43 @@ contract UniswapPoolActions is
      * @notice Burns liquidity in the given range
      * @param _tickLower Lower Tick
      * @param _tickUpper Upper Tick
-     * @param _amount0 Amount 0 to burn
-     * @param _amount1 Amount to burn
+     * @param _shares The amount of liquidity to be burned based on shares
      */
     function burnLiquidity(
         int24 _tickLower,
         int24 _tickUpper,
-        uint256 _amount0,
-        uint256 _amount1
+        uint256 _shares
     ) internal returns (uint256 collect0, uint256 collect1) {
-        uint128 liquidity;
-
-        liquidity = LiquidityHelper.getLiquidityForAmounts(
-            address(pool),
-            _tickLower,
-            _tickUpper,
-            _amount0,
-            _amount1
-        );
-
         uint256 tokensBurned0;
         uint256 tokensBurned1;
 
-        // burn liquidity
-        if (liquidity > 0) {
+        (uint128 currentLiquidity, , , , ) = pool.positions(
+            PositionKey.compute(address(this), _tickLower, _tickUpper)
+        );
+
+        if (currentLiquidity > 0) {
+            // currentLiquidity =
+            //     (currentLiquidity * _shares.toUint128()) /
+            //     totalSupply().toUint128();
+
+            uint256 liquidity = uint256(currentLiquidity).mul(_shares).div(
+                totalSupply()
+            );
+
             (tokensBurned0, tokensBurned1) = pool.burn(
                 _tickLower,
                 _tickUpper,
-                liquidity
+                liquidity.toUint128()
             );
         }
-
-        (, , , uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(
-            PositionKey.compute(address(this), _tickLower, _tickUpper)
-        );
 
         // collect fees
         (collect0, collect1) = pool.collect(
             address(this),
             _tickLower,
             _tickUpper,
-            uint128(tokensOwed0),
-            uint128(tokensOwed1)
+            type(uint128).max,
+            type(uint128).max
         );
 
         emit FeesClaimed(

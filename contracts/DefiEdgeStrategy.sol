@@ -135,17 +135,11 @@ contract DefiEdgeStrategy is UniswapPoolActions {
             for (uint256 i = 0; i < ticks.length; i++) {
                 Tick storage tick = ticks[i];
 
-                // get amounts to be burned based on shares
-                amount0 = tick.amount0.mul(_shares).div(totalSupply());
-
-                amount1 = tick.amount1.mul(_shares).div(totalSupply());
-
                 // burn liquidity and collect fees
                 (amount0, amount1) = burnLiquidity(
                     tick.tickLower,
                     tick.tickUpper,
-                    amount0,
-                    amount1
+                    _shares
                 );
 
                 // add to total amounts
@@ -186,9 +180,6 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         if (amount1 > 0) {
             TransferHelper.safeTransfer(pool.token1(), msg.sender, amount1);
         }
-
-        console.log("burn amount0", amount0);
-        console.log("burn amount1", amount1);
 
         emit Burn(msg.sender, _shares, amount0, amount1);
     }

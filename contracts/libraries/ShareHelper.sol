@@ -92,8 +92,8 @@ library ShareHelper {
             );
             share = totalShares.mul(numerator).div(denominator);
         } else {
+            // mint initial shares based on threshold of 10000
             uint256 threshold = uint256(10000).mul(1e18);
-            // new formula
             if (price >= 1e18) {
                 uint256 m;
                 m = 1;
