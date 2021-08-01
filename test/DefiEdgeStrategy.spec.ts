@@ -237,15 +237,16 @@ describe("DeFiEdgeStrategy", () => {
       let amount0 = 0,
         amount1 = 0;
 
+
       amount0 = parseInt(tick.amount0.toString());
       amount1 = parseInt(tick.amount1.toString());
-      // shares = parseInt((await strategy.balanceOf(signers[0].address)).toString())
-      const shares = "3452260981108611401310";
+      // const shares = parseInt((await strategy.balanceOf(signers[0].address)).toString())
+      const shares = "3452260981108611401314";
       const totalSupply = parseInt((await strategy.totalSupply()).toString());
 
       // calculate amounts to be given back
-      amount0 = (amount0 * parseInt(shares)) / totalSupply;
-      amount1 = (amount1 * parseInt(shares)) / totalSupply;
+      amount0 = (amount0 * parseInt(shares.toString())) / totalSupply;
+      amount1 = (amount1 * parseInt(shares.toString())) / totalSupply;
 
       expect(await strategy.connect(signers[0]).burn(shares, 0, 0))
         .to.emit(pool, "Burn")
@@ -253,9 +254,9 @@ describe("DeFiEdgeStrategy", () => {
           strategy.address,
           calculateTick(2500, 60),
           calculateTick(3500, 60),
-          "731166206079261907926",
-          "999999999999999998",
-          "3452260981108611397862"
+          "731166206079261908657",
+          "999999999999999999",
+          "3452260981108611401313"
         );
     });
 
@@ -267,10 +268,10 @@ describe("DeFiEdgeStrategy", () => {
           parseInt(tick.amount0.toString()) - 999999999999999998
         ),
         amount1: expandToString(
-          parseInt(tick.amount1.toString()) - 3452260981108611397862
+          parseInt(tick.amount1.toString()) - 3452260981108611401313
         ),
       };
-      await strategy.connect(signers[0]).burn("3452260981108611401310", 0, 0);
+      await strategy.connect(signers[0]).burn("3452260981108611401314", 0, 0);
       tick = await strategy.ticks(0);
       const after = {
         amount0: "0",
@@ -295,35 +296,35 @@ describe("DeFiEdgeStrategy", () => {
       const totalSupplyBefore = parseInt(
         (await strategy.balanceOf(signers[0].address)).toString()
       );
-      await strategy.connect(signers[0]).burn("3452260981108611401310", 0, 0);
+      await strategy.connect(signers[0]).burn("3452260981108611401314", 0, 0);
       const totalSupplyAfter = parseInt(
         (await strategy.balanceOf(signers[0].address)).toString()
       );
 
-      expect(4).to.equal(totalSupplyAfter);
+      expect(0).to.equal(totalSupplyAfter);
     });
 
     it("should transfer amount0 back to the user", async () => {
-      await strategy.connect(signers[0]).burn("3452260981108611401310", 0, 0);
+      await strategy.connect(signers[0]).burn("3452260981108611401314", 0, 0);
       const balanceAfter = await token0.balanceOf(signers[0].address);
-      expect("998499989999999999999996548").to.equal(balanceAfter.toString());
+      expect("998499989999999999999999999").to.equal(balanceAfter.toString());
     });
 
     it("should transfer amount1 back to the user", async () => {
-      await strategy.connect(signers[0]).burn("3452260981108611401310", 0, 0);
+      await strategy.connect(signers[0]).burn("3452260981108611401314", 0, 0);
       const balanceAfter = await token1.balanceOf(signers[0].address);
-      expect("998499989999999999999996548").to.equal(balanceAfter.toString());
+      expect("998499989999999999999999999").to.equal(balanceAfter.toString());
     });
 
     it("should emit burn event", async () => {
-      const shares = "3452260981108611401310";
+      const shares = "3452260981108611401314";
       expect(await strategy.connect(signers[0]).burn(shares, 0, 0))
         .to.emit(strategy, "Burn")
         .withArgs(
           signers[0].address,
           shares,
-          "999999999999999998",
-          "3452260981108611397862"
+          "999999999999999999",
+          "3452260981108611401313"
         );
     });
   });

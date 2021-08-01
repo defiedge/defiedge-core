@@ -294,12 +294,20 @@ contract UniswapPoolActions is
                 )
             );
 
+            (uint256 position0, uint256 position1) = LiquidityHelper
+                .getAmountsForLiquidity(
+                    address(pool),
+                    tick.tickLower,
+                    tick.tickUpper,
+                    currentLiquidity
+                );
+
             // add fees to the amounts
-            totalAmount0 = totalAmount0.add(tokensOwed0).add(tick.amount0);
-            totalAmount1 = totalAmount1.add(tokensOwed1).add(tick.amount1);
+            totalAmount0 = totalAmount0.add(tokensOwed0).add(position0);
+            totalAmount1 = totalAmount1.add(tokensOwed1).add(position1);
         }
 
         amount0 = amount0.add(totalAmount0);
-        amount1 = amount0.add(totalAmount1);
+        amount1 = amount1.add(totalAmount1);
     }
 }

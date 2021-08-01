@@ -41,7 +41,7 @@ let strategy: DefiEdgeStrategy;
 let periphery: Periphery;
 let oracle: UniswapV3OracleTest;
 
-describe("DeFiEdgeStrategy", () => {
+describe("StrategyBase", () => {
   beforeEach(async () => {
     signers = await ethers.getSigners();
 
@@ -245,7 +245,7 @@ describe("DeFiEdgeStrategy", () => {
 
     it("should mint fees to manager", async () => {
       // set 1% fee
-      await strategy.changeFee(0);
+      await strategy.changeFee("1000000");
       await strategy.changeFeeTo(signers[2].address);
 
       await approve(strategy.address, signers[1]);
@@ -279,34 +279,34 @@ describe("DeFiEdgeStrategy", () => {
     });
   });
 
-  describe("#changeFee", async () => {
-    it("should revert if operator is not calling", async () => {
-      expect(strategy.connect(signers[1]).changeFee(1)).to.be.revertedWith(
-        "NO"
-      );
-    });
+  // describe("#changeFee", async () => {
+  //   it("should revert if operator is not calling", async () => {
+  //     expect(strategy.connect(signers[1]).changeFee(1)).to.be.revertedWith(
+  //       "NO"
+  //     );
+  //   });
 
-    it("should set fees to 1%", async () => {
-      await strategy.changeFee(0);
-      expect(await strategy.managementFee()).to.equal(1000000);
-    });
+  //   it("should set fees to 1%", async () => {
+  //     await strategy.changeFee(0);
+  //     expect(await strategy.managementFee()).to.equal(1000000);
+  //   });
 
-    it("should set fees to 2%", async () => {
-      await strategy.changeFee(1);
-      expect(await strategy.managementFee()).to.equal(2000000);
-    });
+  //   it("should set fees to 2%", async () => {
+  //     await strategy.changeFee(1);
+  //     expect(await strategy.managementFee()).to.equal(2000000);
+  //   });
 
-    it("should set fees to 5%", async () => {
-      await strategy.changeFee(2);
-      expect(await strategy.managementFee()).to.equal(5000000);
-    });
+  //   it("should set fees to 5%", async () => {
+  //     await strategy.changeFee(2);
+  //     expect(await strategy.managementFee()).to.equal(5000000);
+  //   });
 
-    it("should emit changeFee event", async () => {
-      await expect(await strategy.changeFee(0))
-        .to.emit(strategy, "ChangeFee")
-        .withArgs(1000000);
-    });
-  });
+  //   it("should emit changeFee event", async () => {
+  //     await expect(await strategy.changeFee(0))
+  //       .to.emit(strategy, "ChangeFee")
+  //       .withArgs(1000000);
+  //   });
+  // });
 
   describe("#changeFeeTo", async () => {
     it("should revert if operator is not calling", async () => {

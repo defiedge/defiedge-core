@@ -85,12 +85,34 @@ library ShareHelper {
         uint256 totalShares = _totalShares;
         uint256 price = consult(_pool, 60);
 
-        if ((_totalAmount0 == 0) || (_totalAmount1 == 0)) {
-            share = Math.max(_amount0, _amount1);
+        if (totalShares > 0) {
+            uint256 numerator = (_amount0.mul(price)).add(_amount1.mul(1e18));
+            uint256 denominator = (_totalAmount0.mul(price)).add(
+                _totalAmount1.mul(1e18)
+            );
+            share = totalShares.mul(numerator).div(denominator);
         } else {
-            uint256 numerator = _amount0.mul((price)).add(_amount1);
-            uint256 denominator = _totalAmount0.mul(price).add(_totalAmount1);
-            share = (totalShares.mul(numerator).div(denominator));
+            uint256 threshold = uint256(10000).mul(1e18);
+            // new formula
+            if (price >= 1e18) {
+                uint256 m;
+                m = 1;
+                if (price >= threshold) {
+                    m = (price).div(threshold);
+                    share = (_amount0.mul(price).add(_amount1.mul(1e18))).div(
+                        m.mul(1e18)
+                    );
+                } else {
+                    m = 1;
+                    if (price.mul(threshold) <= 1e36) {
+                        m = uint256(1e36).div(price.mul(threshold));
+                    }
+                    share = (_amount0.mul(price).add(_amount1.mul(1e18))).div(
+                        price.mul(m)
+                    );
+                }
+            }
+            share = Math.max(_amount0, _amount1);
         }
     }
 }

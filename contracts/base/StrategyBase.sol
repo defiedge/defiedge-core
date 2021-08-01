@@ -127,16 +127,11 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
 
     /**
      * @notice Changes the fee
-     * @param _tier Fee tier from indexes 0 to 2
+     * @dev 1000000 is 1%
+     * @param _fee Fee tier from indexes 0 to 2
      */
-    function changeFee(uint256 _tier) public onlyOperator {
-        if (_tier == 2) {
-            managementFee = 5000000; // 5%
-        } else if (_tier == 1) {
-            managementFee = 2000000; // 2%
-        } else if (_tier == 0) {
-            managementFee = 1000000; // 1%
-        }
+    function changeFee(uint256 _fee) public onlyOperator {
+        managementFee = _fee;
         emit ChangeFee(managementFee);
     }
 

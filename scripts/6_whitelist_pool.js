@@ -10,7 +10,7 @@ let strategy;
 async function main() {
   const config = {
     factory: "0x6a5Ddbbf0DfC58c465dA7FC408432E6D5474f640",
-    pool: "0xcbcdf9626bc03e24f779434178a73a0b4bad62ed",
+    pool: "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
   };
 
   factory = await ethers.getContractAt(

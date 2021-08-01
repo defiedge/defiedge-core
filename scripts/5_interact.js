@@ -23,9 +23,59 @@ async function main() {
 
   pool = await ethers.getContractAt(
     "UniswapV3Pool",
-    "0xc2e9f25be6257c210d7adf0d4cd6e3e881ba25f8"
+    "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640"
   );
-  strategy = await ethers.getContractAt("DefiEdgeStrategy", addresses.strategy);
+
+  const dai = await ethers.getContractAt(
+    "TestERC20",
+    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+  );
+  const eth = await ethers.getContractAt(
+    "TestERC20",
+    "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+  );
+
+  strategy = await ethers.getContractAt(
+    "DefiEdgeStrategy",
+    "0xa43af89f8d34499ee984740f7ca9110e0aabfd77"
+  );
+
+  console.log(
+    "shares of the user",
+    await strategy.balanceOf("0x03cdc580e7de9d805483773cd73f00e9c6b2d0a0")
+  );
+
+  console.log("total shares", await strategy.totalSupply());
+  console.log("balance of USDC", await eth.balanceOf(strategy.address));
+  console.log("balance of ETH", await dai.balanceOf(strategy.address));
+
+  console.log(await strategy.getTicks());
+
+  // await addLiquidity();
+  // await eth.approve(
+  //   strategy.address,
+  //   "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+  // );
+
+  // const slot0 = await pool.slot0();
+  // console.log(slot0)
+
+  // console.log(
+  //   "USDC allwoance",
+  //   (await dai.allowance(
+  //     "0xC58F20d4Cd28303A669826b7A03543aEaC6626ba",
+  //     strategy.address
+  //   )).toString()
+  // );
+  // console.log(
+  //   "WETH allwoance",
+  //   (await eth.allowance(
+  //     "0xC58F20d4Cd28303A669826b7A03543aEaC6626ba",
+  //     strategy.address
+  //   )).toString()
+  // );
+
+  // await addLiquidity()
 
   // const positionKey = getPositionKey(
   //   "0x08e521dba0590bc692c04cd0db5285fc9da3dd94",
@@ -35,15 +85,6 @@ async function main() {
   // const position = await pool.positions(positionKey);
 
   // console.log(position);
-
-  // const dai = await ethers.getContractAt(
-  //   "TestERC20",
-  //   "0x6b175474e89094c44da98b954eedeac495271d0f"
-  // );
-  // const eth = await ethers.getContractAt(
-  //   "TestERC20",
-  //   "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
-  // );
 
   // const balanceOfEth = await eth.balanceOf(
   //   "0x08e521DBa0590bc692c04cd0Db5285fC9Da3DD94"
@@ -270,16 +311,9 @@ async function rebalance() {
 }
 
 async function addLiquidity() {
-  const tx = await strategy.mint(
-    "1000000000000000000",
-    "1000000000000000000",
-    "0",
-    "0",
-    "0",
-    {
-      gasLimit: 1000000,
-    }
-  );
+  const tx = await strategy.mint("12000000", "12000000", "0", "0", "0", {
+    gasLimit: 10000000,
+  });
   console.log(tx);
 }
 

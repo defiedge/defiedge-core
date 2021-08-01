@@ -187,6 +187,9 @@ contract DefiEdgeStrategy is UniswapPoolActions {
             TransferHelper.safeTransfer(pool.token1(), msg.sender, amount1);
         }
 
+        console.log("burn amount0", amount0);
+        console.log("burn amount1", amount1);
+
         emit Burn(msg.sender, _shares, amount0, amount1);
     }
 
