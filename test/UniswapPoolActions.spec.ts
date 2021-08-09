@@ -142,7 +142,7 @@ describe("UniswapPoolActions", () => {
     it("should updates fees at Uniswap pool", async () => {
       const positionKey = getPositionKey(
         strategy.address,
-        calculateTick(2500, 50),
+        calculateTick(2500, 60),
         calculateTick(3500, 60)
       );
 
@@ -164,9 +164,76 @@ describe("UniswapPoolActions", () => {
 
       const positionAfter = await pool.positions(positionKey);
 
-      //   console.log({ positionBefore, positionAfter });
+      expect(positionBefore.feeGrowthInside1LastX128.toString()).to.equal("0");
+      expect(positionBefore.tokensOwed1.toString()).to.equal("0");
+
+      expect(positionAfter.feeGrowthInside1LastX128.toString()).to.equal("499087288263231916915033707");
+      expect(positionAfter.tokensOwed1.toString()).to.equal("1072391033");
+
+    });
+
+    it("should update liquidity amount", async () => {
+      const positionKey = getPositionKey(
+        strategy.address,
+        calculateTick(2500, 60),
+        calculateTick(3500, 60)
+      );
+
+      const positionBefore = await pool.positions(positionKey);
+
+      await mint(signers[0]);
+
+      const positionAfter = await pool.positions(positionKey);
+
+      expect(positionBefore.liquidity.toString()).to.equal("731166206079261908657");
+
+      expect(positionAfter.liquidity.toString()).to.equal("1462332412158523817314");
+
+    });
+
+    it("should emit burn event", async () => {
+
+      expect(await mint(signers[0]))
+        .to.emit(pool, "Burn")
+        .withArgs(
+          strategy.address,
+          calculateTick(2500, 60),
+          calculateTick(3500, 60),
+          "0",
+          "0",
+          "0"
+        );
+
     });
   });
+
+  describe("#uniswapV3MintCallback", async () => {
+    it("should revert if msg.sender is not uniswap v3 pool", async () => {
+      expect(
+        strategy
+          .connect(signers[0])
+          .uniswapV3MintCallback(
+            "0",
+            "0",
+            "0x"
+          )
+      ).to.be.reverted;
+    });
+  })
+
+  describe("#uniswapV3SwapCallback", async () => {
+    it("should revert if msg.sender is not uniswap v3 pool", async () => {
+      expect(
+        strategy
+          .connect(signers[0])
+          .uniswapV3SwapCallback(
+            "0",
+            "0",
+            "0x"
+          )
+      ).to.be.reverted;
+    });
+  })
 });
 
 async function approve(address: string, from: string | Signer | Provider) {
