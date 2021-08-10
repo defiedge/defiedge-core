@@ -12,6 +12,8 @@ const UniswapV3OracleTestFactory = ethers.getContractFactory(
   "UniswapV3OracleTest"
 );
 
+const LiquidityHelperTestFactory = ethers.getContractFactory("LiquidityHelperTest");
+
 import { TestERC20 } from "../typechain/TestERC20";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
 import { UniswapV3Pool } from "../typechain/UniswapV3Pool";
@@ -19,6 +21,7 @@ import { DefiEdgeStrategy } from "../typechain/DefiEdgeStrategy";
 import { DefiEdgeStrategyFactory } from "../typechain/DefiEdgeStrategyFactory";
 import { Periphery } from "../typechain/Periphery";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
+import { LiquidityHelperTest } from "../typechain/LiquidityHelperTest";
 
 import {
   calculateTick,
@@ -40,6 +43,7 @@ let factory: DefiEdgeStrategyFactory;
 let strategy: DefiEdgeStrategy;
 let periphery: Periphery;
 let oracle: UniswapV3OracleTest;
+let liquidityHelper: LiquidityHelperTest;
 
 describe("UniswapPoolActions", () => {
   beforeEach(async () => {
@@ -73,6 +77,10 @@ describe("UniswapPoolActions", () => {
     factory = (await (
       await DefiEdgeStrategyFactoryFactory
     ).deploy(signers[0].address)) as DefiEdgeStrategyFactory;
+
+    liquidityHelper = (await (
+      await LiquidityHelperTestFactory
+    ).deploy()) as LiquidityHelperTest;
 
     // create strategy
     await factory.createStrategy(pool.address, signers[0].address, [
@@ -133,6 +141,106 @@ describe("UniswapPoolActions", () => {
       expandToString(sqrtPriceLimitX96)
     );
   });
+
+  describe("#mintLiquidity", async () => {
+    it("should emit mint event with correct values - strategy contract", async () => {
+      expect(await mint(signers[0]))
+        .to.emit(strategy, "Mint")
+        .withArgs(
+          signers[0].address,
+          "3452260981108611401314",
+          expandTo18Decimals(1),
+          "3452260981108611401314"
+        );
+    });
+
+    it("should emit mint event with correct values - uniswap pool contract", async () => {
+
+      let liquidity = await liquidityHelper.getLiquidityForAmounts(
+        pool.address,
+        calculateTick(2500, 60),
+        calculateTick(3500, 60),
+        expandTo18Decimals(1),
+        expandTo18Decimals(3500)
+      )
+
+      expect(await mint(signers[0]))
+        .to.emit(pool, "Mint")
+        .withArgs(
+          strategy.address,
+          strategy.address,
+          calculateTick(2500, 60),
+          calculateTick(3500, 60),
+          liquidity.toString(),
+          expandTo18Decimals(1),
+          "3452260981108611401314"
+        );
+    });
+  })
+
+  describe("#burnLiquidity", async () => {
+
+    beforeEach("add liquidity", async () => {
+      await mint(signers[0]);
+    });
+
+    it("should emit mint event with correct values - strategy contract", async () => {
+      const shares = "3452260981108611401314";
+      expect(await strategy.connect(signers[0]).burn(shares, 0, 0))
+        .to.emit(strategy, "Burn")
+        .withArgs(
+          signers[0].address,
+          shares,
+          "999999999999999999",
+          "3452260981108611401313"
+        );
+    });
+
+    it("should emit fees claimed event with correct values - strategy contract", async () => {
+      const shares = "3452260981108611401314";
+      expect(await strategy.connect(signers[0]).burn(shares, 0, 0))
+        .to.emit(strategy, "FeesClaimed")
+        .withArgs(
+          signers[0].address,
+          "0",
+          "0"
+        );
+    });
+
+    it("should emit burn event with correct values - uniswap pool contract", async () => {
+
+      expect(await mint(signers[0]))
+        .to.emit(pool, "Burn")
+        .withArgs(
+          strategy.address,
+          calculateTick(2500, 60),
+          calculateTick(3500, 60),
+          "0",
+          "0",
+          "0"
+        );
+    });
+
+    it("should emit collect event with correct values - uniswap pool contract", async () => {
+      const shares = "3452260981108611401314";
+
+      expect(await strategy.connect(signers[0]).burn(shares, 0, 0))
+        .to.emit(pool, "Collect")
+        .withArgs(
+          strategy.address,
+          strategy.address,
+          calculateTick(2500, 60),
+          calculateTick(3500, 60),
+          "999999999999999999",
+          "3452260981108611401313"
+        );
+    });
+
+  })
+
+  describe("#burnAllLiquidity", async () => {
+
+  })
 
   describe("#getAUMWithFees", async () => {
     beforeEach("add some liquidity", async () => {
