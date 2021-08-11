@@ -240,6 +240,47 @@ describe("UniswapPoolActions", () => {
 
   describe("#burnAllLiquidity", async () => {
 
+    beforeEach("add liquidity", async () => {
+      await mint(signers[0]);
+    });
+
+    it("should burn all the liquidity", async () => {
+      await strategy.hold();
+      const positionKey = getPositionKey(
+        strategy.address,
+        calculateTick(2500, 60),
+        calculateTick(3500, 60)
+      );
+
+      const position = await pool.positions(positionKey);
+      expect(position.liquidity).to.equal(0);
+    });
+
+    it("should emit fees claimed event with correct values - strategy contract", async () => {
+      expect(await strategy.hold())
+        .to.emit(strategy, "FeesClaimed")
+        .withArgs(
+          signers[0].address,
+          "0",
+          "0"
+        );
+    });
+
+    it("should emit collect event with correct values - uniswap pool contract", async () => {
+
+      expect(await strategy.hold())
+        .to.emit(pool, "Collect")
+        .withArgs(
+          strategy.address,
+          strategy.address,
+          calculateTick(2500, 60),
+          calculateTick(3500, 60),
+          "999999999999999999",
+          "3452260981108611401313"
+        );
+    });
+
+
   })
 
   describe("#getAUMWithFees", async () => {
