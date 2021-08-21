@@ -14,7 +14,7 @@ interface IFactory {
     function PROTOCOL_FEE() external view returns (uint256);
 }
 
-contract StrategyBase is ERC20("DefiEdge Share Token", "DefiEdgeShare") {
+contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
     using SafeMath for uint256;
 
     event ChangeFee(uint256 tier);
