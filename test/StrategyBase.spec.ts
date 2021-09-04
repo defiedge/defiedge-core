@@ -254,7 +254,7 @@ describe("StrategyBase", () => {
         .connect(signers[1])
         .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
 
-      expect(await strategy.balanceOf(signers[2].address)).to.equal(
+      expect(await strategy.accManagementFee()).to.equal(
         "34522609811086114013"
       );
     });
@@ -273,9 +273,7 @@ describe("StrategyBase", () => {
         0
       );
 
-      expect(await strategy.balanceOf(signers[1].address)).to.equal(
-        "34522609811086114013"
-      );
+      expect(await strategy.accProtocolFee()).to.equal("34522609811086114013");
     });
   });
 
