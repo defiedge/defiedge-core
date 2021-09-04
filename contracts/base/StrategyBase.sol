@@ -23,6 +23,9 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
     uint256 public managementFee;
     address public feeTo;
 
+    uint256 public accProtocolFee;
+    uint256 public accManagementFee;
+
     address public operator;
     address public pendingOperator;
 
@@ -107,22 +110,22 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
 
         require(share > 0, "IS");
 
+        uint256 managerShare;
         // strategy owner fees
         if (feeTo != address(0) && managementFee > 0) {
-            uint256 managerShare = share.mul(managementFee).div(1e8);
-            share = share.sub(managerShare);
-            _mint(feeTo, managerShare);
+            managerShare = share.mul(managementFee).div(1e8);
+            accManagementFee = accManagementFee.add(managerShare);
         }
 
+        uint256 protocolShare;
         // take protocol fee
         if (factory.feeTo() != address(0)) {
-            uint256 fee = share.mul(factory.PROTOCOL_FEE()).div(1e8);
-            share = share.sub(factory.PROTOCOL_FEE());
-            _mint(factory.feeTo(), fee);
+            protocolShare = share.mul(factory.PROTOCOL_FEE()).div(1e8);
+            accProtocolFee = accProtocolFee.add(protocolShare);
         }
 
         // issue shares
-        _mint(_user, share);
+        _mint(_user, share.sub(managerShare).sub((protocolShare)));
     }
 
     /**
@@ -167,5 +170,20 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
      */
     function tickLength() public view returns (uint256 length) {
         length = ticks.length;
+    }
+
+    /**
+     * @notice Claims the fee for protocol and management
+     */
+    function claimFee() external {
+        if (accProtocolFee > 0) {
+            _mint(factory.feeTo(), accProtocolFee);
+            accProtocolFee = 0;
+        }
+
+        if (accManagementFee > 0) {
+            _mint(feeTo, accManagementFee);
+            accManagementFee = 0;
+        }
     }
 }
