@@ -36,5 +36,6 @@ jobs:
             npm install --save-dev "@nomiclabs/buidler-web3" "@nomiclabs/hardhat-web3" "@openzeppelin/contracts" "@openzeppelin/test-helpers" "@uniswap/v3-periphery" "bignumber.js" "dotenv" "eslint"
     - name: testing using hardhat
       run : |
+            npx hardhat compile
             npx hardhat test
             
