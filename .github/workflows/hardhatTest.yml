@@ -18,14 +18,15 @@ jobs:
         with:
           node-version: 14.17.1
       - name: install modules
-        run: yarn install
+        run: npm install
       - name: install ganache
-        run: yarn add ganache-cli
+        run: npm install ganache-cli
       - name: start ganache
         run: node_modules/.bin/ganache-cli --port 8545 -a 100 &
       - name: install hardhat
         run: |
-          yarn install hardhat
+          npm install hardhat
           node_modules/.bin/hardhat version
-      - name: npx hardhat test
+      - name: execute hardhat test
         run: node_modules/.bin/hardhat test --network test
+          
