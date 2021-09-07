@@ -31,6 +31,20 @@ jobs:
             npm install --save-dev '@nomiclabs/hardhat-waffle'
             npm install --save-dev "@nomiclabs/hardhat-ethers@^2.0.0" "ethers@^5.0.0" "ethereum-waffle@^3.2.0"
             npm install --save-dev chai
+            npm install --save-dev "@nomiclabs/hardhat-ethers": "^2.0.0", "@nomiclabs/hardhat-etherscan": "^2.1.1",
+                                                                          "@nomiclabs/hardhat-waffle": "^2.0.1",
+                                                                          "@typechain/ethers-v5": "^7.0.1",
+                                                                          "@typechain/hardhat": "^2.1.2",
+                                                                          "@types/chai": "^4.2.21",
+                                                                          "@types/mocha": "^8.2.3",
+                                                                          "@types/node": "^16.3.0",
+                                                                          "chai": "^4.3.4",
+                                                                          "ethereum-waffle": "^3.2.0",
+                                                                          "ethers": "^5.0.0",
+                                                                          "hardhat": "^2.0.8",
+                                                                          "ts-node": "^10.0.0",
+                                                                          "typechain": "^5.1.1",
+                                                                          "typescript": "^4.3.5"
     - name: testing using hardhat
       run : |
             npx hardhat test
