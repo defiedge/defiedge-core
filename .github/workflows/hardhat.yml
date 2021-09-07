@@ -33,5 +33,5 @@ jobs:
             npm install --save-dev chai
     - name: testing using hardhat
       run : |
-            npx hardhat --network ganache test
+            npx hardhat test
             
