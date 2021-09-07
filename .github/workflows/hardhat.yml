@@ -33,6 +33,7 @@ jobs:
             npm install --save-dev chai
             npm install --save-dev "@nomiclabs/hardhat-ethers" "@nomiclabs/hardhat-etherscan" "@nomiclabs/hardhat-waffle"
             npm install --save-dev "@typechain/ethers-v5" "@typechain/hardhat" "@types/chai" "@types/mocha" "@types/node" "ethereum-waffle" "ethers" "hardhat" "ts-node" "typechain" "typescript"
+            npm install --save-dev "@nomiclabs/buidler-web3" "@nomiclabs/hardhat-web3" "@openzeppelin/contracts" "@openzeppelin/test-helpers" "@uniswap/v3-periphery" "bignumber.js" "dotenv" "eslint"
     - name: testing using hardhat
       run : |
             npx hardhat test
