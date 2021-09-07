@@ -26,12 +26,12 @@ jobs:
             npm install
     - name: Installing hardhat
       run : | 
-            npm install -g ganache-cli
+            npm install --save-dev @nomiclabs/hardhat-ganache
             npm install --save-dev hardhat
             npm install --save-dev '@nomiclabs/hardhat-waffle'
             npm install --save-dev "@nomiclabs/hardhat-ethers@^2.0.0" "ethers@^5.0.0" "ethereum-waffle@^3.2.0"
             npm install --save-dev chai
     - name: testing using hardhat
       run : |
-            ganache-cli
-            npx hardhat test
+            npx hardhat --network ganache test
+            
