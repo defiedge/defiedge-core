@@ -256,7 +256,7 @@ contract UniswapPoolActions is
      * @notice Get's assets under management with realtime fees
      */
     function getAUMWithFees()
-        internal
+        external
         returns (uint256 amount0, uint256 amount1)
     {
         // get balances of amount0 and amount1
