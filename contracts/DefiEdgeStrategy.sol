@@ -73,7 +73,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         require(!onHold, "H");
 
         // get total amounts with fees
-        (uint256 totalAmount0, uint256 totalAmount1) = getAUMWithFees();
+        (uint256 totalAmount0, uint256 totalAmount1) = this.getAUMWithFees();
 
         // index 0 will always be an primary tick
         (amount0, amount1) = mintLiquidity(
@@ -102,6 +102,12 @@ contract DefiEdgeStrategy is UniswapPoolActions {
 
         // price slippage check
         require(amount0 >= _amount0Min && amount1 >= _amount1Min, "S");
+
+        // share limit
+        if (limit != 0) {
+            require(totalSupply() <= limit, "L");
+        }
+
         // emit event
         emit Mint(msg.sender, share, amount0, amount1);
     }

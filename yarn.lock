@@ -570,6 +570,15 @@
     node-fetch "^2.6.0"
     semver "^6.3.0"
 
+"@nomiclabs/hardhat-ganache@^2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@nomiclabs/hardhat-ganache/-/hardhat-ganache-2.0.1.tgz#d4974dc379cef1892904378de00e12709c0719aa"
+  integrity sha512-Q3D8iTtsvQVkJd1EzhhYYvXAFY8fF/JEUt6l6jW7tduhFDRCKvyoSMCw+lH/3nBOHsBolr80pF76NHZ2mYCMeQ==
+  dependencies:
+    debug "^4.1.1"
+    ganache-core "^2.7.0"
+    ts-interface-checker "^0.1.9"
+
 "@nomiclabs/hardhat-waffle@^2.0.1":
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/@nomiclabs/hardhat-waffle/-/hardhat-waffle-2.0.1.tgz#5d43654fba780720c5033dea240fe14f70ef4bd2"
@@ -4245,7 +4254,7 @@ functional-red-black-tree@^1.0.1, functional-red-black-tree@~1.0.1:
   resolved "https://registry.yarnpkg.com/functional-red-black-tree/-/functional-red-black-tree-1.0.1.tgz#1b0ab3bd553b2a0d6399d29c0e3ea0b252078327"
   integrity sha1-GwqzvVU7Kg1jmdKcDj6gslIHgyc=
 
-ganache-core@^2.13.2:
+ganache-core@^2.13.2, ganache-core@^2.7.0:
   version "2.13.2"
   resolved "https://registry.yarnpkg.com/ganache-core/-/ganache-core-2.13.2.tgz#27e6fc5417c10e6e76e2e646671869d7665814a3"
   integrity sha512-tIF5cR+ANQz0+3pHWxHjIwHqFXcVo0Mb+kcsNhglNFALcYo49aQpnS9dqHartqPfMFjiHh/qFoD3mYK0d/qGgw==
@@ -7980,6 +7989,11 @@ ts-generator@^0.1.1:
     prettier "^2.1.2"
     resolve "^1.8.1"
     ts-essentials "^1.0.0"
+
+ts-interface-checker@^0.1.9:
+  version "0.1.13"
+  resolved "https://registry.yarnpkg.com/ts-interface-checker/-/ts-interface-checker-0.1.13.tgz#784fd3d679722bc103b1b4b8030bcddb5db2a699"
+  integrity sha512-Y/arvbn+rrz3JCKl9C4kVNfTfSm2/mEp5FSz5EsZSANGPSlQrpRI5M4PKF+mJnE52jOO90PnPSc3Ur3bTQw0gA==
 
 ts-node@^10.0.0:
   version "10.0.0"
