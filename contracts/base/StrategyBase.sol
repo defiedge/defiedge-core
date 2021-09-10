@@ -12,6 +12,8 @@ interface IFactory {
     function denied(address) external view returns (bool);
 
     function PROTOCOL_FEE() external view returns (uint256);
+
+    function governance() external view returns (address);
 }
 
 contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
@@ -28,6 +30,10 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
 
     address public operator;
     address public pendingOperator;
+
+    // max number of shares to be minted
+    // if set 0, allows unlimited deposits
+    uint256 public limit;
 
     IFactory public factory;
 
@@ -170,6 +176,14 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
      */
     function tickLength() public view returns (uint256 length) {
         length = ticks.length;
+    }
+
+    function changeLimit(uint256 _limit) external {
+        require(
+            msg.sender == operator || msg.sender == factory.governance(),
+            "NO"
+        );
+        limit = _limit;
     }
 
     /**
