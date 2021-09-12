@@ -2,8 +2,6 @@
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
@@ -91,10 +89,6 @@ contract UniswapPoolActions is
         );
 
         if (currentLiquidity > 0) {
-            // currentLiquidity =
-            //     (currentLiquidity * _shares.toUint128()) /
-            //     totalSupply().toUint128();
-
             uint256 liquidity = uint256(currentLiquidity).mul(_shares).div(
                 totalSupply()
             );

@@ -35,10 +35,7 @@ contract DefiEdgeStrategyFactory {
 
     // Modifiers
     modifier onlyGovernance() {
-        require(
-            msg.sender == governance,
-            "Ownable: caller is not the governance"
-        );
+        require(msg.sender == governance, "NO");
         _;
     }
 
@@ -103,7 +100,7 @@ contract DefiEdgeStrategyFactory {
      * @notice Adds strategy to Denylist, rebalance and add liquidity will be stopped
      * @param _strategy Address of the strategy
      */
-    function deny(address _strategy) external onlyGovernance() {
+    function deny(address _strategy) external onlyGovernance {
         denied[_strategy] = true;
     }
 
@@ -111,7 +108,7 @@ contract DefiEdgeStrategyFactory {
      * @notice Allows strategy to operate again
      * @param _strategy Address of the strategy
      */
-    function allowAgain(address _strategy) external onlyGovernance() {
+    function allowAgain(address _strategy) external onlyGovernance {
         denied[_strategy] = false;
     }
 }

@@ -4,7 +4,6 @@ pragma solidity =0.7.6;
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "../libraries/ShareHelper.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "hardhat/console.sol";
 
 interface IFactory {
     function feeTo() external view returns (address);
@@ -179,10 +178,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
     }
 
     function changeLimit(uint256 _limit) external {
-        require(
-            msg.sender == operator || msg.sender == factory.governance(),
-            "NO"
-        );
+        require(msg.sender == operator);
         limit = _limit;
     }
 
