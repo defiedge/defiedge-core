@@ -73,7 +73,8 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         require(!onHold, "H");
 
         // get total amounts with fees
-        (uint256 totalAmount0, uint256 totalAmount1) = this.getAUMWithFees();
+        (uint256 totalAmount0, uint256 totalAmount1, , ) = this
+            .getAUMWithFees();
 
         // index 0 will always be an primary tick
         (amount0, amount1) = mintLiquidity(
