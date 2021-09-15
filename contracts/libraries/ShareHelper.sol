@@ -1,7 +1,6 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: BSL
 pragma solidity =0.7.6;
 pragma abicoder v2;
-import "hardhat/console.sol";
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
