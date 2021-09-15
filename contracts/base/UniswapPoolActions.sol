@@ -1,8 +1,6 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: BSL
 pragma solidity =0.7.6;
 pragma abicoder v2;
-
-import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
@@ -91,10 +89,6 @@ contract UniswapPoolActions is
         );
 
         if (currentLiquidity > 0) {
-            // currentLiquidity =
-            //     (currentLiquidity * _shares.toUint128()) /
-            //     totalSupply().toUint128();
-
             uint256 liquidity = uint256(currentLiquidity).mul(_shares).div(
                 totalSupply()
             );
@@ -257,7 +251,12 @@ contract UniswapPoolActions is
      */
     function getAUMWithFees()
         external
-        returns (uint256 amount0, uint256 amount1)
+        returns (
+            uint256 amount0,
+            uint256 amount1,
+            uint256 totalFee0,
+            uint256 totalFee1
+        )
     {
         // get balances of amount0 and amount1
         amount0 = IERC20(pool.token0()).balanceOf(address(this));
@@ -281,7 +280,13 @@ contract UniswapPoolActions is
             // update fees earned in Uniswap pool
             // Uniswap recalculates the fees and updates the variables when amount is passed as 0
             if (currentLiquidity > 0) {
-                pool.burn(tick.tickLower, tick.tickUpper, 0);
+                (uint256 fee0, uint256 fee1) = pool.burn(
+                    tick.tickLower,
+                    tick.tickUpper,
+                    0
+                );
+                totalFee0 = totalFee0.add(fee0);
+                totalFee1 = totalFee1.add(fee1);
             }
 
             (, , , uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(
@@ -307,5 +312,8 @@ contract UniswapPoolActions is
 
         amount0 = amount0.add(totalAmount0);
         amount1 = amount1.add(totalAmount1);
+
+        totalFee0 = totalFee0 > amount0 ? amount0.sub(totalFee0) : 0;
+        totalFee1 = totalFee1 > amount1 ? amount1.sub(totalFee1) : 0;
     }
 }

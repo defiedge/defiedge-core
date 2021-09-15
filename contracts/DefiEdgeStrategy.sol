@@ -1,10 +1,8 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BSL
 
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/utils/Context.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
@@ -12,8 +10,6 @@ import "./base/UniswapPoolActions.sol";
 import "./base/StrategyBase.sol";
 
 import "./libraries/LiquidityHelper.sol";
-
-import "hardhat/console.sol";
 
 contract DefiEdgeStrategy is UniswapPoolActions {
     using SafeMath for uint256;
@@ -73,7 +69,8 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         require(!onHold, "H");
 
         // get total amounts with fees
-        (uint256 totalAmount0, uint256 totalAmount1) = this.getAUMWithFees();
+        (uint256 totalAmount0, uint256 totalAmount1, , ) = this
+            .getAUMWithFees();
 
         // index 0 will always be an primary tick
         (amount0, amount1) = mintLiquidity(
