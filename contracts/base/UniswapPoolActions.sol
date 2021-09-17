@@ -280,13 +280,7 @@ contract UniswapPoolActions is
             // update fees earned in Uniswap pool
             // Uniswap recalculates the fees and updates the variables when amount is passed as 0
             if (currentLiquidity > 0) {
-                (uint256 fee0, uint256 fee1) = pool.burn(
-                    tick.tickLower,
-                    tick.tickUpper,
-                    0
-                );
-                totalFee0 = totalFee0.add(fee0);
-                totalFee1 = totalFee1.add(fee1);
+                pool.burn(tick.tickLower, tick.tickUpper, 0);
             }
 
             (, , , uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(
@@ -296,6 +290,9 @@ contract UniswapPoolActions is
                     tick.tickUpper
                 )
             );
+
+            totalFee0 = totalFee0.add(tokensOwed0);
+            totalFee1 = totalFee1.add(tokensOwed1);
 
             (uint256 position0, uint256 position1) = LiquidityHelper
                 .getAmountsForLiquidity(
@@ -312,8 +309,5 @@ contract UniswapPoolActions is
 
         amount0 = amount0.add(totalAmount0);
         amount1 = amount1.add(totalAmount1);
-
-        totalFee0 = totalFee0 > amount0 ? amount0.sub(totalFee0) : 0;
-        totalFee1 = totalFee1 > amount1 ? amount1.sub(totalFee1) : 0;
     }
 }
