@@ -159,11 +159,15 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         }
 
         if (unused0 > 0) {
-            unused0 = unused0.mul(_shares).div(totalSupply());
+            unused0 = unused0.mul(_shares).div(
+                totalSupply().add(accManagementFee)
+            );
         }
 
         if (unused1 > 0) {
-            unused1 = unused1.mul(_shares).div(totalSupply());
+            unused1 = unused1.mul(_shares).div(
+                totalSupply().add(accManagementFee)
+            );
         }
 
         // add to total amounts
