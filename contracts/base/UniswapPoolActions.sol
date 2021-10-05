@@ -90,7 +90,7 @@ contract UniswapPoolActions is
 
         if (currentLiquidity > 0) {
             uint256 liquidity = uint256(currentLiquidity).mul(_shares).div(
-                totalSupply()
+                totalSupply().add(accManagementFee)
             );
 
             (tokensBurned0, tokensBurned1) = pool.burn(
@@ -291,9 +291,6 @@ contract UniswapPoolActions is
                 )
             );
 
-            totalFee0 = totalFee0.add(tokensOwed0);
-            totalFee1 = totalFee1.add(tokensOwed1);
-
             (uint256 position0, uint256 position1) = LiquidityHelper
                 .getAmountsForLiquidity(
                     address(pool),
@@ -301,6 +298,10 @@ contract UniswapPoolActions is
                     tick.tickUpper,
                     currentLiquidity
                 );
+
+            // add fees
+            totalFee0 = totalFee0.add(tokensOwed0);
+            totalFee1 = totalFee1.add(tokensOwed1);
 
             // add fees to the amounts
             totalAmount0 = totalAmount0.add(tokensOwed0).add(position0);

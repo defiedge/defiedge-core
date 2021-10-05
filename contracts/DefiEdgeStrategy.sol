@@ -292,7 +292,8 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         int24 tickLower,
         int24 tickUpper,
         uint128 liquidity
-    ) external onlyOperator {
+    ) external onlyGovernance {
+        require(!freezeEmergency, "L");
         pool.burn(tickLower, tickUpper, liquidity);
         (, , , uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(
             PositionKey.compute(address(this), tickLower, tickUpper)
@@ -311,7 +312,8 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         address _pool,
         uint256 _amount0,
         uint256 _amount1
-    ) external onlyOperator {
+    ) external onlyGovernance {
+        require(!freezeEmergency, "L");
         IUniswapV3Pool pool = IUniswapV3Pool(_pool);
         // transfer the tokens back
         TransferHelper.safeTransfer(pool.token0(), msg.sender, _amount0);

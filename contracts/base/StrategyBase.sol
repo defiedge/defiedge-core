@@ -39,6 +39,9 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
     // Uniswap pool for the strategy
     IUniswapV3Pool public pool;
 
+    // when true emergency functions will be frozen forever
+    bool public freezeEmergency;
+
     struct Tick {
         uint256 amount0;
         uint256 amount1;
@@ -52,6 +55,12 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
     // Modifiers
     modifier onlyOperator() {
         require(msg.sender == operator, "NO");
+        _;
+    }
+
+    // Modifiers
+    modifier onlyGovernance() {
+        require(msg.sender == factory.governance(), "NO");
         _;
     }
 
@@ -110,7 +119,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
             _amount1,
             _totalAmount0,
             _totalAmount1,
-            totalSupply()
+            totalSupply().add(accManagementFee)
         );
 
         require(share > 0, "IS");
@@ -195,5 +204,9 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
             _mint(feeTo, accManagementFee);
             accManagementFee = 0;
         }
+    }
+
+    function freezeEmergencyFunctions() external onlyGovernance {
+        freezeEmergency = true;
     }
 }
