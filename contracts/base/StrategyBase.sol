@@ -54,13 +54,13 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
 
     // Modifiers
     modifier onlyOperator() {
-        require(msg.sender == operator, "NO");
+        require(msg.sender == operator, "N");
         _;
     }
 
     // Modifiers
     modifier onlyGovernance() {
-        require(msg.sender == factory.governance(), "NO");
+        require(msg.sender == factory.governance(), "N");
         _;
     }
 
@@ -97,6 +97,10 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
         _;
     }
 
+    function getTotalSupply() internal returns (uint256) {
+        return getTotalSupply().add(accManagementFee);
+    }
+
     /**
      * @notice Updates the shares of the user
      * @param _amount0 Amount of token0
@@ -119,7 +123,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
             _amount1,
             _totalAmount0,
             _totalAmount1,
-            totalSupply().add(accManagementFee)
+            getTotalSupply()
         );
 
         require(share > 0, "IS");
@@ -152,10 +156,10 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
         emit ChangeFee(managementFee);
     }
 
-    /**
-     * @notice changes address where the operator is receiving the fee
-     * @param _newFeeTo New address where fees should be received
-     */
+    // /**
+    //  * @notice changes address where the operator is receiving the fee
+    //  * @param _newFeeTo New address where fees should be received
+    //  */
     function changeFeeTo(address _newFeeTo) external onlyOperator {
         feeTo = _newFeeTo;
     }
@@ -186,8 +190,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
         length = ticks.length;
     }
 
-    function changeLimit(uint256 _limit) external {
-        require(msg.sender == operator);
+    function changeLimit(uint256 _limit) external onlyOperator {
         limit = _limit;
     }
 

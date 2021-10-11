@@ -13,8 +13,17 @@ import "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
 
 import "@openzeppelin/contracts/math/Math.sol";
 
+import "../base/StrategyBase.sol";
+
 library ShareHelper {
     using SafeMath for uint256;
+
+    struct Tick {
+        uint256 amount0;
+        uint256 amount1;
+        int24 tickLower;
+        int24 tickUpper;
+    }
 
     /**
      * @notice Gets time weighted tick to calculate price
@@ -80,7 +89,7 @@ library ShareHelper {
         uint256 _totalAmount0,
         uint256 _totalAmount1,
         uint256 _totalShares
-    ) internal view returns (uint256 share) {
+    ) public view returns (uint256 share) {
         uint256 totalShares = _totalShares;
         uint256 price = consult(_pool, 60);
 
