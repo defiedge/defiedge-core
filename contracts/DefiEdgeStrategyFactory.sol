@@ -27,6 +27,8 @@ contract DefiEdgeStrategyFactory {
     uint256 public PROTOCOL_FEE; // 1e8 means 100%
     address public feeTo; // receive protocol fees here
 
+    address public uniswapV3Factory;
+
     // mapping of blacklisted strategies
     mapping(address => bool) public denied;
 
@@ -36,8 +38,9 @@ contract DefiEdgeStrategyFactory {
         _;
     }
 
-    constructor(address _governance) {
+    constructor(address _governance, address _uniswapV3factory) {
         governance = _governance;
+        uniswapV3Factory = _uniswapV3factory;
     }
 
     /**

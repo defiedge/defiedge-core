@@ -5,6 +5,7 @@ pragma abicoder v2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 import "./base/UniswapPoolActions.sol";
 import "./base/StrategyBase.sol";
@@ -35,8 +36,16 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         address _operator,
         Tick[] memory _ticks
     ) validTicks(_ticks) {
-        factory = IFactory(_factory);
+        factory = IStrategyFactory(_factory);
         pool = IUniswapV3Pool(_pool);
+        require(
+            IUniswapV3Factory(factory.uniswapV3Factory()).getPool(
+                pool.token0(),
+                pool.token1(),
+                pool.fee()
+            ) == address(pool),
+            "IP"
+        );
         operator = _operator;
         for (uint256 i = 0; i < _ticks.length; i++) {
             ticks.push(Tick(0, 0, _ticks[i].tickLower, _ticks[i].tickUpper));

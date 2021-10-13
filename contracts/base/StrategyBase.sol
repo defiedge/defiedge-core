@@ -4,16 +4,7 @@ pragma solidity =0.7.6;
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "../libraries/ShareHelper.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
-interface IFactory {
-    function feeTo() external view returns (address);
-
-    function denied(address) external view returns (bool);
-
-    function PROTOCOL_FEE() external view returns (uint256);
-
-    function governance() external view returns (address);
-}
+import "../interfaces/IStrategyFactory.sol";
 
 contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
     using SafeMath for uint256;
@@ -34,7 +25,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
     // if set 0, allows unlimited deposits
     uint256 public limit;
 
-    IFactory public factory;
+    IStrategyFactory public factory;
 
     // Uniswap pool for the strategy
     IUniswapV3Pool public pool;
