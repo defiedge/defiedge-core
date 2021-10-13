@@ -5,6 +5,7 @@ pragma abicoder v2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 import "./base/UniswapPoolActions.sol";
 import "./base/StrategyBase.sol";
@@ -35,8 +36,16 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         address _operator,
         Tick[] memory _ticks
     ) validTicks(_ticks) {
-        factory = IFactory(_factory);
+        factory = IStrategyFactory(_factory);
         pool = IUniswapV3Pool(_pool);
+        require(
+            IUniswapV3Factory(factory.uniswapV3Factory()).getPool(
+                pool.token0(),
+                pool.token1(),
+                pool.fee()
+            ) == address(pool),
+            "IP"
+        );
         operator = _operator;
         for (uint256 i = 0; i < _ticks.length; i++) {
             ticks.push(Tick(0, 0, _ticks[i].tickLower, _ticks[i].tickUpper));
@@ -102,7 +111,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
 
         // share limit
         if (limit != 0) {
-            require(totalSupply() <= limit, "L");
+            require(getTotalSupply() <= limit, "L");
         }
 
         // emit event
@@ -159,11 +168,11 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         }
 
         if (unused0 > 0) {
-            unused0 = unused0.mul(_shares).div(totalSupply());
+            unused0 = unused0.mul(_shares).div(getTotalSupply());
         }
 
         if (unused1 > 0) {
-            unused1 = unused1.mul(_shares).div(totalSupply());
+            unused1 = unused1.mul(_shares).div(getTotalSupply());
         }
 
         // add to total amounts
@@ -245,6 +254,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         uint160 _sqrtPriceLimitX96
     ) external onlyOperator isValidStrategy returns (uint256 amountOut) {
         if (ticks.length > 0) {
+            onHold = true;
             // burn all liquidity
             burnAllLiquidity(ticks);
             // delete ticks
@@ -288,29 +298,30 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         int24 tickLower,
         int24 tickUpper,
         uint128 liquidity
-    ) external onlyOperator {
-        pool.burn(tickLower, tickUpper, liquidity);
-        (, , , uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(
-            PositionKey.compute(address(this), tickLower, tickUpper)
+    ) external onlyGovernance {
+        require(!freezeEmergency, "L");
+        if (liquidity > 0) {
+            pool.burn(tickLower, tickUpper, liquidity);
+            (, , , uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(
+                PositionKey.compute(address(this), tickLower, tickUpper)
+            );
+            pool.collect(
+                address(this),
+                tickLower,
+                tickUpper,
+                uint128(tokensOwed0),
+                uint128(tokensOwed1)
+            );
+        }
+        TransferHelper.safeTransfer(
+            pool.token0(),
+            msg.sender,
+            IERC20(pool.token0()).balanceOf(address(this))
         );
-        pool.collect(
-            address(this),
-            tickLower,
-            tickUpper,
-            uint128(tokensOwed0),
-            uint128(tokensOwed1)
+        TransferHelper.safeTransfer(
+            pool.token1(),
+            msg.sender,
+            IERC20(pool.token1()).balanceOf(address(this))
         );
-    }
-
-    // TODO: Remove this function after audit
-    function emergencyWithdraw(
-        address _pool,
-        uint256 _amount0,
-        uint256 _amount1
-    ) external onlyOperator {
-        IUniswapV3Pool pool = IUniswapV3Pool(_pool);
-        // transfer the tokens back
-        TransferHelper.safeTransfer(pool.token0(), msg.sender, _amount0);
-        TransferHelper.safeTransfer(pool.token1(), msg.sender, _amount1);
     }
 }

@@ -29,17 +29,17 @@ export default {
       gas: 12000000,
       blockGasLimit: 0x1fffffffffffff,
     },
-    // kovan: {
-    //  url: `https://kovan.infura.io/v3/${process.env.INFURA_KEY}`,
-    //  accounts: [process.env.PRIVATE_KEY],
-    // gasLimit: 10000000000,
-    // },
-    //     mainnet: {
-    //       url: `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
-    //       accounts: [process.env.MAINNET_PRIVATE_KEY],
-    //       gasLimit: 17000000,
-    //       gasPrice: 28000000000,
-    //     },
+    kovan: {
+      url: `https://kovan.infura.io/v3/${process.env.INFURA_KEY}`,
+      accounts: [process.env.PRIVATE_KEY],
+      gasLimit: 10000000000,
+    },
+    mainnet: {
+      url: `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
+      accounts: [process.env.MAINNET_PRIVATE_KEY],
+      gasLimit: 17000000,
+      gasPrice: 65000000000,
+    },
   },
   solidity: {
     version: "0.7.6",

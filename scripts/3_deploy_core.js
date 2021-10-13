@@ -5,7 +5,7 @@ const hre = require("hardhat");
 
 async function main() {
   const addresses = {
-    governance: "0x22CB224F9FA487dCE907135B57C779F1f32251D4",
+    governance: "0xC58F20d4Cd28303A669826b7A03543aEaC6626ba",
   };
   const StrategyFactory = await ethers.getContractFactory(
     "DefiEdgeStrategyFactory"
