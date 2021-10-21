@@ -11,6 +11,7 @@ const PeripheryFactory = ethers.getContractFactory("Periphery");
 const UniswapV3OracleTestFactory = ethers.getContractFactory(
   "UniswapV3OracleTest"
 );
+const ShareHelperLibrary = ethers.getContractFactory("ShareHelper")
 
 import { TestERC20 } from "../typechain/TestERC20";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
@@ -19,6 +20,7 @@ import { DefiEdgeStrategy } from "../typechain/DefiEdgeStrategy";
 import { DefiEdgeStrategyFactory } from "../typechain/DefiEdgeStrategyFactory";
 import { Periphery } from "../typechain/Periphery";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
+import { ShareHelper } from "../typechain/ShareHelper";
 
 import {
   calculateTick,
@@ -40,6 +42,7 @@ let factory: DefiEdgeStrategyFactory;
 let strategy: DefiEdgeStrategy;
 let periphery: Periphery;
 let oracle: UniswapV3OracleTest;
+let shareHelper: ShareHelper;
 
 describe("StrategyBase", () => {
   beforeEach(async () => {
@@ -69,10 +72,20 @@ describe("StrategyBase", () => {
       )
     );
 
+    // deploy sharehelper library
+    shareHelper = (await (
+      await ShareHelperLibrary
+    ).deploy()) as ShareHelper;
+    
+    const DefiEdgeStrategyFactoryF = await ethers.getContractFactory(
+      "DefiEdgeStrategyFactory", 
+      {
+        libraries: { ShareHelper: shareHelper.address },
+      }
+    );
+
     // deploy strategy factory
-    factory = (await (
-      await DefiEdgeStrategyFactoryFactory
-    ).deploy(signers[0].address)) as DefiEdgeStrategyFactory;
+    factory = (await DefiEdgeStrategyFactoryF.deploy(signers[0].address, uniswapV3Factory.address)) as DefiEdgeStrategyFactory;
 
     // create strategy
     await factory.createStrategy(pool.address, signers[0].address, [
@@ -260,7 +273,7 @@ describe("StrategyBase", () => {
     });
 
     it("should mint protocol fees", async () => {
-      await factory.changeProtocolFee("1000000");
+      await factory.changeFee("1000000");
       await factory.changeFeeTo(signers[1].address);
 
       await approve(strategy.address, signers[1]);
@@ -309,7 +322,7 @@ describe("StrategyBase", () => {
   describe("#changeFeeTo", async () => {
     it("should revert if operator is not calling", async () => {
       expect(strategy.connect(signers[1]).changeFee(1)).to.be.revertedWith(
-        "NO"
+        "N"
       );
     });
 

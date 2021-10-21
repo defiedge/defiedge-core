@@ -11,6 +11,7 @@ const PeripheryFactory = ethers.getContractFactory("Periphery");
 const UniswapV3OracleTestFactory = ethers.getContractFactory(
   "UniswapV3OracleTest"
 );
+const ShareHelperLibrary = ethers.getContractFactory("ShareHelper")
 
 import { TestERC20 } from "../typechain/TestERC20";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
@@ -19,6 +20,7 @@ import { DefiEdgeStrategy } from "../typechain/DefiEdgeStrategy";
 import { DefiEdgeStrategyFactory } from "../typechain/DefiEdgeStrategyFactory";
 import { Periphery } from "../typechain/Periphery";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
+import { ShareHelper } from "../typechain/ShareHelper";
 
 import {
   calculateTick,
@@ -40,6 +42,7 @@ let factory: DefiEdgeStrategyFactory;
 let strategy: DefiEdgeStrategy;
 let periphery: Periphery;
 let oracle: UniswapV3OracleTest;
+let shareHelper: ShareHelper;
 
 describe("DeFiEdgeStrategy", () => {
   beforeEach(async () => {
@@ -70,9 +73,19 @@ describe("DeFiEdgeStrategy", () => {
     );
 
     // deploy strategy factory
-    factory = (await (
-      await DefiEdgeStrategyFactoryFactory
-    ).deploy(signers[0].address)) as DefiEdgeStrategyFactory;
+    shareHelper = (await (
+      await ShareHelperLibrary
+    ).deploy()) as ShareHelper;
+    
+    const DefiEdgeStrategyFactoryF = await ethers.getContractFactory(
+      "DefiEdgeStrategyFactory", 
+      {
+        libraries: { ShareHelper: shareHelper.address },
+      }
+    );
+
+    // deploy strategy factory
+    factory = (await DefiEdgeStrategyFactoryF.deploy(signers[0].address, uniswapV3Factory.address)) as DefiEdgeStrategyFactory;
 
 
     // create strategy
@@ -307,13 +320,13 @@ describe("DeFiEdgeStrategy", () => {
     it("should transfer amount0 back to the user", async () => {
       await strategy.connect(signers[0]).burn("3452260981108611401314", 0, 0);
       const balanceAfter = await token0.balanceOf(signers[0].address);
-      expect("998499989999999999999999999").to.equal(balanceAfter.toString());
+      expect("948499999999999999999999999").to.equal(balanceAfter.toString());
     });
 
     it("should transfer amount1 back to the user", async () => {
       await strategy.connect(signers[0]).burn("3452260981108611401314", 0, 0);
       const balanceAfter = await token1.balanceOf(signers[0].address);
-      expect("998499989999999999999999999").to.equal(balanceAfter.toString());
+      expect("948499999999999999999999999").to.equal(balanceAfter.toString());
     });
 
     it("should emit burn event", async () => {

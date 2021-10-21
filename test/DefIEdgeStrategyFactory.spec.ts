@@ -11,6 +11,7 @@ const PeripheryFactory = ethers.getContractFactory("Periphery");
 const UniswapV3OracleTestFactory = ethers.getContractFactory(
   "UniswapV3OracleTest"
 );
+const ShareHelperLibrary = ethers.getContractFactory("ShareHelper")
 
 import { TestERC20 } from "../typechain/TestERC20";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
@@ -19,6 +20,7 @@ import { DefiEdgeStrategy } from "../typechain/DefiEdgeStrategy";
 import { DefiEdgeStrategyFactory } from "../typechain/DefiEdgeStrategyFactory";
 import { Periphery } from "../typechain/Periphery";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
+import { ShareHelper } from "../typechain/ShareHelper";
 
 import {
   calculateTick,
@@ -40,6 +42,7 @@ let factory: DefiEdgeStrategyFactory;
 let strategy: DefiEdgeStrategy;
 let periphery: Periphery;
 let oracle: UniswapV3OracleTest;
+let shareHelper: ShareHelper;
 
 describe("DefiEdgeStrategyFactory", () => {
   beforeEach(async () => {
@@ -69,10 +72,20 @@ describe("DefiEdgeStrategyFactory", () => {
       )
     );
 
+    // deploy sharehelper library
+    shareHelper = (await (
+      await ShareHelperLibrary
+    ).deploy()) as ShareHelper;
+    
+    const DefiEdgeStrategyFactoryF = await ethers.getContractFactory(
+      "DefiEdgeStrategyFactory", 
+      {
+        libraries: { ShareHelper: shareHelper.address },
+      }
+    );
+
     // deploy strategy factory
-    factory = (await (
-      await DefiEdgeStrategyFactoryFactory
-    ).deploy(signers[0].address)) as DefiEdgeStrategyFactory;
+    factory = (await DefiEdgeStrategyFactoryF.deploy(signers[0].address, uniswapV3Factory.address)) as DefiEdgeStrategyFactory;
 
     // create strategy
     await factory.createStrategy(pool.address, signers[0].address, [
@@ -140,13 +153,13 @@ describe("DefiEdgeStrategyFactory", () => {
     });
   });
 
-  describe("#changeProtocolFee", async () => {
+  describe("#changeFee", async () => {
     it("should be called by governance only", async () => {
-      expect(factory.connect(signers[1]).changeProtocolFee(10000000)).to.be
+      expect(factory.connect(signers[1]).changeFee(10000000)).to.be
         .reverted;
     });
     it("should change the protocol fee", async () => {
-      await factory.changeProtocolFee(1000000);
+      await factory.changeFee(1000000);
       expect(await factory.PROTOCOL_FEE()).to.equal(1000000);
     });
   });
@@ -192,17 +205,17 @@ describe("DefiEdgeStrategyFactory", () => {
     });
   });
 
-  describe("#allowAgain", async () => {
-    it("should be called by governance only", async () => {
-      expect(factory.connect(signers[1]).allowAgain(strategy.address)).to.be
-        .reverted;
-    });
-    it("should set boolean to false in denied mapping", async () => {
-      await factory.deny(strategy.address);
-      await factory.allowAgain(strategy.address);
-      expect(await factory.denied(strategy.address)).to.equal(false);
-    });
-  });
+  // describe("#allowAgain", async () => {
+  //   it("should be called by governance only", async () => {
+  //     expect(factory.connect(signers[1]).allowAgain(strategy.address)).to.be
+  //       .reverted;
+  //   });
+  //   it("should set boolean to false in denied mapping", async () => {
+  //     await factory.deny(strategy.address);
+  //     await factory.allowAgain(strategy.address);
+  //     expect(await factory.denied(strategy.address)).to.equal(false);
+  //   });
+  // });
 });
 
 async function approve(address: string, from: string | Signer | Provider) {
