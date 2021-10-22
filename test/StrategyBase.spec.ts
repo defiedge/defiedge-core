@@ -388,6 +388,63 @@ describe("StrategyBase", () => {
       expect(await strategy.tickLength()).to.equal(1);
     });
   });
+
+  describe("#claimFee", async () => {
+
+    beforeEach(async() => {
+
+        // set 1% fee
+        await strategy.changeFee("1000000");
+        await strategy.changeFeeTo(signers[2].address);
+  
+        await factory.changeFee("1000000");
+        await factory.changeFeeTo(signers[3].address);
+  
+        await approve(strategy.address, signers[1]);
+  
+        await strategy
+          .connect(signers[1])
+          .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
+
+    })
+
+    it("should mint accProtocolFee  & accManagementFee to feeTo address", async () => {
+
+      expect(await strategy.accManagementFee()).to.equal("34522609811086114013");
+
+      expect(await strategy.accProtocolFee()).to.equal("34522609811086114013");
+
+      let claimFee = await strategy.claimFee();
+
+      expect(claimFee).to.emit(strategy, "Transfer").withArgs("0x0000000000000000000000000000000000000000", signers[2].address, "34522609811086114013")
+      expect(claimFee).to.emit(strategy, "Transfer").withArgs("0x0000000000000000000000000000000000000000", signers[3].address, "34522609811086114013")
+
+    });
+
+    it("should update account balance after claimFee", async () => {
+
+      expect(await strategy.balanceOf(signers[2].address)).to.equal("0");
+      expect(await strategy.balanceOf(signers[3].address)).to.equal("0");
+
+      await strategy.claimFee();
+
+      expect(await strategy.balanceOf(signers[2].address)).to.equal("34522609811086114013");
+      expect(await strategy.balanceOf(signers[3].address)).to.equal("34522609811086114013");
+
+    });
+
+    it("should set accProtocolFee  & accManagementFee to zero after claiming fee", async () => {
+
+      expect(await strategy.accManagementFee()).to.equal("34522609811086114013");
+      expect(await strategy.accProtocolFee()).to.equal("34522609811086114013");
+
+      await strategy.claimFee();
+
+      expect(await strategy.accManagementFee()).to.equal("0");
+      expect(await strategy.accProtocolFee()).to.equal("0");
+
+    });
+  });
 });
 
 async function approve(address: string, from: string | Signer | Provider) {
