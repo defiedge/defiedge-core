@@ -294,7 +294,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
     }
 
     // TODO: Make this function work correctly
-    function emergencyBurn(
+    function emergencyWithdraw(
         int24 tickLower,
         int24 tickUpper,
         uint128 liquidity
