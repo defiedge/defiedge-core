@@ -11,6 +11,7 @@ const PeripheryFactory = ethers.getContractFactory("Periphery");
 const UniswapV3OracleTestFactory = ethers.getContractFactory(
   "UniswapV3OracleTest"
 );
+const ShareHelperLibrary = ethers.getContractFactory("ShareHelper")
 
 const LiquidityHelperTestFactory = ethers.getContractFactory("LiquidityHelperTest");
 
@@ -22,6 +23,7 @@ import { DefiEdgeStrategyFactory } from "../typechain/DefiEdgeStrategyFactory";
 import { Periphery } from "../typechain/Periphery";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
 import { LiquidityHelperTest } from "../typechain/LiquidityHelperTest";
+import { ShareHelper } from "../typechain/ShareHelper";
 
 import {
   calculateTick,
@@ -44,6 +46,7 @@ let strategy: DefiEdgeStrategy;
 let periphery: Periphery;
 let oracle: UniswapV3OracleTest;
 let liquidityHelper: LiquidityHelperTest;
+let shareHelper: ShareHelper;
 
 describe("UniswapPoolActions", () => {
   beforeEach(async () => {
@@ -73,10 +76,20 @@ describe("UniswapPoolActions", () => {
       )
     );
 
+    // deploy sharehelper library
+    shareHelper = (await (
+      await ShareHelperLibrary
+    ).deploy()) as ShareHelper;
+    
+    const DefiEdgeStrategyFactoryF = await ethers.getContractFactory(
+      "DefiEdgeStrategyFactory", 
+      {
+        libraries: { ShareHelper: shareHelper.address },
+      }
+    );
+    
     // deploy strategy factory
-    factory = (await (
-      await DefiEdgeStrategyFactoryFactory
-    ).deploy(signers[0].address)) as DefiEdgeStrategyFactory;
+    factory = (await DefiEdgeStrategyFactoryF.deploy(signers[0].address, uniswapV3Factory.address)) as DefiEdgeStrategyFactory;
 
     liquidityHelper = (await (
       await LiquidityHelperTestFactory
