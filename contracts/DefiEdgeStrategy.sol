@@ -142,6 +142,12 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         unused0 = IERC20(pool.token0()).balanceOf(address(this));
         unused1 = IERC20(pool.token1()).balanceOf(address(this));
 
+        // 1000
+        // 20% share
+        // 5000 p1, 200 fees
+        // 5000 p2, 100 fees
+        // unused 500 + 300 = 800
+
         // burn liquidity based on shares from existing ticks
         if (ticks.length != 0) {
             for (uint256 i = 0; i < ticks.length; i++) {

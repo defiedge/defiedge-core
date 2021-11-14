@@ -11,6 +11,9 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
 
     event ChangeFee(uint256 tier);
     event ChangeOperator(address indexed operator);
+    event ChangeLimit(uint256 limit);
+    event ChangeAllowedDeviation(uint256 deviation);
+    event ClaimFee(uint256 managerFee, uint256 protocolFee);
 
     uint256 public managementFee;
     address public feeTo;
@@ -32,6 +35,10 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
 
     // when true emergency functions will be frozen forever
     bool public freezeEmergency;
+
+    // allowed price difference for the oracle and the current price
+    // 1e8 is 100%
+    uint256 public allowedDeviation;
 
     struct Tick {
         uint256 amount0;
@@ -181,6 +188,10 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
         length = ticks.length;
     }
 
+    /**
+     * @notice Change strategy limit in terms of share
+     * @param _limit Number of shares the strategy can mint, 0 means unlimited
+     */
     function changeLimit(uint256 _limit) external onlyOperator {
         limit = _limit;
     }
@@ -189,6 +200,9 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
      * @notice Claims the fee for protocol and management
      */
     function claimFee() external {
+        uint256 protocolFee = accProtocolFee;
+        uint256 managementFee = accManagementFee;
+
         if (accProtocolFee > 0) {
             _mint(factory.feeTo(), accProtocolFee);
             accProtocolFee = 0;
@@ -198,9 +212,26 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
             _mint(feeTo, accManagementFee);
             accManagementFee = 0;
         }
+
+        emit ClaimFee(managerFee, protocolFee);
     }
 
+    /**
+     * @notice Freeze emergency function, can be done only once
+     */
     function freezeEmergencyFunctions() external onlyGovernance {
         freezeEmergency = true;
+    }
+
+    /**
+     * @notice Changes allowed price deviation
+     * @param _allowedDeviation New allowed price deviation, 1e8 means 100%
+     */
+    function changeAllowedDeviation(uint256 _allowedDeviation)
+        external
+        onlyGovernance
+    {
+        allowedDeviation = _allowedDeviation;
+        emit ChangeAllowedDeviation(_allowedDeviation);
     }
 }
