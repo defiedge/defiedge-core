@@ -123,7 +123,7 @@ contract UniswapPoolActions is
      * @notice Burns all the liquidity and collects fees
      * @param _ticks Array of the ticks
      */
-    function burnAllLiquidity(Tick[] memory _ticks) internal {
+    function burnAllLiquidity(Tick[] memory _ticks) internal hasDeviation {
         uint256 totalCollected0;
         uint256 totalCollected1;
 

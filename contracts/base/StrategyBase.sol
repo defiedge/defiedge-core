@@ -37,7 +37,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
     bool public freezeEmergency;
 
     // allowed price difference for the oracle and the current price
-    // 1e8 is 100%
+    // 1e18 is 1%
     uint256 public allowedDeviation;
 
     struct Tick {
@@ -92,6 +92,17 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
         // check if strategy is in denylist
         require(!factory.denied(address(this)), "DL");
 
+        _;
+    }
+
+    /**
+     * @dev checks if the pool is manipulated
+     */
+    modifier hasDeviation() {
+        require(
+            !ShareHelper.hasDeviation(address(pool), allowedDeviation),
+            "D"
+        );
         _;
     }
 
@@ -154,10 +165,10 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
         emit ChangeFee(managementFee);
     }
 
-    // /**
-    //  * @notice changes address where the operator is receiving the fee
-    //  * @param _newFeeTo New address where fees should be received
-    //  */
+    /**
+     * @notice changes address where the operator is receiving the fee
+     * @param _newFeeTo New address where fees should be received
+     */
     function changeFeeTo(address _newFeeTo) external onlyOperator {
         feeTo = _newFeeTo;
     }
@@ -201,7 +212,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
      */
     function claimFee() external {
         uint256 protocolFee = accProtocolFee;
-        uint256 managementFee = accManagementFee;
+        uint256 managerFee = accManagementFee;
 
         if (accProtocolFee > 0) {
             _mint(factory.feeTo(), accProtocolFee);
@@ -225,7 +236,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
 
     /**
      * @notice Changes allowed price deviation
-     * @param _allowedDeviation New allowed price deviation, 1e8 means 100%
+     * @param _allowedDeviation New allowed price deviation, 1e18 is 100%
      */
     function changeAllowedDeviation(uint256 _allowedDeviation)
         external
