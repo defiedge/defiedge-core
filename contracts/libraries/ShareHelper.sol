@@ -18,6 +18,8 @@ import "../base/StrategyBase.sol";
 library ShareHelper {
     using SafeMath for uint256;
 
+    uint256 public constant BASE = 1e18;
+
     struct Tick {
         uint256 amount0;
         uint256 amount1;
@@ -31,7 +33,7 @@ library ShareHelper {
      * @param _period Seconds to query data from
      */
     function getTick(address _pool, uint32 _period)
-        internal
+        public
         view
         returns (int24 timeWeightedAverageTick)
     {
@@ -60,7 +62,7 @@ library ShareHelper {
      * @return price Price of the assets calculated from Uniswap V3 Oracle
      */
     function consult(address _pool, uint32 _period)
-        internal
+        public
         view
         returns (uint256 price)
     {
@@ -70,7 +72,7 @@ library ShareHelper {
 
         uint256 ratioX192 = uint256(sqrtRatioX96).mul(sqrtRatioX96);
 
-        price = FullMath.mulDiv(ratioX192, 1e18, 1 << 192);
+        price = FullMath.mulDiv(ratioX192, BASE, 1 << 192);
     }
 
     /**
@@ -91,36 +93,68 @@ library ShareHelper {
         uint256 _totalShares
     ) public view returns (uint256 share) {
         uint256 totalShares = _totalShares;
-        uint256 price = consult(_pool, 60);
+        uint256 price = consult(_pool, 1800);
 
         if (totalShares > 0) {
-            uint256 numerator = (_amount0.mul(price)).add(_amount1.mul(1e18));
+            uint256 numerator = (_amount0.mul(price)).add(_amount1.mul(BASE));
             uint256 denominator = (_totalAmount0.mul(price)).add(
-                _totalAmount1.mul(1e18)
+                _totalAmount1.mul(BASE)
             );
             share = totalShares.mul(numerator).div(denominator);
         } else {
             // mint initial shares based on threshold of 10000
-            uint256 threshold = uint256(10000).mul(1e18);
-            if (price >= 1e18) {
+            uint256 threshold = uint256(10000).mul(BASE);
+            if (price >= BASE) {
                 uint256 m;
                 m = 1;
                 if (price >= threshold) {
                     m = (price).div(threshold);
-                    share = (_amount0.mul(price).add(_amount1.mul(1e18))).div(
-                        m.mul(1e18)
+                    share = (_amount0.mul(price).add(_amount1.mul(BASE))).div(
+                        m.mul(BASE)
                     );
                 } else {
                     m = 1;
                     if (price.mul(threshold) <= 1e36) {
                         m = uint256(1e36).div(price.mul(threshold));
                     }
-                    share = (_amount0.mul(price).add(_amount1.mul(1e18))).div(
+                    share = (_amount0.mul(price).add(_amount1.mul(BASE))).div(
                         price.mul(m)
                     );
                 }
             }
             share = Math.max(_amount0, _amount1);
         }
+    }
+
+    /**
+     * @notice Checks if the the current price has deviation from the pool price
+     * @param _pool Address of the pool
+     * @param _allowedDeviation Allowed deviation for the pool
+     */
+    function hasDeviation(address _pool, uint256 _allowedDeviation)
+        public
+        view
+        returns (bool)
+    {
+        uint256 price = consult(_pool, 1800);
+        IUniswapV3Pool pool = IUniswapV3Pool(_pool);
+
+        (uint160 sqrtPriceX96, , , , , , ) = pool.slot0();
+        uint256 priceX192 = uint256(sqrtPriceX96).mul(sqrtPriceX96);
+        uint256 currentPrice = FullMath.mulDiv(priceX192, BASE, 1 << 192);
+
+        uint256 diff;
+
+        diff = currentPrice.mul(BASE).div(price);
+
+        // check if the price is above deviation
+        if (
+            diff > (BASE.add(_allowedDeviation)) ||
+            diff < (BASE.sub(_allowedDeviation))
+        ) {
+            return true;
+        }
+
+        return false;
     }
 }
