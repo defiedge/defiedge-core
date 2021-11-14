@@ -107,7 +107,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
     }
 
     function getTotalSupply() internal returns (uint256) {
-        return getTotalSupply().add(accManagementFee);
+        return totalSupply().add(accManagementFee);
     }
 
     /**
