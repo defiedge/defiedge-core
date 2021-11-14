@@ -219,7 +219,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         emit Rebalance(ticks);
     }
 
-    function redeploy(Tick[] memory _ticks) internal {
+    function redeploy(Tick[] memory _ticks) internal hasDeviation {
         // set hold false
         onHold = false;
         // delete ticks
@@ -285,7 +285,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
     /**
      * @notice Holds the funds
      */
-    function hold() external onlyOperator {
+    function hold() external onlyOperator hasDeviation {
         onHold = true;
         burnAllLiquidity(ticks);
         delete ticks;
