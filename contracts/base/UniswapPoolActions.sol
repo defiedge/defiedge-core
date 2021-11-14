@@ -109,9 +109,6 @@ contract UniswapPoolActions is
             type(uint128).max
         );
 
-        collect0 = tokensBurned0;
-        collect1 = tokensBurned1;
-
         emit FeesClaimed(
             msg.sender,
             collect0 > tokensBurned0 ? uint256(collect0).sub(tokensBurned0) : 0,
@@ -123,7 +120,7 @@ contract UniswapPoolActions is
      * @notice Burns all the liquidity and collects fees
      * @param _ticks Array of the ticks
      */
-    function burnAllLiquidity(Tick[] memory _ticks) internal hasDeviation {
+    function burnAllLiquidity(Tick[] memory _ticks) internal {
         uint256 totalCollected0;
         uint256 totalCollected1;
 
@@ -290,24 +287,15 @@ contract UniswapPoolActions is
                     currentLiquidity
                 );
 
-            uint128 tokensOwed0;
-            uint128 tokensOwed1;
             // update fees earned in Uniswap pool
             // Uniswap recalculates the fees and updates the variables when amount is passed as 0
             if (currentLiquidity > 0) {
                 pool.burn(tick.tickLower, tick.tickUpper, 0);
-
-                (, , , tokensOwed0, tokensOwed1) = pool.positions(positionKey);
-
-                // collect fees
-                pool.collect(
-                    address(this),
-                    tick.tickLower,
-                    tick.tickUpper,
-                    type(uint128).max,
-                    type(uint128).max
-                );
             }
+
+            (, , , uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(
+                positionKey
+            );
 
             // add fees
             totalFee0 = totalFee0.add(tokensOwed0);
