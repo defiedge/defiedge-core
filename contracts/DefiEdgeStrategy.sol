@@ -252,13 +252,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         bool _zeroForOne,
         int256 _amount,
         uint160 _sqrtPriceLimitX96
-    )
-        external
-        onlyOperator
-        isValidStrategy
-        hasDeviation
-        returns (uint256 amountOut)
-    {
+    ) external onlyOperator isValidStrategy returns (uint256 amountOut) {
         if (ticks.length > 0) {
             onHold = true;
             // burn all liquidity

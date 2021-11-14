@@ -38,7 +38,7 @@ library LiquidityHelper {
         int24 _tickUpper,
         uint256 _amount0,
         uint256 _amount1
-    ) public view returns (uint128 liquidity) {
+    ) internal view returns (uint128 liquidity) {
         IUniswapV3Pool pool = IUniswapV3Pool(_pool);
 
         // get sqrtRatios required to calculate liquidity
@@ -66,7 +66,7 @@ library LiquidityHelper {
         int24 _tickLower,
         int24 _tickUpper,
         uint128 _liquidity
-    ) public view returns (uint256 amount0, uint256 amount1) {
+    ) internal view returns (uint256 amount0, uint256 amount1) {
         IUniswapV3Pool pool = IUniswapV3Pool(_pool);
 
         // get sqrtRatios required to calculate liquidity
@@ -80,4 +80,40 @@ library LiquidityHelper {
             _liquidity
         );
     }
+
+    // function getPosition(
+    //     address _pool,
+    //     address _strategy,
+    //     int24 _tickLower,
+    //     int24 _tickUpper
+    // )
+    //     internal
+    //     view
+    //     returns (
+    //         uint128 currentLiquidity,
+    //         uint256 tokensOwed0,
+    //         uint256 tokensOwed1,
+    //         uint256 position0,
+    //         uint256 position1
+    //     )
+    // {
+    //     IUniswapV3Pool pool = IUniswapV3Pool(_pool);
+
+    //     bytes32 positionKey = PositionKey.compute(
+    //         _strategy,
+    //         _tickLower,
+    //         _tickUpper
+    //     );
+
+    //     (currentLiquidity, , , , ) = pool.positions(positionKey);
+
+    //     (, , , tokensOwed0, tokensOwed1) = pool.positions(positionKey);
+
+    //     (position0, position1) = LiquidityHelper.getAmountsForLiquidity(
+    //         address(pool),
+    //         _tickLower,
+    //         _tickUpper,
+    //         currentLiquidity
+    //     );
+    // }
 }
