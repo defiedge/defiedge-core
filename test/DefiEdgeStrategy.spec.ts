@@ -4,14 +4,12 @@ import chai from "chai";
 
 const TestERC20Factory = ethers.getContractFactory("TestERC20");
 const UniswapV3FactoryFactory = ethers.getContractFactory("UniswapV3Factory");
-const DefiEdgeStrategyFactoryFactory = ethers.getContractFactory(
-  "DefiEdgeStrategyFactory"
-);
-const PeripheryFactory = ethers.getContractFactory("Periphery");
+
 const UniswapV3OracleTestFactory = ethers.getContractFactory(
   "UniswapV3OracleTest"
 );
 const ShareHelperLibrary = ethers.getContractFactory("ShareHelper")
+const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper")
 
 import { TestERC20 } from "../typechain/TestERC20";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
@@ -21,6 +19,7 @@ import { DefiEdgeStrategyFactory } from "../typechain/DefiEdgeStrategyFactory";
 import { Periphery } from "../typechain/Periphery";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
 import { ShareHelper } from "../typechain/ShareHelper";
+import { LiquidityHelper } from "../typechain/LiquidityHelper";
 
 import {
   calculateTick,
@@ -43,6 +42,7 @@ let strategy: DefiEdgeStrategy;
 let periphery: Periphery;
 let oracle: UniswapV3OracleTest;
 let shareHelper: ShareHelper;
+let liquidityHelper: LiquidityHelper;
 
 describe("DeFiEdgeStrategy", () => {
   beforeEach(async () => {
@@ -76,11 +76,15 @@ describe("DeFiEdgeStrategy", () => {
     shareHelper = (await (
       await ShareHelperLibrary
     ).deploy()) as ShareHelper;
+
+    liquidityHelper = (await (
+      await LiquidityHelperLibrary
+    ).deploy()) as LiquidityHelper;
     
     const DefiEdgeStrategyFactoryF = await ethers.getContractFactory(
       "DefiEdgeStrategyFactory", 
       {
-        libraries: { ShareHelper: shareHelper.address },
+        libraries: { ShareHelper: shareHelper.address, LiquidityHelper: liquidityHelper.address },
       }
     );
 
@@ -107,6 +111,14 @@ describe("DeFiEdgeStrategy", () => {
     // // initialize strategy
     // await strategy.initialize();
 
+    // set deviation in strategy
+    await strategy.changeAllowedDeviation("10000000000000000") // 1%
+
+    const PeripheryFactory = ethers.getContractFactory("Periphery",
+    {
+      libraries: { LiquidityHelper: liquidityHelper.address }
+    });
+
     periphery = (await (await PeripheryFactory).deploy()) as Periphery;
 
     oracle = (await (
@@ -131,14 +143,14 @@ describe("DeFiEdgeStrategy", () => {
     );
 
     // increase cardinary
-    await pool.increaseObservationCardinalityNext(65);
+    await pool.increaseObservationCardinalityNext(150);
 
     // swap tokens
     const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
 
     const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9;
 
-    await ethers.provider.send("evm_increaseTime", [65]);
+    await ethers.provider.send("evm_increaseTime", [1801]);
 
     await periphery.swap(
       pool.address,
@@ -326,7 +338,7 @@ describe("DeFiEdgeStrategy", () => {
     it("should transfer amount1 back to the user", async () => {
       await strategy.connect(signers[0]).burn("3452260981108611401314", 0, 0);
       const balanceAfter = await token1.balanceOf(signers[0].address);
-      expect("948499999999999999999999999").to.equal(balanceAfter.toString());
+      expect("998499989999999999999999999").to.equal(balanceAfter.toString());
     });
 
     it("should emit burn event", async () => {
