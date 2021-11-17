@@ -4,14 +4,12 @@ import chai from "chai";
 
 const TestERC20Factory = ethers.getContractFactory("TestERC20");
 const UniswapV3FactoryFactory = ethers.getContractFactory("UniswapV3Factory");
-const DefiEdgeStrategyFactoryFactory = ethers.getContractFactory(
-  "DefiEdgeStrategyFactory"
-);
-const PeripheryFactory = ethers.getContractFactory("Periphery");
+
 const UniswapV3OracleTestFactory = ethers.getContractFactory(
   "UniswapV3OracleTest"
 );
 const ShareHelperLibrary = ethers.getContractFactory("ShareHelper")
+const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper")
 
 import { TestERC20 } from "../typechain/TestERC20";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
@@ -21,6 +19,7 @@ import { DefiEdgeStrategyFactory } from "../typechain/DefiEdgeStrategyFactory";
 import { Periphery } from "../typechain/Periphery";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
 import { ShareHelper } from "../typechain/ShareHelper";
+import { LiquidityHelper } from "../typechain/LiquidityHelper";
 
 import {
   calculateTick,
@@ -43,6 +42,7 @@ let strategy: DefiEdgeStrategy;
 let periphery: Periphery;
 let oracle: UniswapV3OracleTest;
 let shareHelper: ShareHelper;
+let liquidityHelper: LiquidityHelper;
 
 describe("StrategyBase", () => {
   beforeEach(async () => {
@@ -76,11 +76,15 @@ describe("StrategyBase", () => {
     shareHelper = (await (
       await ShareHelperLibrary
     ).deploy()) as ShareHelper;
-    
+                
+    liquidityHelper = (await (
+      await LiquidityHelperLibrary
+    ).deploy()) as LiquidityHelper;
+
     const DefiEdgeStrategyFactoryF = await ethers.getContractFactory(
       "DefiEdgeStrategyFactory", 
       {
-        libraries: { ShareHelper: shareHelper.address },
+        libraries: { ShareHelper: shareHelper.address, LiquidityHelper: liquidityHelper.address },
       }
     );
 
@@ -102,6 +106,14 @@ describe("StrategyBase", () => {
       "DefiEdgeStrategy",
       await factory.strategyByIndex(await factory.totalIndex())
     )) as DefiEdgeStrategy;
+
+    // set deviation in strategy
+    await strategy.changeAllowedDeviation("10000000000000000") // 1%
+
+    const PeripheryFactory = ethers.getContractFactory("Periphery",
+    {
+      libraries: { LiquidityHelper: liquidityHelper.address }
+    });
 
     periphery = (await (await PeripheryFactory).deploy()) as Periphery;
 
@@ -127,14 +139,14 @@ describe("StrategyBase", () => {
     );
 
     // increase cardinary
-    await pool.increaseObservationCardinalityNext(65);
+    await pool.increaseObservationCardinalityNext(150);
 
     // swap tokens
     const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
 
     const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9;
 
-    await ethers.provider.send("evm_increaseTime", [65]);
+    await ethers.provider.send("evm_increaseTime", [1801]);
 
     await periphery.swap(
       pool.address,
@@ -245,6 +257,54 @@ describe("StrategyBase", () => {
     });
   });
 
+  describe("#hasDeviation modifier", async () => {
+    
+    beforeEach("add liquidity", async () => {
+
+      // set deviation in strategy
+      await strategy.changeAllowedDeviation("100000000000000") // 0.01% - setting it to very low for tests
+
+      await strategy.mint(
+        expandTo18Decimals(100),
+        expandTo18Decimals(350000),
+        0,
+        0,
+        0
+      );
+    });
+
+    it("should revert while redeploying", async () => {
+      
+      await expect(strategy.rebalance([
+        {
+          amount0: expandTo18Decimals(1),
+          amount1: expandTo18Decimals(1),
+          tickLower: calculateTick(2500, 60),
+          tickUpper: calculateTick(3600, 60),
+        },
+      ])).to.be.revertedWith('D');
+
+    })
+
+    it("should revert while swap", async () => {
+      
+      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
+      const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.1;
+      await expect(strategy.swap(
+        false,
+        expandTo18Decimals(0.0001),
+        expandToString(sqrtPriceLimitX96)
+      )).to.be.revertedWith('D');
+
+    })
+
+    it("should revert while hold", async () => {
+      
+      await expect(strategy.hold()).to.be.revertedWith('D');
+
+    })
+
+  })
   describe("#issueShare", async () => {
     it("should mint shares to user", async () => {
       await approve(strategy.address, signers[1]);

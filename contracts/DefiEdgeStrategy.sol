@@ -38,6 +38,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
     ) validTicks(_ticks) {
         factory = IStrategyFactory(_factory);
         pool = IUniswapV3Pool(_pool);
+        allowedDeviation = 5 * 1e18;
         require(
             IUniswapV3Factory(factory.uniswapV3Factory()).getPool(
                 pool.token0(),
