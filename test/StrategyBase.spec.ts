@@ -257,6 +257,54 @@ describe("StrategyBase", () => {
     });
   });
 
+  describe("#hasDeviation modifier", async () => {
+    
+    beforeEach("add liquidity", async () => {
+
+      // set deviation in strategy
+      await strategy.changeAllowedDeviation("100000000000000") // 0.01% - setting it to very low for tests
+
+      await strategy.mint(
+        expandTo18Decimals(100),
+        expandTo18Decimals(350000),
+        0,
+        0,
+        0
+      );
+    });
+
+    it("should revert while redeploying", async () => {
+      
+      await expect(strategy.rebalance([
+        {
+          amount0: expandTo18Decimals(1),
+          amount1: expandTo18Decimals(1),
+          tickLower: calculateTick(2500, 60),
+          tickUpper: calculateTick(3600, 60),
+        },
+      ])).to.be.revertedWith('D');
+
+    })
+
+    it("should revert while swap", async () => {
+      
+      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
+      const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.1;
+      await expect(strategy.swap(
+        false,
+        expandTo18Decimals(0.0001),
+        expandToString(sqrtPriceLimitX96)
+      )).to.be.revertedWith('D');
+
+    })
+
+    it("should revert while hold", async () => {
+      
+      await expect(strategy.hold()).to.be.revertedWith('D');
+
+    })
+
+  })
   describe("#issueShare", async () => {
     it("should mint shares to user", async () => {
       await approve(strategy.address, signers[1]);
