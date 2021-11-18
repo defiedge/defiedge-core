@@ -30,7 +30,7 @@ library OracleLibrary {
      * @notice _pool Address of the Uniswap V3 pool
      */
     function getUniswapPrice(address _pool)
-        internal
+        public
         view
         returns (uint256 price)
     {
@@ -61,7 +61,7 @@ library OracleLibrary {
         address _registry,
         address _base,
         address _quote
-    ) internal view returns (uint256 price) {
+    ) public view returns (uint256 price) {
         FeedRegistryInterface registry = FeedRegistryInterface(_registry);
         (, int256 _price, , , ) = registry.latestRoundData(_base, _quote);
 

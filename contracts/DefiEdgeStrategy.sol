@@ -163,7 +163,8 @@ contract DefiEdgeStrategy is UniswapPoolActions {
                 (amount0, amount1, fee0, fee1) = burnLiquidity(
                     tick.tickLower,
                     tick.tickUpper,
-                    _shares
+                    _shares,
+                    0
                 );
 
                 // add to total amounts
@@ -179,6 +180,8 @@ contract DefiEdgeStrategy is UniswapPoolActions {
 
                 unused0 = unused0.add(fee0);
                 unused1 = unused1.add(fee1);
+
+                emit FeesClaimed(msg.sender, fee0, fee1);
             }
         }
 

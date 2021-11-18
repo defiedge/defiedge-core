@@ -4,8 +4,8 @@ pragma solidity =0.7.6;
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "../interfaces/IStrategyFactory.sol";
 
+import "../interfaces/IStrategyFactory.sol";
 import "../libraries/ShareHelper.sol";
 import "../libraries/OracleLibrary.sol";
 

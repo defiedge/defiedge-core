@@ -19,6 +19,7 @@ interface IStrategy {
     function initialized() external view returns (bool);
 
     function tickLength() external view returns (uint256);
+
     /// if this variable is present, rebalance will swap the amount and redeploy
     /// into newly provided ranges
     function swapAmount() external view returns (uint256);
@@ -42,4 +43,11 @@ interface IStrategy {
     /// slippage 1e6 means 100%
     /// allowed price slippage on the value of root p
     function allowedPriceSlippage() external view returns (uint256);
+
+    // events
+    event Mint(address user, uint256 share, uint256 amount0, uint256 amount1);
+    event Burn(address user, uint256 share, uint256 amount0, uint256 amount1);
+    event Swap(uint256 amountIn, uint256 amountOut, bool zeroToOne);
+    event Hold();
+    event Rebalance(Tick[] ticks);
 }

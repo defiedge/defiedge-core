@@ -4,6 +4,7 @@ import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-ganache";
 require("dotenv").config();
+import "hardhat-contract-sizer";
 
 const INFURA_KEY = process.env.INFURA_KEY || "1"; // for coverage
 const PRIVATE_KEY =

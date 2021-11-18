@@ -79,7 +79,8 @@ contract UniswapPoolActions is
     function burnLiquidity(
         int24 _tickLower,
         int24 _tickUpper,
-        uint256 _shares
+        uint256 _shares,
+        uint128 _currentLiquidity
     )
         internal
         returns (
@@ -91,20 +92,29 @@ contract UniswapPoolActions is
     {
         uint256 tokensBurned0;
         uint256 tokensBurned1;
+        uint128 currentLiquidity;
 
-        (uint128 currentLiquidity, , , , ) = pool.positions(
-            PositionKey.compute(address(this), _tickLower, _tickUpper)
-        );
-
-        if (currentLiquidity > 0) {
-            uint256 liquidity = uint256(currentLiquidity).mul(_shares).div(
-                getTotalSupply()
+        if (_shares > 0) {
+            (currentLiquidity, , , , ) = pool.positions(
+                PositionKey.compute(address(this), _tickLower, _tickUpper)
             );
 
+            if (currentLiquidity > 0) {
+                uint256 liquidity = uint256(currentLiquidity).mul(_shares).div(
+                    getTotalSupply()
+                );
+
+                (tokensBurned0, tokensBurned1) = pool.burn(
+                    _tickLower,
+                    _tickUpper,
+                    liquidity.toUint128()
+                );
+            }
+        } else {
             (tokensBurned0, tokensBurned1) = pool.burn(
                 _tickLower,
                 _tickUpper,
-                liquidity.toUint128()
+                _currentLiquidity
             );
         }
 
@@ -126,8 +136,6 @@ contract UniswapPoolActions is
 
         collect0 = tokensBurned0;
         collect1 = tokensBurned1;
-
-        emit FeesClaimed(msg.sender, fee0, fee1);
     }
 
     /**
@@ -154,23 +162,14 @@ contract UniswapPoolActions is
 
             uint256 tokensBurned0;
             uint256 tokensBurned1;
+            uint256 collect0;
+            uint256 collect1;
 
-            // burn liquidity
-            if (currentLiquidity > 0) {
-                (tokensBurned0, tokensBurned1) = pool.burn(
-                    tick.tickLower,
-                    tick.tickUpper,
-                    currentLiquidity
-                );
-            }
-
-            // collect fees
-            (uint256 collect0, uint256 collect1) = pool.collect(
-                address(this),
+            (tokensBurned0, tokensBurned0, collect0, collect1) = burnLiquidity(
                 tick.tickLower,
                 tick.tickUpper,
-                type(uint128).max,
-                type(uint128).max
+                0,
+                currentLiquidity
             );
 
             totalBurned0 = totalBurned0.add(tokensBurned0);
@@ -272,13 +271,8 @@ contract UniswapPoolActions is
             uint256 totalFee1
         )
     {
-        // get balances of amount0 and amount1
         amount0 = IERC20(pool.token0()).balanceOf(address(this));
         amount1 = IERC20(pool.token1()).balanceOf(address(this));
-
-        uint256 totalAmount0;
-        uint256 totalAmount1;
-
         // get fees accumulated in each tick
         for (uint256 i = 0; i < ticks.length; i++) {
             Tick memory tick = ticks[i];
@@ -292,23 +286,22 @@ contract UniswapPoolActions is
             // get current liquidity
             (uint128 currentLiquidity, , , , ) = pool.positions(positionKey);
 
-            // calculate current positions in the pool from currentLiquidity
-            (uint256 position0, uint256 position1) = LiquidityHelper
-                .getAmountsForLiquidity(
-                    address(pool),
-                    tick.tickLower,
-                    tick.tickUpper,
-                    currentLiquidity
-                );
-
-            uint128 tokensOwed0;
-            uint128 tokensOwed1;
-            // update fees earned in Uniswap pool
-            // Uniswap recalculates the fees and updates the variables when amount is passed as 0
             if (currentLiquidity > 0) {
+                // calculate current positions in the pool from currentLiquidity
+                (uint256 position0, uint256 position1) = LiquidityHelper
+                    .getAmountsForLiquidity(
+                        address(pool),
+                        tick.tickLower,
+                        tick.tickUpper,
+                        currentLiquidity
+                    );
+
+                // update fees earned in Uniswap pool
+                // Uniswap recalculates the fees and updates the variables when amount is passed as 0
                 pool.burn(tick.tickLower, tick.tickUpper, 0);
 
-                (, , , tokensOwed0, tokensOwed1) = pool.positions(positionKey);
+                (, , , uint256 tokensOwed0, uint256 tokensOwed1) = pool
+                    .positions(positionKey);
 
                 // collect fees
                 pool.collect(
@@ -318,18 +311,13 @@ contract UniswapPoolActions is
                     type(uint128).max,
                     type(uint128).max
                 );
+
+                totalFee0 = totalFee0.add(tokensOwed0);
+                totalFee1 = totalFee1.add(tokensOwed1);
+
+                amount0 = amount0.add(tokensOwed0).add(position0);
+                amount1 = amount1.add(tokensOwed1).add(position1);
             }
-
-            // add fees
-            totalFee0 = totalFee0.add(tokensOwed0);
-            totalFee1 = totalFee1.add(tokensOwed1);
-
-            // add fees to the amounts
-            totalAmount0 = totalAmount0.add(tokensOwed0).add(position0);
-            totalAmount1 = totalAmount1.add(tokensOwed1).add(position1);
         }
-
-        amount0 = amount0.add(totalAmount0);
-        amount1 = amount1.add(totalAmount1);
     }
 }
