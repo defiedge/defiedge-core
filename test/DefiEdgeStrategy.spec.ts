@@ -80,13 +80,6 @@ describe("DeFiEdgeStrategy", () => {
       )
     );
 
-    console.log(
-      encodePriceSqrt(
-        expandTo18Decimals(50000000),
-        expandTo18Decimals(150000000000)
-      )
-    );
-
     // deploy strategy factory
     shareHelper = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
 
@@ -99,13 +92,11 @@ describe("DeFiEdgeStrategy", () => {
       await OracleLibraryLibrary
     ).deploy()) as OracleLibrary;
 
-    console.log("token0 from tests", token0.address);
-
     chainlinkRegistry = (await (
       await ChainlinkRegistryMockFactory
     ).deploy(pool.token0(), pool.token1())) as ChainlinkRegistryMock;
 
-    await chainlinkRegistry.setDecimals(18);
+    await chainlinkRegistry.setDecimals(8);
     await chainlinkRegistry.setAnswer(
       expandTo18Decimals(3000),
       expandTo18Decimals(1)
@@ -404,6 +395,23 @@ describe("DeFiEdgeStrategy", () => {
       await mint(signers[1]);
     });
 
+    it("should revert there is price difference", async () => {
+      await chainlinkRegistry.setAnswer(
+        expandTo18Decimals(300),
+        expandTo18Decimals(0.01)
+      );
+      expect(
+        strategy.connect(signers[1]).rebalance([
+          {
+            amount0: expandTo18Decimals(0.001),
+            amount1: expandTo18Decimals(0.001),
+            tickLower: "60",
+            tickUpper: "60",
+          },
+        ])
+      ).to.be.reverted;
+    });
+
     it("should revert if caller is not operator", async () => {
       expect(
         strategy.connect(signers[1]).rebalance([
@@ -417,7 +425,7 @@ describe("DeFiEdgeStrategy", () => {
       ).to.be.reverted;
     });
 
-    it("should redploy when funds are on hold", async () => {
+    it("should redeploy when funds are on hold", async () => {
       await strategy.hold();
 
       await strategy.rebalance([

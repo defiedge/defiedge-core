@@ -16,8 +16,6 @@ import "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
 
 import "@openzeppelin/contracts/math/Math.sol";
 
-import "hardhat/console.sol";
-
 interface IERC20Minimal {
     function decimals() external view returns (uint256);
 }
@@ -74,7 +72,7 @@ library OracleLibrary {
     }
 
     /**
-     * @notice Gets price in USD
+     * @notice Gets price in USD, if USD feed is not available use ETH feed
      * @param _registry Address of the Chainlink registry
      * @param _token the token we want to convert into USD
      * @param _isBase if the token supports base as USD or requires conversion from ETH
@@ -115,20 +113,10 @@ library OracleLibrary {
     ) public view returns (bool) {
         IUniswapV3Pool pool = IUniswapV3Pool(_pool);
 
-        console.log("price from the pool", getUniswapPrice(_pool));
-
-        console.log("token0 from contract", pool.token0());
-
         // get price of token0 Uniswap and convert it to USD
         uint256 uniswapPriceInUSD = getUniswapPrice(_pool)
             .mul(getPriceInUSD(_registry, pool.token1(), _usdAsBase[1]))
             .div(BASE);
-
-        console.log(
-            "chainlink price of the token1",
-            getPriceInUSD(_registry, pool.token1(), _usdAsBase[1])
-        );
-        console.log("uniswapPriceInUSD", uniswapPriceInUSD);
 
         // get price of token0 from Chainlink in USD
         uint256 chainlinkPriceInUSD = getPriceInUSD(
@@ -136,7 +124,6 @@ library OracleLibrary {
             pool.token0(),
             _usdAsBase[0]
         );
-        console.log("chainlinkPriceInUSD", chainlinkPriceInUSD);
 
         uint256 diff;
 

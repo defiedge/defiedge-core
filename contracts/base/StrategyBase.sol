@@ -137,9 +137,10 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
     ) internal returns (uint256 share) {
         uint256 price = OracleLibrary.getPriceInUSD(
             factory.chainlinkRegistry(),
-            pool.token1(),
+            pool.token0(),
             usdAsBase[0]
         );
+
         // calculate number of shares
         share = ShareHelper.calculateShares(
             _amount0,
