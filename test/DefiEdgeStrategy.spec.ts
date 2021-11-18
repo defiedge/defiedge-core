@@ -368,13 +368,13 @@ describe("DeFiEdgeStrategy", () => {
     it("should transfer amount0 back to the user", async () => {
       await strategy.connect(signers[0]).burn("3452260981108611401314", 0, 0);
       const balanceAfter = await token0.balanceOf(signers[0].address);
-      expect("948499999999999999999999999").to.equal(balanceAfter.toString());
+      expect("998499989999999999999999999").to.equal(balanceAfter.toString());
     });
 
     it("should transfer amount1 back to the user", async () => {
       await strategy.connect(signers[0]).burn("3452260981108611401314", 0, 0);
       const balanceAfter = await token1.balanceOf(signers[0].address);
-      expect("998499989999999999999999999").to.equal(balanceAfter.toString());
+      expect("948499999999999999999999999").to.equal(balanceAfter.toString());
     });
 
     it("should emit burn event", async () => {
@@ -397,7 +397,7 @@ describe("DeFiEdgeStrategy", () => {
 
     it("should revert there is price difference", async () => {
       await chainlinkRegistry.setAnswer(
-        expandTo18Decimals(300),
+        expandTo18Decimals(3000),
         expandTo18Decimals(0.01)
       );
       expect(

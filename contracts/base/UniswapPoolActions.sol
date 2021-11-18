@@ -80,7 +80,15 @@ contract UniswapPoolActions is
         int24 _tickLower,
         int24 _tickUpper,
         uint256 _shares
-    ) internal returns (uint256 collect0, uint256 collect1) {
+    )
+        internal
+        returns (
+            uint256 collect0,
+            uint256 collect1,
+            uint256 fee0,
+            uint256 fee1
+        )
+    {
         uint256 tokensBurned0;
         uint256 tokensBurned1;
 
@@ -109,14 +117,17 @@ contract UniswapPoolActions is
             type(uint128).max
         );
 
+        fee0 = collect0 > tokensBurned0
+            ? uint256(collect0).sub(tokensBurned0)
+            : 0;
+        fee1 = collect1 > tokensBurned1
+            ? uint256(collect1).sub(tokensBurned1)
+            : 0;
+
         collect0 = tokensBurned0;
         collect1 = tokensBurned1;
 
-        emit FeesClaimed(
-            msg.sender,
-            collect0 > tokensBurned0 ? uint256(collect0).sub(tokensBurned0) : 0,
-            collect1 > tokensBurned1 ? uint256(collect1).sub(tokensBurned1) : 0
-        );
+        emit FeesClaimed(msg.sender, fee0, fee1);
     }
 
     /**
