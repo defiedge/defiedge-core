@@ -29,16 +29,19 @@ contract DefiEdgeStrategy is UniswapPoolActions {
      * @param _pool Address of the pool
      * @param _operator Address of the strategy operator
      * @param _ticks Array of the ticks
+     * @param _usdAsBase If the Chainlink feed is pegged with USD
      */
     constructor(
         address _factory,
         address _pool,
         address _operator,
-        Tick[] memory _ticks
+        Tick[] memory _ticks,
+        bool[] memory _usdAsBase
     ) validTicks(_ticks) {
         factory = IStrategyFactory(_factory);
         pool = IUniswapV3Pool(_pool);
         allowedDeviation = 5 * 1e18;
+        usdAsBase = _usdAsBase;
         require(
             IUniswapV3Factory(factory.uniswapV3Factory()).getPool(
                 pool.token0(),

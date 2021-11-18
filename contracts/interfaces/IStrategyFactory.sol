@@ -13,4 +13,6 @@ interface IStrategyFactory {
     function governance() external view returns (address);
 
     function uniswapV3Factory() external view returns (address);
+
+    function chainlinkRegistry() external view returns (address);
 }

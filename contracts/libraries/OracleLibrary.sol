@@ -14,7 +14,13 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
 
-library Oracle {
+import "@openzeppelin/contracts/math/Math.sol";
+
+interface IERC20Minimal {
+    function decimals() external view returns (uint256);
+}
+
+library OracleLibrary {
     uint256 public constant BASE = 1e18;
 
     using SafeMath for uint256;
@@ -24,7 +30,7 @@ library Oracle {
      * @notice _pool Address of the Uniswap V3 pool
      */
     function getUniswapPrice(address _pool)
-        public
+        internal
         view
         returns (uint256 price)
     {
@@ -33,6 +39,16 @@ library Oracle {
         (uint160 sqrtPriceX96, , , , , , ) = pool.slot0();
         uint256 priceX192 = uint256(sqrtPriceX96).mul(sqrtPriceX96);
         price = FullMath.mulDiv(priceX192, BASE, 1 << 192);
+
+        uint256 token0Decimals = 18 - IERC20Minimal(pool.token0()).decimals();
+        uint256 token1Decimals = 18 - IERC20Minimal(pool.token1()).decimals();
+
+        uint256 decimalsDelta = token0Decimals >= token1Decimals
+            ? token0Decimals - token1Decimals
+            : token1Decimals - token0Decimals;
+
+        // normalise the price to 18 decimals
+        price = price.div(10**(decimalsDelta));
     }
 
     /**
@@ -45,7 +61,7 @@ library Oracle {
         address _registry,
         address _base,
         address _quote
-    ) public view returns (uint256 price) {
+    ) internal view returns (uint256 price) {
         FeedRegistryInterface registry = FeedRegistryInterface(_registry);
         (, int256 _price, , , ) = registry.latestRoundData(_base, _quote);
 
@@ -86,13 +102,13 @@ library Oracle {
      * @notice Checks if the the current price has deviation from the pool price
      * @param _pool Address of the pool
      * @param _registry Chainlink registry
-     * @param _useBase checks if pegged to USD
+     * @param _usdAsBase checks if pegged to USD
      * @param _allowedDeviation Allowed deviation for the pool
      */
     function hasDeviation(
         address _pool,
         address _registry,
-        bool[] memory _useBase,
+        bool[] memory _usdAsBase,
         uint256 _allowedDeviation
     ) public view returns (bool) {
         IUniswapV3Pool pool = IUniswapV3Pool(_pool);
@@ -101,13 +117,13 @@ library Oracle {
         uint256 chainlinkPriceInUSD = getPriceInUSD(
             _registry,
             pool.token0(),
-            _useBase[0]
+            _usdAsBase[0]
         );
 
-        // get price from Uniswap and convert it to USD
-        uint256 uniswapPriceInUSD = getUniswapPrice(_pool).mul(
-            getPriceInUSD(_registry, pool.token1(), _useBase[1])
-        );
+        // get price of token0 Uniswap and convert it to USD
+        uint256 uniswapPriceInUSD = getUniswapPrice(_pool)
+            .mul(getPriceInUSD(_registry, pool.token1(), _usdAsBase[1]))
+            .div(BASE);
 
         uint256 diff;
 
