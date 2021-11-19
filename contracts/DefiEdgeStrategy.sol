@@ -20,7 +20,6 @@ contract DefiEdgeStrategy is UniswapPoolActions {
     // events
     event Mint(address user, uint256 share, uint256 amount0, uint256 amount1);
     event Burn(address user, uint256 share, uint256 amount0, uint256 amount1);
-    event Swap(uint256 amountIn, uint256 amountOut, bool zeroToOne);
     event Hold();
     event Rebalance(Tick[] ticks);
 
@@ -260,45 +259,45 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         }
     }
 
-    /**
-     * @notice Rebalances between the ticks
-     * @param _zeroForOne The direction of the swap
-     * @param _amount Amount to Swap
-     * @param _sqrtPriceLimitX96 Price Slippage
-     */
-    function swap(
-        bool _zeroForOne,
-        int256 _amount,
-        uint160 _sqrtPriceLimitX96
-    )
-        external
-        onlyOperator
-        isValidStrategy
-        hasDeviation
-        returns (uint256 amountOut)
-    {
-        if (ticks.length > 0) {
-            onHold = true;
-            // burn all liquidity
-            burnAllLiquidity(ticks);
-            // delete ticks
-            delete ticks;
-        }
+    // /**
+    //  * @notice Rebalances between the ticks
+    //  * @param _zeroForOne The direction of the swap
+    //  * @param _amount Amount to Swap
+    //  * @param _sqrtPriceLimitX96 Price Slippage
+    //  */
+    // function swap(
+    //     bool _zeroForOne,
+    //     int256 _amount,
+    //     uint160 _sqrtPriceLimitX96
+    // )
+    //     external
+    //     onlyOperator
+    //     isValidStrategy
+    //     hasDeviation
+    //     returns (uint256 amountOut)
+    // {
+    //     if (ticks.length > 0) {
+    //         onHold = true;
+    //         // burn all liquidity
+    //         burnAllLiquidity(ticks);
+    //         // delete ticks
+    //         delete ticks;
+    //     }
 
-        (int256 amount0, int256 amount1) = pool.swap(
-            address(this),
-            _zeroForOne,
-            _amount,
-            _sqrtPriceLimitX96,
-            abi.encode(
-                SwapCallbackData({pool: address(pool), zeroToOne: _zeroForOne})
-            )
-        );
+    //     (int256 amount0, int256 amount1) = pool.swap(
+    //         address(this),
+    //         _zeroForOne,
+    //         _amount,
+    //         _sqrtPriceLimitX96,
+    //         abi.encode(
+    //             SwapCallbackData({pool: address(pool), zeroToOne: _zeroForOne})
+    //         )
+    //     );
 
-        amountOut = uint256(-(_zeroForOne ? amount1 : amount0));
+    //     amountOut = uint256(-(_zeroForOne ? amount1 : amount0));
 
-        emit Swap(uint256(_amount), amountOut, _zeroForOne);
-    }
+    //     emit Swap(uint256(_amount), amountOut, _zeroForOne);
+    // }
 
     /**
      * @notice Holds the funds

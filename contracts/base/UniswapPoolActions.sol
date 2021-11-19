@@ -5,22 +5,24 @@ pragma abicoder v2;
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
-import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
+// import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+
+import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 // import libraries
 import "../libraries/LiquidityHelper.sol";
 
 import "../base/StrategyBase.sol";
 
-contract UniswapPoolActions is
-    StrategyBase,
-    IUniswapV3MintCallback,
-    IUniswapV3SwapCallback
-{
+contract UniswapPoolActions is StrategyBase, IUniswapV3MintCallback {
     using SafeMath for uint256;
     using SafeCast for uint256;
+
+    ISwapRouter public swapRouter;
+
+    event Swap(uint256 amountIn, uint256 amountOut, bool zeroToOne);
 
     event FeesClaimed(
         address indexed strategy,
@@ -190,31 +192,76 @@ contract UniswapPoolActions is
         );
     }
 
-    /**
-     * @dev Callback for Uniswap V3 pool.
-     */
-    function uniswapV3SwapCallback(
-        int256 amount0,
-        int256 amount1,
-        bytes calldata data
-    ) external override {
-        SwapCallbackData memory decoded = abi.decode(data, (SwapCallbackData));
-        // check if the callback is received from Uniswap V3 Pool
-        require(msg.sender == address(pool));
+    struct SwapExactInputParams {
+        bytes path;
+        uint256 deadline;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+    }
 
-        if (decoded.zeroToOne) {
-            TransferHelper.safeTransfer(
-                pool.token0(),
-                msg.sender,
-                uint256(amount0)
-            );
-        } else {
-            TransferHelper.safeTransfer(
-                pool.token1(),
-                msg.sender,
-                uint256(amount1)
-            );
-        }
+    struct ExactInputSingleParams {
+        address tokenIn;
+        address tokenOut;
+        uint24 fee;
+        address recipient;
+        uint256 deadline;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+        uint160 sqrtPriceLimitX96;
+    }
+
+    function swapExactInput(SwapExactInputParams calldata params)
+        external
+        onlyOperator
+        isValidStrategy
+    {
+        // TODO: prevent from swapping to shitToken
+        IERC20(pool.token0()).approve(address(swapRouter), params.amountIn);
+        swapRouter.exactInput(
+            ISwapRouter.ExactInputParams({
+                path: params.path,
+                recipient: address(this),
+                deadline: params.deadline,
+                amountIn: params.amountIn,
+                amountOutMinimum: params.amountOutMinimum
+            })
+        );
+    }
+
+    function swapExactInputSingle(ExactInputSingleParams calldata params)
+        external
+        onlyOperator
+        isValidStrategy
+    {
+        require(
+            params.tokenIn == pool.token0() || params.tokenIn == pool.token1(),
+            "IT"
+        );
+
+        require(
+            params.tokenOut == pool.token0() ||
+                params.tokenOut == pool.token1(),
+            "IT"
+        );
+
+        address tokenIn = params.tokenIn == pool.token0()
+            ? pool.token0()
+            : pool.token1();
+
+        IERC20(tokenIn).approve(address(swapRouter), params.amountIn);
+
+        swapRouter.exactInputSingle(
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: params.tokenIn,
+                tokenOut: params.tokenOut,
+                fee: pool.fee(),
+                recipient: address(this),
+                deadline: params.deadline,
+                amountIn: params.amountIn,
+                amountOutMinimum: params.amountOutMinimum,
+                sqrtPriceLimitX96: params.sqrtPriceLimitX96
+            })
+        );
     }
 
     /**
