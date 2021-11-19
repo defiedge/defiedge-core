@@ -27,7 +27,8 @@ contract DefiEdgeStrategyFactory {
     uint256 public PROTOCOL_FEE; // 1e8 means 100%
     address public feeTo; // receive protocol fees here
 
-    address public uniswapV3Factory;
+    address public uniswapV3Factory; // Uniswap V3 pool factory
+    address public chainlinkRegistry; // Chainlink registry
 
     // mapping of blacklisted strategies
     mapping(address => bool) public denied;
@@ -38,9 +39,14 @@ contract DefiEdgeStrategyFactory {
         _;
     }
 
-    constructor(address _governance, address _uniswapV3factory) {
+    constructor(
+        address _governance,
+        address _chainlinkRegistry,
+        address _uniswapV3factory
+    ) {
         governance = _governance;
         uniswapV3Factory = _uniswapV3factory;
+        chainlinkRegistry = _chainlinkRegistry;
     }
 
     /**
@@ -52,10 +58,17 @@ contract DefiEdgeStrategyFactory {
     function createStrategy(
         address _pool,
         address _operator,
+        bool[] memory _usdAsBase,
         DefiEdgeStrategy.Tick[] memory _ticks
     ) external returns (address strategy) {
         strategy = address(
-            new DefiEdgeStrategy(address(this), _pool, _operator, _ticks)
+            new DefiEdgeStrategy(
+                address(this),
+                _pool,
+                _operator,
+                _ticks,
+                _usdAsBase
+            )
         );
         strategyByIndex[totalIndex.add(1)] = strategy;
         totalIndex = totalIndex.add(1);

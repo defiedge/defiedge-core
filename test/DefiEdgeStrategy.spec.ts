@@ -8,8 +8,12 @@ const UniswapV3FactoryFactory = ethers.getContractFactory("UniswapV3Factory");
 const UniswapV3OracleTestFactory = ethers.getContractFactory(
   "UniswapV3OracleTest"
 );
-const ShareHelperLibrary = ethers.getContractFactory("ShareHelper")
-const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper")
+const ShareHelperLibrary = ethers.getContractFactory("ShareHelper");
+const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper");
+const OracleLibraryLibrary = ethers.getContractFactory("OracleLibrary");
+const ChainlinkRegistryMockFactory = ethers.getContractFactory(
+  "ChainlinkRegistryMock"
+);
 
 import { TestERC20 } from "../typechain/TestERC20";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
@@ -20,6 +24,8 @@ import { Periphery } from "../typechain/Periphery";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
 import { ShareHelper } from "../typechain/ShareHelper";
 import { LiquidityHelper } from "../typechain/LiquidityHelper";
+import { OracleLibrary } from "../typechain/OracleLibrary";
+import { ChainlinkRegistryMock } from "../typechain/ChainlinkRegistryMock";
 
 import {
   calculateTick,
@@ -43,6 +49,8 @@ let periphery: Periphery;
 let oracle: UniswapV3OracleTest;
 let shareHelper: ShareHelper;
 let liquidityHelper: LiquidityHelper;
+let oracleLibrary: OracleLibrary;
+let chainlinkRegistry: ChainlinkRegistryMock;
 
 describe("DeFiEdgeStrategy", () => {
   beforeEach(async () => {
@@ -73,34 +81,59 @@ describe("DeFiEdgeStrategy", () => {
     );
 
     // deploy strategy factory
-    shareHelper = (await (
-      await ShareHelperLibrary
-    ).deploy()) as ShareHelper;
+    shareHelper = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
 
     liquidityHelper = (await (
       await LiquidityHelperLibrary
     ).deploy()) as LiquidityHelper;
-    
+
+    // deploy sharehelper library
+    oracleLibrary = (await (
+      await OracleLibraryLibrary
+    ).deploy()) as OracleLibrary;
+
+    chainlinkRegistry = (await (
+      await ChainlinkRegistryMockFactory
+    ).deploy(pool.token0(), pool.token1())) as ChainlinkRegistryMock;
+
+    await chainlinkRegistry.setDecimals(8);
+    await chainlinkRegistry.setAnswer(
+      expandTo18Decimals(3000),
+      expandTo18Decimals(1)
+    );
+
     const DefiEdgeStrategyFactoryF = await ethers.getContractFactory(
-      "DefiEdgeStrategyFactory", 
+      "DefiEdgeStrategyFactory",
       {
-        libraries: { ShareHelper: shareHelper.address, LiquidityHelper: liquidityHelper.address },
+        libraries: {
+          OracleLibrary: oracleLibrary.address,
+          ShareHelper: shareHelper.address,
+          LiquidityHelper: liquidityHelper.address,
+        },
       }
     );
 
     // deploy strategy factory
-    factory = (await DefiEdgeStrategyFactoryF.deploy(signers[0].address, uniswapV3Factory.address)) as DefiEdgeStrategyFactory;
-
+    factory = (await DefiEdgeStrategyFactoryF.deploy(
+      signers[0].address,
+      chainlinkRegistry.address,
+      uniswapV3Factory.address
+    )) as DefiEdgeStrategyFactory;
 
     // create strategy
-    await factory.createStrategy(pool.address, signers[0].address, [
-      {
-        amount0: 0,
-        amount1: 0,
-        tickLower: calculateTick(2500, 60),
-        tickUpper: calculateTick(3500, 60),
-      },
-    ]);
+    await factory.createStrategy(
+      pool.address,
+      signers[0].address,
+      [true, true],
+      [
+        {
+          amount0: 0,
+          amount1: 0,
+          tickLower: calculateTick(2500, 60),
+          tickUpper: calculateTick(3500, 60),
+        },
+      ]
+    );
 
     // get strategy
     strategy = (await ethers.getContractAt(
@@ -112,11 +145,10 @@ describe("DeFiEdgeStrategy", () => {
     // await strategy.initialize();
 
     // set deviation in strategy
-    await strategy.changeAllowedDeviation("10000000000000000") // 1%
+    await strategy.changeAllowedDeviation("10000000000000000"); // 1%
 
-    const PeripheryFactory = ethers.getContractFactory("Periphery",
-    {
-      libraries: { LiquidityHelper: liquidityHelper.address }
+    const PeripheryFactory = ethers.getContractFactory("Periphery", {
+      libraries: { LiquidityHelper: liquidityHelper.address },
     });
 
     periphery = (await (await PeripheryFactory).deploy()) as Periphery;
@@ -169,20 +201,25 @@ describe("DeFiEdgeStrategy", () => {
   describe("#Constructor", async () => {
     it("should pass via validStrategy modifier", async () => {
       expect(
-        factory.createStrategy(pool.address, signers[0].address, [
-          {
-            amount0: "1",
-            amount1: "1",
-            tickLower: "60",
-            tickUpper: "60",
-          },
-          {
-            amount0: "1",
-            amount1: "1",
-            tickLower: "60",
-            tickUpper: "60",
-          },
-        ])
+        factory.createStrategy(
+          pool.address,
+          signers[0].address,
+          [true, true],
+          [
+            {
+              amount0: "1",
+              amount1: "1",
+              tickLower: "60",
+              tickUpper: "60",
+            },
+            {
+              amount0: "1",
+              amount1: "1",
+              tickLower: "60",
+              tickUpper: "60",
+            },
+          ]
+        )
       ).to.be.reverted;
     });
   });
@@ -262,7 +299,6 @@ describe("DeFiEdgeStrategy", () => {
       let amount0 = 0,
         amount1 = 0;
 
-
       amount0 = parseInt(tick.amount0.toString());
       amount1 = parseInt(tick.amount1.toString());
       // const shares = parseInt((await strategy.balanceOf(signers[0].address)).toString())
@@ -332,13 +368,13 @@ describe("DeFiEdgeStrategy", () => {
     it("should transfer amount0 back to the user", async () => {
       await strategy.connect(signers[0]).burn("3452260981108611401314", 0, 0);
       const balanceAfter = await token0.balanceOf(signers[0].address);
-      expect("948499999999999999999999999").to.equal(balanceAfter.toString());
+      expect("998499989999999999999999999").to.equal(balanceAfter.toString());
     });
 
     it("should transfer amount1 back to the user", async () => {
       await strategy.connect(signers[0]).burn("3452260981108611401314", 0, 0);
       const balanceAfter = await token1.balanceOf(signers[0].address);
-      expect("998499989999999999999999999").to.equal(balanceAfter.toString());
+      expect("948499999999999999999999999").to.equal(balanceAfter.toString());
     });
 
     it("should emit burn event", async () => {
@@ -359,6 +395,23 @@ describe("DeFiEdgeStrategy", () => {
       await mint(signers[1]);
     });
 
+    it("should revert there is price difference", async () => {
+      await chainlinkRegistry.setAnswer(
+        expandTo18Decimals(3000),
+        expandTo18Decimals(0.01)
+      );
+      expect(
+        strategy.connect(signers[1]).rebalance([
+          {
+            amount0: expandTo18Decimals(0.001),
+            amount1: expandTo18Decimals(0.001),
+            tickLower: "60",
+            tickUpper: "60",
+          },
+        ])
+      ).to.be.reverted;
+    });
+
     it("should revert if caller is not operator", async () => {
       expect(
         strategy.connect(signers[1]).rebalance([
@@ -372,7 +425,7 @@ describe("DeFiEdgeStrategy", () => {
       ).to.be.reverted;
     });
 
-    it("should redploy when funds are on hold", async () => {
+    it("should redeploy when funds are on hold", async () => {
       await strategy.hold();
 
       await strategy.rebalance([

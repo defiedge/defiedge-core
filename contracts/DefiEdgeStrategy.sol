@@ -29,16 +29,19 @@ contract DefiEdgeStrategy is UniswapPoolActions {
      * @param _pool Address of the pool
      * @param _operator Address of the strategy operator
      * @param _ticks Array of the ticks
+     * @param _usdAsBase If the Chainlink feed is pegged with USD
      */
     constructor(
         address _factory,
         address _pool,
         address _operator,
-        Tick[] memory _ticks
+        Tick[] memory _ticks,
+        bool[] memory _usdAsBase
     ) validTicks(_ticks) {
         factory = IStrategyFactory(_factory);
         pool = IUniswapV3Pool(_pool);
         allowedDeviation = 5 * 1e18;
+        usdAsBase = _usdAsBase;
         require(
             IUniswapV3Factory(factory.uniswapV3Factory()).getPool(
                 pool.token0(),
@@ -129,7 +132,15 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         uint256 _shares,
         uint256 _amount0Min,
         uint256 _amount1Min
-    ) external returns (uint256 amount0, uint256 amount1) {
+    )
+        external
+        returns (
+            uint256 amount0,
+            uint256 amount1,
+            uint256 fee0,
+            uint256 fee1
+        )
+    {
         // check if the user has sufficient shares
         require(balanceOf(msg.sender) >= _shares, "INS");
 
@@ -149,10 +160,11 @@ contract DefiEdgeStrategy is UniswapPoolActions {
                 Tick storage tick = ticks[i];
 
                 // burn liquidity and collect fees
-                (amount0, amount1) = burnLiquidity(
+                (amount0, amount1, fee0, fee1) = burnLiquidity(
                     tick.tickLower,
                     tick.tickUpper,
-                    _shares
+                    _shares,
+                    0
                 );
 
                 // add to total amounts
@@ -165,6 +177,11 @@ contract DefiEdgeStrategy is UniswapPoolActions {
                 tick.amount1 = amount1 != 0
                     ? tick.amount1.sub(amount1)
                     : tick.amount1;
+
+                unused0 = unused0.add(fee0);
+                unused1 = unused1.add(fee1);
+
+                emit FeesClaimed(msg.sender, fee0, fee1);
             }
         }
 

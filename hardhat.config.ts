@@ -4,10 +4,15 @@ import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-ganache";
 require("dotenv").config();
+import "hardhat-contract-sizer";
 
-const INFURA_KEY = process.env.INFURA_KEY || "1" // for coverage
-const PRIVATE_KEY = process.env.PRIVATE_KEY || "0xa3cf71bf26325d0175cd9d475141f9a46c29787d281707d78cffe11b1629b428" // for coverage
-const MAINNET_PRIVATE_KEY = process.env.MAINNET_PRIVATE_KEY || "0xa3cf71bf26325d0175cd9d475141f9a46c29787d281707d78cffe11b1629b428" // for coverage
+const INFURA_KEY = process.env.INFURA_KEY || "1"; // for coverage
+const PRIVATE_KEY =
+  process.env.PRIVATE_KEY ||
+  "0xa3cf71bf26325d0175cd9d475141f9a46c29787d281707d78cffe11b1629b428"; // for coverage
+const MAINNET_PRIVATE_KEY =
+  process.env.MAINNET_PRIVATE_KEY ||
+  "0xa3cf71bf26325d0175cd9d475141f9a46c29787d281707d78cffe11b1629b428"; // for coverage
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
