@@ -48,13 +48,14 @@ let signers: SignerWithAddress[];
 let factory;
 let strategy: DefiEdgeStrategy;
 let periphery: Periphery;
-let shareHelper: ShareHelper;
+let shareHelper: ShareHelperTest;
 let oracle: UniswapV3OracleTest;
+let shareHelperL: ShareHelper;
 let liquidityHelper: LiquidityHelper;
 let oracleLibrary: OracleLibrary;
 let chainlinkRegistry: ChainlinkRegistryMock;
 
-describe("Share Simulations", () => {
+describe("OracleLibrary", () => {
   beforeEach(async () => {
     signers = await ethers.getSigners();
 
@@ -83,7 +84,7 @@ describe("Share Simulations", () => {
     );
 
     // deploy sharehelper library
-    shareHelper = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
+    shareHelperL = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
 
     liquidityHelper = (await (
       await LiquidityHelperLibrary
@@ -100,16 +101,16 @@ describe("Share Simulations", () => {
 
     await chainlinkRegistry.setDecimals(8);
     await chainlinkRegistry.setAnswer(
-      expandTo18Decimals(3000),
-      expandTo18Decimals(1)
+      "300000000000",
+      "100000000"
     );    
-    
+
     const DefiEdgeStrategyFactoryF = await ethers.getContractFactory(
       "DefiEdgeStrategyFactory",
       {
         libraries: {
           OracleLibrary: oracleLibrary.address,
-          ShareHelper: shareHelper.address,
+          ShareHelper: shareHelperL.address,
           LiquidityHelper: liquidityHelper.address,
         },
       }
@@ -131,8 +132,8 @@ describe("Share Simulations", () => {
         {
           amount0: 0,
           amount1: 0,
-          tickLower: calculateTick(1 / 3500, 60),
-          tickUpper: calculateTick(1 / 2500, 60),
+          tickLower: calculateTick(2500, 60),
+          tickUpper: calculateTick(3500, 60),
         },
       ]
     );
@@ -147,7 +148,7 @@ describe("Share Simulations", () => {
     // await strategy.initialize();
 
     // set deviation in strategy
-    await strategy.changeAllowedDeviation("50000000000000000"); // 5%
+    await strategy.changeAllowedDeviation("10000000000000000"); // 1%
 
     const PeripheryFactory = ethers.getContractFactory("Periphery", {
       libraries: { LiquidityHelper: liquidityHelper.address },
@@ -156,14 +157,8 @@ describe("Share Simulations", () => {
     periphery = (await (await PeripheryFactory).deploy()) as Periphery;
 
     // add liquidity to the pool
-    await token0.approve(
-      periphery.address,
-      expandTo18Decimals(150000000000000)
-    );
-    await token1.approve(
-      periphery.address,
-      expandTo18Decimals(500000000000000)
-    );
+    await token0.approve(periphery.address, expandTo18Decimals(50000000));
+    await token1.approve(periphery.address, expandTo18Decimals(150000000000));
 
     // transfer tokens to second user for testing
     await token0.transfer(signers[1].address, expandTo18Decimals(1500000));
@@ -171,88 +166,117 @@ describe("Share Simulations", () => {
 
     await periphery.mintLiquidity(
       pool.address,
-      calculateTick(1 / 4000, 60),
-      calculateTick(1 / 3000, 60),
-      expandTo18Decimals(150000000000),
+      calculateTick(3000, 60),
+      calculateTick(4000, 60),
       expandTo18Decimals(50000000),
+      expandTo18Decimals(150000000000),
       signers[0].address
     );
 
     // increase cardinary
     await pool.increaseObservationCardinalityNext(150);
 
-    // swap tokens
-    const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
 
-    const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.01;
-
-    await ethers.provider.send("evm_increaseTime", [1800]);
-
-    await periphery.swap(
-      pool.address,
-      false,
-      "100000000000000000",
-      expandToString(sqrtPriceLimitX96)
-    );
 
     // deploy strategy factory
-    shareHelper = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
+    shareHelper = (await (
+      await ShareHelperTestFactory
+    ).deploy()) as ShareHelperTest;
 
     oracle = (await (
       await UniswapV3OracleTestFactory
     ).deploy()) as UniswapV3OracleTest;
   });
 
-  describe("#Share", async () => {
-    it("should be able to remove same liquidity after rebalance", async () => {
-      await approve(strategy.address, signers[0]);
+  describe("#getUniswapPrice", async () => {
+    it("should return correct uniswap price", async () => {
 
-      console.log("👨‍💻  added by user 1");
-      await strategy.mint(
-        expandTo18Decimals(350000),
-        expandTo18Decimals(100),
-        0,
-        0,
-        0
+      expect(await oracleLibrary.getUniswapPrice(pool.address)).to.equal("2999999999999999999999");
+
+      // swap tokens
+      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
+
+      const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.1;
+
+      await periphery.swap(
+        pool.address,
+        false,
+        "10000000000000000000",
+        expandToString(sqrtPriceLimitX96)
       );
 
-      // await ethers.provider.send("evm_increaseTime", [1800]);
+      expect(await oracleLibrary.getUniswapPrice(pool.address)).to.equal("3009711562429121195141");
 
-      // console.log("👨‍💻  rebalancing");
+      await periphery.swap(
+        pool.address,
+        false,
+        "10000000000000000000",
+        expandToString(sqrtPriceLimitX96)
+      );
 
-      await strategy.rebalance([
-        {
-          amount0: expandTo18Decimals(1),
-          amount1: expandTo18Decimals(1),
-          tickLower: calculateTick(1 / 3600, 60),
-          tickUpper: calculateTick(1 / 2500, 60),
-        },
-      ]);
+      expect(await oracleLibrary.getUniswapPrice(pool.address)).to.equal("3009711562482602675097");
 
-      await approve(strategy.address, signers[1]);
-
-      console.log("👨‍💻  added by user 2");
-      await strategy
-        .connect(signers[1])
-        .mint(expandTo18Decimals(100), expandTo18Decimals(350000), 0, 0, 0);
-
-      console.log("👨‍💻 user 0 is removing");
-      await strategy.connect(signers[0]).burn("100000000000000000000", 0, 0);
-
-      console.log("👨‍💻  user 1 is removing");
-      await strategy.connect(signers[1]).burn("350000000000000000007000", 0, 0);
-
-      console.log("totalSupply", await strategy.totalSupply());
     });
   });
+
+  describe("#getChainlinkPrice", async () => {
+  
+    it("should return correct chainlink price", async () => {
+
+      expect(await oracleLibrary.getChainlinkPrice(chainlinkRegistry.address, token0.address, token1.address)).to.equal("3000000000000000000000");
+
+      await chainlinkRegistry.setAnswer(
+        "400000000000",
+        "100000000"
+      );    
+
+      expect(await oracleLibrary.getChainlinkPrice(chainlinkRegistry.address, token0.address, token1.address)).to.equal("4000000000000000000000");
+
+    })
+  })
+
+  describe("#getPriceInUSD", async () => {
+  
+    it("should return correct price", async () => {
+
+      expect(await oracleLibrary.getPriceInUSD(chainlinkRegistry.address, token0.address, true)).to.equal("1000000000000000000");
+   
+    })
+  })
+
+  describe("#hasDeviation", async () => {
+  
+    it("should return false if price has no daviation", async () => {
+
+      expect(await oracleLibrary.hasDeviation(
+        pool.address, 
+        chainlinkRegistry.address,
+        [true, true],
+        "10000000000000000"
+      )).to.equal(false);
+   
+    })
+
+    it("should return true if price has daviation", async () => {
+
+      await chainlinkRegistry.setAnswer(
+        "40000000000000000000000000000000000000000000",
+        "100000000"
+      );    
+
+      expect(await oracleLibrary.hasDeviation(
+        pool.address, 
+        chainlinkRegistry.address,
+        [true, true],
+        "10000000000000000"
+      )).to.equal(true);
+   
+    })
+  })
 });
 
 async function approve(address: string, from: string | Signer | Provider) {
   // give approval
-  await token0
-    .connect(from)
-    .approve(address, expandTo18Decimals(1500000000000));
-  await token1
-    .connect(from)
-    .approve(address, expandTo18Decimals(1500000000000));
+  await token0.connect(from).approve(address, expandTo18Decimals(150000000000));
+  await token1.connect(from).approve(address, expandTo18Decimals(150000000000));
 }

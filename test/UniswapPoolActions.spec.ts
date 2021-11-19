@@ -11,10 +11,9 @@ const UniswapV3OracleTestFactory = ethers.getContractFactory(
 const ShareHelperLibrary = ethers.getContractFactory("ShareHelper");
 const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper");
 const OracleLibraryLibrary = ethers.getContractFactory("OracleLibrary");
-
-const LiquidityHelperTestFactory = ethers.getContractFactory(
-  "LiquidityHelperTest"
-);
+const ChainlinkRegistryMockFactory = ethers.getContractFactory(
+  "ChainlinkRegistryMock"
+)
 
 import { TestERC20 } from "../typechain/TestERC20";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
@@ -27,6 +26,7 @@ import { LiquidityHelperTest } from "../typechain/LiquidityHelperTest";
 import { ShareHelper } from "../typechain/ShareHelper";
 import { LiquidityHelper } from "../typechain/LiquidityHelper";
 import { OracleLibrary } from "../typechain/OracleLibrary";
+import { ChainlinkRegistryMock } from "../typechain/ChainlinkRegistryMock";
 
 import {
   calculateTick,
@@ -52,6 +52,7 @@ let oracle: UniswapV3OracleTest;
 let shareHelper: ShareHelper;
 let liquidityHelper: LiquidityHelper;
 let oracleLibrary: OracleLibrary;
+let chainlinkRegistry: ChainlinkRegistryMock;
 
 describe("UniswapPoolActions", () => {
   beforeEach(async () => {
@@ -81,10 +82,20 @@ describe("UniswapPoolActions", () => {
       )
     );
 
-    // deploy sharehelper library
+    // deploy oracleLibrary library
     oracleLibrary = (await (
       await OracleLibraryLibrary
     ).deploy()) as OracleLibrary;
+
+    chainlinkRegistry = (await (
+      await ChainlinkRegistryMockFactory
+    ).deploy(pool.token0(), pool.token1())) as ChainlinkRegistryMock;
+
+    await chainlinkRegistry.setDecimals(8);
+    await chainlinkRegistry.setAnswer(
+      expandTo18Decimals(3000),
+      expandTo18Decimals(1)
+    );    
 
     shareHelper = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
 
@@ -106,6 +117,7 @@ describe("UniswapPoolActions", () => {
     // deploy strategy factory
     factory = (await DefiEdgeStrategyFactoryF.deploy(
       signers[0].address,
+      chainlinkRegistry.address,
       uniswapV3Factory.address
     )) as DefiEdgeStrategyFactory;
 
