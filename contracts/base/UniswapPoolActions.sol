@@ -40,6 +40,24 @@ contract UniswapPoolActions is StrategyBase, IUniswapV3MintCallback {
         bool zeroToOne;
     }
 
+    struct SwapExactInputParams {
+        bool zeroForOne;
+        bytes path;
+        uint256 deadline;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+    }
+
+    struct ExactInputSingleParams {
+        bool zeroForOne;
+        uint24 fee;
+        address recipient;
+        uint256 deadline;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+        uint160 sqrtPriceLimitX96;
+    }
+
     /**
      * @notice Mints liquidity from V3 Pool
      * @param _tickLower Lower tick
@@ -192,32 +210,32 @@ contract UniswapPoolActions is StrategyBase, IUniswapV3MintCallback {
         );
     }
 
-    struct SwapExactInputParams {
-        bytes path;
-        uint256 deadline;
-        uint256 amountIn;
-        uint256 amountOutMinimum;
-    }
-
-    struct ExactInputSingleParams {
-        address tokenIn;
-        address tokenOut;
-        uint24 fee;
-        address recipient;
-        uint256 deadline;
-        uint256 amountIn;
-        uint256 amountOutMinimum;
-        uint160 sqrtPriceLimitX96;
-    }
-
+    /**
+     * @notice Swaps through the path calculated by Uniswap auto-router
+     */
     function swapExactInput(SwapExactInputParams calldata params)
         external
         onlyOperator
         isValidStrategy
+        hasDeviation
     {
-        // TODO: prevent from swapping to shitToken
-        IERC20(pool.token0()).approve(address(swapRouter), params.amountIn);
-        swapRouter.exactInput(
+        address tokenIn;
+        address tokenOut;
+        bool[2] memory isBase; // is direct USD feed is available for the token?
+
+        if (params.zeroForOne) {
+            tokenIn = pool.token0();
+            tokenOut = pool.token1();
+            isBase = [true, false];
+        } else {
+            tokenIn = pool.token1();
+            tokenOut = pool.token0();
+            isBase = [false, true];
+        }
+
+        IERC20(tokenIn).approve(address(swapRouter), params.amountIn);
+
+        uint256 amountOut = swapRouter.exactInput(
             ISwapRouter.ExactInputParams({
                 path: params.path,
                 recipient: address(this),
@@ -226,34 +244,53 @@ contract UniswapPoolActions is StrategyBase, IUniswapV3MintCallback {
                 amountOutMinimum: params.amountOutMinimum
             })
         );
+
+        uint256 amountInUSD = params.amountIn.mul(
+            OracleLibrary.getPriceInUSD(
+                factory.chainlinkRegistry(),
+                tokenIn,
+                isBase[0]
+            )
+        );
+
+        uint256 amountOutUSD = amountOut.mul(
+            OracleLibrary.getPriceInUSD(
+                factory.chainlinkRegistry(),
+                tokenOut,
+                isBase[1]
+            )
+        );
+
+        // allow only 2% of deviation via autorouter
+        require(amountOutUSD >= amountInUSD.mul(2).div(100), "S");
     }
 
+    /**
+     * @notice Swap one token to another
+     */
     function swapExactInputSingle(ExactInputSingleParams calldata params)
         external
         onlyOperator
         isValidStrategy
+        hasDeviation
     {
-        require(
-            params.tokenIn == pool.token0() || params.tokenIn == pool.token1(),
-            "IT"
-        );
+        address tokenIn;
+        address tokenOut;
 
-        require(
-            params.tokenOut == pool.token0() ||
-                params.tokenOut == pool.token1(),
-            "IT"
-        );
-
-        address tokenIn = params.tokenIn == pool.token0()
-            ? pool.token0()
-            : pool.token1();
+        if (params.zeroForOne) {
+            tokenIn = pool.token0();
+            tokenOut = pool.token1();
+        } else {
+            tokenIn = pool.token1();
+            tokenOut = pool.token0();
+        }
 
         IERC20(tokenIn).approve(address(swapRouter), params.amountIn);
 
         swapRouter.exactInputSingle(
             ISwapRouter.ExactInputSingleParams({
-                tokenIn: params.tokenIn,
-                tokenOut: params.tokenOut,
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
                 fee: pool.fee(),
                 recipient: address(this),
                 deadline: params.deadline,

@@ -29,7 +29,7 @@ contract DefiEdgeStrategyFactory {
 
     address public uniswapV3Factory; // Uniswap V3 pool factory
     address public chainlinkRegistry; // Chainlink registry
-    address public swapRouter;
+    address public swapRouter; // Uniswap V3 Swap Router
 
     // mapping of blacklisted strategies
     mapping(address => bool) public denied;
