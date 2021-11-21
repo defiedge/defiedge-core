@@ -261,8 +261,11 @@ contract UniswapPoolActions is StrategyBase, IUniswapV3MintCallback {
             )
         );
 
-        // allow only 2% of deviation via autorouter
-        require(amountOutUSD >= amountInUSD.mul(2).div(100), "S");
+        // allow only 2% of slippage via autorouter
+        require(
+            amountInUSD <= amountOutUSD.add(amountOutUSD.mul(2).div(100)),
+            "S"
+        );
     }
 
     /**
