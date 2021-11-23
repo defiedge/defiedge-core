@@ -6,6 +6,15 @@ pragma abicoder v2;
 import "./DefiEdgeStrategy.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
+interface DefiEdgeStrategyDeployerProxy {
+    function createStrategy(
+        address _pool,
+        address _operator,
+        bool[] memory _usdAsBase,
+        DefiEdgeStrategy.Tick[] memory _ticks
+    ) external returns (address);
+}
+
 contract DefiEdgeStrategyFactory {
     using SafeMath for uint256;
 
@@ -27,6 +36,7 @@ contract DefiEdgeStrategyFactory {
     uint256 public PROTOCOL_FEE; // 1e8 means 100%
     address public feeTo; // receive protocol fees here
 
+    address public deployerProxy;
     address public uniswapV3Factory; // Uniswap V3 pool factory
     address public chainlinkRegistry; // Chainlink registry
     address public swapRouter; // Uniswap V3 Swap Router
@@ -41,11 +51,13 @@ contract DefiEdgeStrategyFactory {
     }
 
     constructor(
+        address _deployerProxy,
         address _governance,
         address _chainlinkRegistry,
         address _uniswapV3factory,
         address _swapRouter
     ) {
+        deployerProxy = _deployerProxy;
         governance = _governance;
         uniswapV3Factory = _uniswapV3factory;
         chainlinkRegistry = _chainlinkRegistry;
@@ -63,16 +75,9 @@ contract DefiEdgeStrategyFactory {
         address _operator,
         bool[] memory _usdAsBase,
         DefiEdgeStrategy.Tick[] memory _ticks
-    ) external returns (address strategy) {
-        strategy = address(
-            new DefiEdgeStrategy(
-                address(this),
-                _pool,
-                _operator,
-                _ticks,
-                _usdAsBase
-            )
-        );
+    ) external {
+        address strategy = DefiEdgeStrategyDeployerProxy(deployerProxy)
+            .createStrategy(_pool, _operator, _usdAsBase, _ticks);
         strategyByIndex[totalIndex.add(1)] = strategy;
         totalIndex = totalIndex.add(1);
         isValid[strategy] = true;

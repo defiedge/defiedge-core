@@ -72,7 +72,7 @@ contract UniswapPoolActions is StrategyBase, IUniswapV3MintCallback {
         uint256 _amount0,
         uint256 _amount1,
         address _payer
-    ) internal returns (uint256 amount0, uint256 amount1) {
+    ) internal hasDeviation returns (uint256 amount0, uint256 amount1) {
         uint128 liquidity = LiquidityHelper.getLiquidityForAmounts(
             address(pool),
             _tickLower,
@@ -103,6 +103,7 @@ contract UniswapPoolActions is StrategyBase, IUniswapV3MintCallback {
         uint128 _currentLiquidity
     )
         internal
+        hasDeviation
         returns (
             uint256 collect0,
             uint256 collect1,
