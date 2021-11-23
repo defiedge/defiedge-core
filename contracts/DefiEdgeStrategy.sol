@@ -6,11 +6,11 @@ pragma abicoder v2;
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
-import "./base/UniswapPoolActions.sol";
+import "./base/UniswapV3LiquidityManager.sol";
 
 import "./libraries/LiquidityHelper.sol";
 
-contract DefiEdgeStrategy is UniswapPoolActions {
+contract DefiEdgeStrategy is UniswapV3LiquidityManager {
     using SafeMath for uint256;
 
     bool public onHold;
@@ -22,23 +22,23 @@ contract DefiEdgeStrategy is UniswapPoolActions {
     event Rebalance(Tick[] ticks);
 
     /**
+     * @param _manager Address of the strategy manager contract
      * @param _factory Strategy factory address
      * @param _pool Address of the pool
-     * @param _operator Address of the strategy operator
      * @param _ticks Array of the ticks
      * @param _usdAsBase If the Chainlink feed is pegged with USD
      */
     constructor(
+        address _manager,
         address _factory,
         address _pool,
-        address _operator,
         Tick[] memory _ticks,
         bool[] memory _usdAsBase
     ) validTicks(_ticks) {
         factory = IStrategyFactory(_factory);
         pool = IUniswapV3Pool(_pool);
-        allowedDeviation = 5 * 1e18;
         usdAsBase = _usdAsBase;
+        manager = IStrategyManager(_manager);
         require(
             IUniswapV3Factory(factory.uniswapV3Factory()).getPool(
                 pool.token0(),
@@ -47,7 +47,6 @@ contract DefiEdgeStrategy is UniswapPoolActions {
             ) == address(pool),
             "IP"
         );
-        operator = _operator;
         for (uint256 i = 0; i < _ticks.length; i++) {
             ticks.push(Tick(0, 0, _ticks[i].tickLower, _ticks[i].tickUpper));
         }
@@ -111,8 +110,8 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         require(amount0 >= _amount0Min && amount1 >= _amount1Min, "S");
 
         // share limit
-        if (limit != 0) {
-            require(totalSupply() <= limit, "L");
+        if (manager.limit() != 0) {
+            require(totalSupply() <= manager.limit(), "L");
         }
 
         // emit event
@@ -139,10 +138,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         )
     {
         // check if the user has sufficient shares
-        require(balanceOf(msg.sender) >= _shares, "INS");
-
-        // uint256 collect0;
-        // uint256 collect1;
+        require(balanceOf(msg.sender) >= _shares && _shares != 0, "INS");
 
         uint256 collect0;
         uint256 collect1;
@@ -150,9 +146,6 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         // give from unused amounts
         collect0 = IERC20(pool.token0()).balanceOf(address(this));
         collect1 = IERC20(pool.token1()).balanceOf(address(this));
-
-        uint256 performanceFee0;
-        uint256 performanceFee1;
 
         // burn liquidity based on shares from existing ticks
         if (ticks.length != 0) {
@@ -178,17 +171,6 @@ contract DefiEdgeStrategy is UniswapPoolActions {
                     ? tick.amount1.sub(amount1)
                     : tick.amount1;
 
-                // transfer performance fee to manager
-                if (fee0 > 0) {
-                    performanceFee0 = fee0.mul(performanceFee).div(1e8);
-                    collect0 = collect0.add(fee0.sub(performanceFee0));
-                }
-
-                if (fee1 > 0) {
-                    performanceFee1 = fee1.mul(performanceFee).div(1e8);
-                    collect1 = collect1.add(fee1.sub(performanceFee1));
-                }
-
                 emit FeesClaimed(msg.sender, fee0, fee1);
             }
         }
@@ -213,14 +195,6 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         }
         if (amount1 > 0) {
             TransferHelper.safeTransfer(pool.token1(), msg.sender, amount1);
-        }
-
-        if (performanceFee0 > 0) {
-            TransferHelper.safeTransfer(pool.token0(), feeTo, performanceFee0);
-        }
-
-        if (performanceFee1 > 0) {
-            TransferHelper.safeTransfer(pool.token1(), feeTo, performanceFee1);
         }
 
         emit Burn(msg.sender, _shares, amount0, amount1);
@@ -282,42 +256,13 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         emit Hold();
     }
 
-    /**
-     * @notice Gets current ticks and it's amounts
-     */
-    function getTicks() public view returns (Tick[] memory) {
-        return ticks;
-    }
-
     // TODO: Make this function work correctly
     function emergencyWithdraw(
-        int24 tickLower,
-        int24 tickUpper,
-        uint128 liquidity
+        address _token,
+        address _to,
+        uint256 _amount
     ) external onlyGovernance {
-        require(!freezeEmergency, "L");
-        if (liquidity > 0) {
-            pool.burn(tickLower, tickUpper, liquidity);
-            (, , , uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(
-                PositionKey.compute(address(this), tickLower, tickUpper)
-            );
-            pool.collect(
-                address(this),
-                tickLower,
-                tickUpper,
-                uint128(tokensOwed0),
-                uint128(tokensOwed1)
-            );
-        }
-        TransferHelper.safeTransfer(
-            pool.token0(),
-            msg.sender,
-            IERC20(pool.token0()).balanceOf(address(this))
-        );
-        TransferHelper.safeTransfer(
-            pool.token1(),
-            msg.sender,
-            IERC20(pool.token1()).balanceOf(address(this))
-        );
+        require(!manager.freezeEmergency(), "L");
+        TransferHelper.safeTransfer(_token, _to, _amount);
     }
 }

@@ -4,12 +4,13 @@ pragma solidity =0.7.6;
 pragma abicoder v2;
 
 import "./DefiEdgeStrategy.sol";
+import "./base/StrategyManager.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-interface DefiEdgeStrategyDeployerProxy {
+interface IDefiEdgeStrategyDeployer {
     function createStrategy(
+        address _manager,
         address _pool,
-        address _operator,
         bool[] memory _usdAsBase,
         DefiEdgeStrategy.Tick[] memory _ticks
     ) external returns (address);
@@ -64,21 +65,24 @@ contract DefiEdgeStrategyFactory {
         swapRouter = _swapRouter;
     }
 
-    /**
-     * @notice Launches strategy contract
-     * @param _pool Address of the pool
-     * @param _operator Address of the operator
-     * @param _ticks Array of the ticks
-     */
+    // /**
+    //  * @notice Launches strategy contract
+    //  * @param _pool Address of the pool
+    //  * @param _operator Address of the operator
+    //  * @param _ticks Array of the ticks
+    //  */
     function createStrategy(
         address _pool,
-        address _operator,
         bool[] memory _usdAsBase,
         DefiEdgeStrategy.Tick[] memory _ticks
     ) external {
-        address strategy = DefiEdgeStrategyDeployerProxy(deployerProxy)
-            .createStrategy(_pool, _operator, _usdAsBase, _ticks);
+        address manager = address(new StrategyManager());
+
+        address strategy = IDefiEdgeStrategyDeployer(deployerProxy)
+            .createStrategy(manager, _pool, _usdAsBase, _ticks);
+
         strategyByIndex[totalIndex.add(1)] = strategy;
+        
         totalIndex = totalIndex.add(1);
         isValid[strategy] = true;
         emit NewStrategy(strategy, msg.sender);

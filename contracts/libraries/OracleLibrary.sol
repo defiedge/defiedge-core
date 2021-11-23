@@ -139,4 +139,8 @@ library OracleLibrary {
 
         return false;
     }
+
+    function allowSwap() public view returns (bool) {
+        
+    }
 }

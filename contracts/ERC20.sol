@@ -165,10 +165,7 @@ contract ERC20 is Context, IERC20 {
         _approve(
             sender,
             _msgSender(),
-            _allowances[sender][_msgSender()].sub(
-                amount,
-                "ERC20: transfer amount exceeds allowance"
-            )
+            _allowances[sender][_msgSender()].sub(amount, "a")
         );
         return true;
     }
@@ -220,10 +217,7 @@ contract ERC20 is Context, IERC20 {
         _approve(
             _msgSender(),
             spender,
-            _allowances[_msgSender()][spender].sub(
-                subtractedValue,
-                "ERC20: decreased allowance below zero"
-            )
+            _allowances[_msgSender()][spender].sub(subtractedValue, "a")
         );
         return true;
     }
@@ -247,8 +241,8 @@ contract ERC20 is Context, IERC20 {
         address recipient,
         uint256 amount
     ) internal virtual {
-        require(sender != address(0), "ERC20: transfer from the zero address");
-        require(recipient != address(0), "ERC20: transfer to the zero address");
+        require(sender != address(0), "0");
+        require(recipient != address(0), "0");
 
         _beforeTokenTransfer(sender, recipient, amount);
 
@@ -270,7 +264,7 @@ contract ERC20 is Context, IERC20 {
      * - `to` cannot be the zero address.
      */
     function _mint(address account, uint256 amount) internal virtual {
-        require(account != address(0), "ERC20: mint to the zero address");
+        require(account != address(0), "0");
 
         _beforeTokenTransfer(address(0), account, amount);
 
@@ -291,14 +285,11 @@ contract ERC20 is Context, IERC20 {
      * - `account` must have at least `amount` tokens.
      */
     function _burn(address account, uint256 amount) internal virtual {
-        require(account != address(0), "ERC20: burn from the zero address");
+        require(account != address(0), "0");
 
         _beforeTokenTransfer(account, address(0), amount);
 
-        _balances[account] = _balances[account].sub(
-            amount,
-            "ERC20: burn amount exceeds balance"
-        );
+        _balances[account] = _balances[account].sub(amount, "b");
         _totalSupply = _totalSupply.sub(amount);
         emit Transfer(account, address(0), amount);
     }
@@ -321,8 +312,8 @@ contract ERC20 is Context, IERC20 {
         address spender,
         uint256 amount
     ) internal virtual {
-        require(owner != address(0), "ERC20: approve from the zero address");
-        require(spender != address(0), "ERC20: approve to the zero address");
+        require(owner != address(0), "0");
+        require(spender != address(0), "0");
 
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);

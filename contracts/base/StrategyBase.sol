@@ -8,6 +8,8 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "../ERC20.sol";
 
 import "../interfaces/IStrategyFactory.sol";
+import "../interfaces/IStrategyManager.sol";
+
 import "../libraries/ShareHelper.sol";
 import "../libraries/OracleLibrary.sol";
 
@@ -23,38 +25,6 @@ contract StrategyBase is ERC20 {
     event ClaimFee(uint256 managerFee, uint256 protocolFee);
     event ChangePerformanceFee(uint256 performanceFee);
 
-    uint256 public managementFee;
-
-    // fees for the manager
-    uint256 public performanceFee; // 1e8 is 100%
-
-    // address of the manager where the fees should receive
-    address public feeTo;
-
-    uint256 public accProtocolFee;
-    uint256 public accManagementFee;
-
-    address public operator;
-    address public pendingOperator;
-
-    // max number of shares to be minted
-    // if set 0, allows unlimited deposits
-    uint256 public limit;
-
-    IStrategyFactory public factory;
-
-    // Uniswap pool for the strategy
-    IUniswapV3Pool public pool;
-
-    // when true emergency functions will be frozen forever
-    bool public freezeEmergency;
-
-    // allowed price difference for the oracle and the current price
-    // 1e18 is 1%
-    uint256 public allowedDeviation;
-
-    bool[] public usdAsBase;
-
     struct Tick {
         uint256 amount0;
         uint256 amount1;
@@ -65,9 +35,18 @@ contract StrategyBase is ERC20 {
     // store ticks
     Tick[] public ticks;
 
+    uint256 public accProtocolFee;
+    uint256 public accManagementFee;
+
+    IStrategyFactory public factory;
+    IUniswapV3Pool public pool;
+    bool[] public usdAsBase;
+
+    IStrategyManager public manager;
+
     // Modifiers
     modifier onlyOperator() {
-        require(msg.sender == operator, "N");
+        require(msg.sender == manager.operator(), "N");
         _;
     }
 
@@ -106,7 +85,6 @@ contract StrategyBase is ERC20 {
     modifier isValidStrategy() {
         // check if strategy is in denylist
         require(!factory.denied(address(this)), "DL");
-
         _;
     }
 
@@ -119,16 +97,12 @@ contract StrategyBase is ERC20 {
                 address(pool),
                 factory.chainlinkRegistry(),
                 usdAsBase,
-                allowedDeviation
+                manager.allowedDeviation()
             ),
             "D"
         );
         _;
     }
-
-    // function totalSupply() public view override returns (uint256) {
-    //     return _totalSupply.add(accManagementFee);
-    // }
 
     /**
      * @notice Updates the shares of the user
@@ -165,8 +139,8 @@ contract StrategyBase is ERC20 {
 
         uint256 managerShare;
         // strategy owner fees
-        if (feeTo != address(0) && managementFee > 0) {
-            managerShare = share.mul(managementFee).div(1e8);
+        if (manager.feeTo() != address(0) && manager.managementFee() > 0) {
+            managerShare = share.mul(manager.managementFee()).div(1e8);
             accManagementFee = accManagementFee.add(managerShare);
         }
 
@@ -182,71 +156,6 @@ contract StrategyBase is ERC20 {
     }
 
     /**
-     * @notice Changes the fee
-     * @dev 1000000 is 1%
-     * @param _fee Fee tier from indexes 0 to 2
-     */
-    function changeFee(uint256 _fee) public onlyOperator {
-        managementFee = _fee;
-        emit ChangeFee(managementFee);
-    }
-
-    /**
-     * @notice changes address where the operator is receiving the fee
-     * @param _newFeeTo New address where fees should be received
-     */
-    function changeFeeTo(address _newFeeTo) external onlyOperator {
-        feeTo = _newFeeTo;
-    }
-
-    /**
-     * @notice Change the operator
-     * @param _operator Address of the new operator
-     */
-    function changeOperator(address _operator) external onlyOperator {
-        require(_operator != address(0));
-        require(_operator != operator);
-        pendingOperator = _operator;
-    }
-
-    /**
-     * @notice Change the operator
-     */
-    function acceptOperator() external {
-        require(msg.sender == pendingOperator);
-        operator = pendingOperator;
-        emit ChangeOperator(pendingOperator);
-    }
-
-    /**
-     * @notice Returns lengths of the ticks
-     */
-    function tickLength() public view returns (uint256 length) {
-        length = ticks.length;
-    }
-
-    /**
-     * @notice Change strategy limit in terms of share
-     * @param _limit Number of shares the strategy can mint, 0 means unlimited
-     */
-    function changeLimit(uint256 _limit) external onlyOperator {
-        limit = _limit;
-    }
-
-    /**
-     * @notice Manager can set the performance fee
-     * @param _performanceFee New performance fee, should not be more than 20%
-     */
-    function changePerformanceFee(uint256 _performanceFee)
-        external
-        onlyOperator
-    {
-        require(_performanceFee <= 2 * 1e6);
-        performanceFee = _performanceFee;
-        emit ChangePerformanceFee(_performanceFee);
-    }
-
-    /**
      * @notice Claims the fee for protocol and management
      */
     function claimFee() external {
@@ -259,29 +168,10 @@ contract StrategyBase is ERC20 {
         }
 
         if (accManagementFee > 0) {
-            _mint(feeTo, accManagementFee);
+            _mint(manager.feeTo(), accManagementFee);
             accManagementFee = 0;
         }
 
         emit ClaimFee(managerFee, protocolFee);
-    }
-
-    /**
-     * @notice Freeze emergency function, can be done only once
-     */
-    function freezeEmergencyFunctions() external onlyGovernance {
-        freezeEmergency = true;
-    }
-
-    /**
-     * @notice Changes allowed price deviation
-     * @param _allowedDeviation New allowed price deviation, 1e18 is 100%
-     */
-    function changeAllowedDeviation(uint256 _allowedDeviation)
-        external
-        onlyGovernance
-    {
-        allowedDeviation = _allowedDeviation;
-        emit ChangeAllowedDeviation(_allowedDeviation);
     }
 }

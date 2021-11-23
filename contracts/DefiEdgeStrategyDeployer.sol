@@ -2,26 +2,21 @@
 
 pragma solidity =0.7.6;
 pragma abicoder v2;
+
 import "./DefiEdgeStrategy.sol";
 
-contract DefiEdgeStrategyDeployerProxy {
-    /**
-     * @notice Launches strategy contract
-     * @param _pool Address of the pool
-     * @param _operator Address of the operator
-     * @param _ticks Array of the ticks
-     */
+contract DefiEdgeStrategyDeployer {
     function createStrategy(
+        address _manager,
         address _pool,
-        address _operator,
         bool[] memory _usdAsBase,
         DefiEdgeStrategy.Tick[] memory _ticks
     ) external returns (address strategy) {
         strategy = address(
             new DefiEdgeStrategy(
+                _manager,
                 address(this),
                 _pool,
-                _operator,
                 _ticks,
                 _usdAsBase
             )
