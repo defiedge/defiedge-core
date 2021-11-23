@@ -3,12 +3,10 @@
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 import "./base/UniswapPoolActions.sol";
-import "./base/StrategyBase.sol";
 
 import "./libraries/LiquidityHelper.sol";
 
@@ -114,7 +112,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
 
         // share limit
         if (limit != 0) {
-            require(getTotalSupply() <= limit, "L");
+            require(totalSupply() <= limit, "L");
         }
 
         // emit event
@@ -196,11 +194,11 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         }
 
         if (collect0 > 0) {
-            collect0 = collect0.mul(_shares).div(getTotalSupply());
+            collect0 = collect0.mul(_shares).div(totalSupply());
         }
 
         if (collect1 > 0) {
-            collect1 = collect1.mul(_shares).div(getTotalSupply());
+            collect1 = collect1.mul(_shares).div(totalSupply());
         }
 
         // check slippage

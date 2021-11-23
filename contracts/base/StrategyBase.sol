@@ -3,13 +3,17 @@ pragma solidity =0.7.6;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+// import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+import "../ERC20.sol";
 
 import "../interfaces/IStrategyFactory.sol";
 import "../libraries/ShareHelper.sol";
 import "../libraries/OracleLibrary.sol";
 
-contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
+// contract StrategyBase is ERC20("DEShare", "DefiEdge") {
+
+contract StrategyBase is ERC20 {
     using SafeMath for uint256;
 
     event ChangeFee(uint256 tier);
@@ -122,9 +126,9 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
         _;
     }
 
-    function getTotalSupply() internal view returns (uint256) {
-        return totalSupply().add(accManagementFee);
-    }
+    // function totalSupply() public view override returns (uint256) {
+    //     return _totalSupply.add(accManagementFee);
+    // }
 
     /**
      * @notice Updates the shares of the user
@@ -153,7 +157,7 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
             _amount1,
             _totalAmount0,
             _totalAmount1,
-            getTotalSupply(),
+            totalSupply(),
             price
         );
 

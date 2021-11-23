@@ -121,7 +121,7 @@ contract UniswapPoolActions is StrategyBase, IUniswapV3MintCallback {
 
             if (currentLiquidity > 0) {
                 uint256 liquidity = uint256(currentLiquidity).mul(_shares).div(
-                    getTotalSupply()
+                    totalSupply()
                 );
 
                 (tokensBurned0, tokensBurned1) = pool.burn(
