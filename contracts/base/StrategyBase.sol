@@ -17,8 +17,14 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
     event ChangeLimit(uint256 limit);
     event ChangeAllowedDeviation(uint256 deviation);
     event ClaimFee(uint256 managerFee, uint256 protocolFee);
+    event ChangePerformanceFee(uint256 performanceFee);
 
     uint256 public managementFee;
+
+    // fees for the manager
+    uint256 public performanceFee; // 1e8 is 100%
+
+    // address of the manager where the fees should receive
     address public feeTo;
 
     uint256 public accProtocolFee;
@@ -221,6 +227,19 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
      */
     function changeLimit(uint256 _limit) external onlyOperator {
         limit = _limit;
+    }
+
+    /**
+     * @notice Manager can set the performance fee
+     * @param _performanceFee New performance fee, should not be more than 20%
+     */
+    function changePerformanceFee(uint256 _performanceFee)
+        external
+        onlyOperator
+    {
+        require(_performanceFee <= 2 * 1e6);
+        performanceFee = _performanceFee;
+        emit ChangePerformanceFee(_performanceFee);
     }
 
     /**

@@ -143,15 +143,18 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         // check if the user has sufficient shares
         require(balanceOf(msg.sender) >= _shares, "INS");
 
+        // uint256 collect0;
+        // uint256 collect1;
+
         uint256 collect0;
         uint256 collect1;
 
-        uint256 unused0;
-        uint256 unused1;
-
         // give from unused amounts
-        unused0 = IERC20(pool.token0()).balanceOf(address(this));
-        unused1 = IERC20(pool.token1()).balanceOf(address(this));
+        collect0 = IERC20(pool.token0()).balanceOf(address(this));
+        collect1 = IERC20(pool.token1()).balanceOf(address(this));
+
+        uint256 performanceFee0;
+        uint256 performanceFee1;
 
         // burn liquidity based on shares from existing ticks
         if (ticks.length != 0) {
@@ -177,24 +180,28 @@ contract DefiEdgeStrategy is UniswapPoolActions {
                     ? tick.amount1.sub(amount1)
                     : tick.amount1;
 
-                unused0 = unused0.add(fee0);
-                unused1 = unused1.add(fee1);
+                // transfer performance fee to manager
+                if (fee0 > 0) {
+                    performanceFee0 = fee0.mul(performanceFee).div(1e8);
+                    collect0 = collect0.add(fee0.sub(performanceFee0));
+                }
+
+                if (fee1 > 0) {
+                    performanceFee1 = fee1.mul(performanceFee).div(1e8);
+                    collect1 = collect1.add(fee1.sub(performanceFee1));
+                }
 
                 emit FeesClaimed(msg.sender, fee0, fee1);
             }
         }
 
-        if (unused0 > 0) {
-            unused0 = unused0.mul(_shares).div(getTotalSupply());
+        if (collect0 > 0) {
+            collect0 = collect0.mul(_shares).div(getTotalSupply());
         }
 
-        if (unused1 > 0) {
-            unused1 = unused1.mul(_shares).div(getTotalSupply());
+        if (collect1 > 0) {
+            collect1 = collect1.mul(_shares).div(getTotalSupply());
         }
-
-        // add to total amounts
-        amount0 = collect0.add(unused0);
-        amount1 = collect1.add(unused1);
 
         // check slippage
         require(_amount0Min <= amount0 && _amount1Min <= amount1, "S");
@@ -208,6 +215,14 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         }
         if (amount1 > 0) {
             TransferHelper.safeTransfer(pool.token1(), msg.sender, amount1);
+        }
+
+        if (performanceFee0 > 0) {
+            TransferHelper.safeTransfer(pool.token0(), feeTo, performanceFee0);
+        }
+
+        if (performanceFee1 > 0) {
+            TransferHelper.safeTransfer(pool.token1(), feeTo, performanceFee1);
         }
 
         emit Burn(msg.sender, _shares, amount0, amount1);
@@ -258,46 +273,6 @@ contract DefiEdgeStrategy is UniswapPoolActions {
             ticks.push(Tick(amount0, amount1, tick.tickLower, tick.tickUpper));
         }
     }
-
-    // /**
-    //  * @notice Rebalances between the ticks
-    //  * @param _zeroForOne The direction of the swap
-    //  * @param _amount Amount to Swap
-    //  * @param _sqrtPriceLimitX96 Price Slippage
-    //  */
-    // function swap(
-    //     bool _zeroForOne,
-    //     int256 _amount,
-    //     uint160 _sqrtPriceLimitX96
-    // )
-    //     external
-    //     onlyOperator
-    //     isValidStrategy
-    //     hasDeviation
-    //     returns (uint256 amountOut)
-    // {
-    //     if (ticks.length > 0) {
-    //         onHold = true;
-    //         // burn all liquidity
-    //         burnAllLiquidity(ticks);
-    //         // delete ticks
-    //         delete ticks;
-    //     }
-
-    //     (int256 amount0, int256 amount1) = pool.swap(
-    //         address(this),
-    //         _zeroForOne,
-    //         _amount,
-    //         _sqrtPriceLimitX96,
-    //         abi.encode(
-    //             SwapCallbackData({pool: address(pool), zeroToOne: _zeroForOne})
-    //         )
-    //     );
-
-    //     amountOut = uint256(-(_zeroForOne ? amount1 : amount0));
-
-    //     emit Swap(uint256(_amount), amountOut, _zeroForOne);
-    // }
 
     /**
      * @notice Holds the funds

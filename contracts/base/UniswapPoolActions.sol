@@ -199,15 +199,29 @@ contract UniswapPoolActions is StrategyBase, IUniswapV3MintCallback {
             totalCollected1 = totalCollected1.add(collect1);
         }
 
-        emit FeesClaimed(
-            msg.sender,
-            totalCollected0 > totalBurned0
-                ? uint256(totalCollected0).sub(totalBurned0)
-                : 0,
-            totalCollected1 > totalBurned1
-                ? uint256(totalCollected1).sub(totalBurned1)
-                : 0
-        );
+        uint256 fee0 = totalCollected0 > totalBurned0
+            ? uint256(totalCollected0).sub(totalBurned0)
+            : 0;
+        uint256 fee1 = totalCollected1 > totalBurned1
+            ? uint256(totalCollected1).sub(totalBurned1)
+            : 0;
+
+        // transfer performance fee to manager
+        if (fee0.mul(performanceFee).div(1e8) > 0) {
+            IERC20(pool.token0()).transfer(
+                feeTo,
+                fee0.mul(performanceFee).div(1e8)
+            );
+        }
+
+        if (fee1.mul(performanceFee).div(1e8) > 0) {
+            IERC20(pool.token1()).transfer(
+                feeTo,
+                fee1.mul(performanceFee).div(1e8)
+            );
+        }
+
+        emit FeesClaimed(address(this), fee0, fee1);
     }
 
     /**
