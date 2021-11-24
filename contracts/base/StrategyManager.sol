@@ -1,11 +1,13 @@
 //SPDX-License-Identifier: BSL
 pragma solidity =0.7.6;
 
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-
-import "../interfaces/IStrategyFactory.sol";
+// libraries
 import "../libraries/ShareHelper.sol";
 import "../libraries/OracleLibrary.sol";
+
+// interfaces
+import "../interfaces/IStrategyFactory.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 contract StrategyManager {
     using SafeMath for uint256;
@@ -17,19 +19,10 @@ contract StrategyManager {
     event ClaimFee(uint256 managerFee, uint256 protocolFee);
     event ChangePerformanceFee(uint256 performanceFee);
 
-    // fee to take when user adds the liquidity
-    uint256 public managementFee;
-    // fees for the manager
-    uint256 public performanceFee; // 1e8 is 100%
-
+    IStrategyFactory public factory;
     address public operator;
     address public pendingOperator;
-
-    // max number of shares to be minted
-    // if set 0, allows unlimited deposits
-    uint256 public limit;
-
-    // Uniswap pool for the strategy
+    address public feeTo;
 
     // when true emergency functions will be frozen forever
     bool public freezeEmergency;
@@ -38,12 +31,34 @@ contract StrategyManager {
     // 1e18 is 1%
     uint256 public allowedDeviation;
 
-    address public feeTo;
+    // fee to take when user adds the liquidity
+    uint256 public managementFee;
 
-    IStrategyFactory public factory;
+    // fees for the manager
+    uint256 public performanceFee; // 1e8 is 100%
 
-    constructor() {
-        allowedDeviation = 1;
+    // max number of shares to be minted
+    // if set 0, allows unlimited deposits
+    uint256 public limit;
+
+    constructor(
+        address _factory,
+        address _operator,
+        address _feeTo,
+        uint256 _managementFee,
+        uint256 _performanceFee,
+        uint256 _limit,
+        uint256 _allowedDeviation
+    ) {
+        factory = IStrategyFactory(_factory);
+        operator = _operator;
+        feeTo = _feeTo;
+
+        managementFee = _managementFee;
+        performanceFee = _performanceFee;
+        limit = _limit;
+
+        allowedDeviation = _allowedDeviation;
     }
 
     // Modifiers
@@ -56,6 +71,10 @@ contract StrategyManager {
     modifier onlyGovernance() {
         require(msg.sender == factory.governance(), "N");
         _;
+    }
+
+    function strategy() public view returns (address) {
+        return factory.strategyByManager(address(this));
     }
 
     /**
@@ -124,7 +143,7 @@ contract StrategyManager {
     }
 
     /**
-     * @notice Changes allowed price deviation
+     * @notice Changes allowed price deviation for shares and pool
      * @param _allowedDeviation New allowed price deviation, 1e18 is 100%
      */
     function changeAllowedDeviation(uint256 _allowedDeviation)

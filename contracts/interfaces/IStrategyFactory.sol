@@ -2,7 +2,11 @@
 pragma solidity =0.7.6;
 
 interface IStrategyFactory {
+    function allowedSlippage() external view returns (uint256);
+
     function isValid(address) external view returns (bool);
+
+    function strategyByManager(address) external view returns (address);
 
     function feeTo() external view returns (address);
 

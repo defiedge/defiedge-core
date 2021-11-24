@@ -3,11 +3,12 @@
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
+// contracts
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-
 import "./base/UniswapV3LiquidityManager.sol";
 
+// libraries
 import "./libraries/LiquidityHelper.sol";
 
 contract DefiEdgeStrategy is UniswapV3LiquidityManager {
@@ -39,14 +40,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         pool = IUniswapV3Pool(_pool);
         usdAsBase = _usdAsBase;
         manager = IStrategyManager(_manager);
-        require(
-            IUniswapV3Factory(factory.uniswapV3Factory()).getPool(
-                pool.token0(),
-                pool.token1(),
-                pool.fee()
-            ) == address(pool),
-            "IP"
-        );
+
         for (uint256 i = 0; i < _ticks.length; i++) {
             ticks.push(Tick(0, 0, _ticks[i].tickLower, _ticks[i].tickUpper));
         }
@@ -111,7 +105,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
 
         // share limit
         if (manager.limit() != 0) {
-            require(totalSupply() <= manager.limit(), "L");
+            require(totalSupply <= manager.limit(), "L");
         }
 
         // emit event
@@ -176,11 +170,11 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         }
 
         if (collect0 > 0) {
-            collect0 = collect0.mul(_shares).div(totalSupply());
+            collect0 = collect0.mul(_shares).div(totalSupply);
         }
 
         if (collect1 > 0) {
-            collect1 = collect1.mul(_shares).div(totalSupply());
+            collect1 = collect1.mul(_shares).div(totalSupply);
         }
 
         // check slippage
@@ -256,13 +250,36 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         emit Hold();
     }
 
-    // TODO: Make this function work correctly
-    function emergencyWithdraw(
-        address _token,
-        address _to,
-        uint256 _amount
-    ) external onlyGovernance {
-        require(!manager.freezeEmergency(), "L");
-        TransferHelper.safeTransfer(_token, _to, _amount);
-    }
+    // // TODO: Make this function work correctly
+    // function emergencyWithdraw(
+    //     address _token,
+    //     address _to,
+    //     uint256 _amount
+    // ) external {
+    //     require(
+    //         msg.sender == factory.governance() && !manager.freezeEmergency(),
+    //         "N"
+    //     );
+    //     TransferHelper.safeTransfer(_token, _to, _amount);
+    // }
+
+    // // TODO: Make this function work correctly
+    // function emergencyBurn(
+    //     int24 _tickLower,
+    //     int24 _tickUpper,
+    //     uint128 _liquidity,
+    //     address _to
+    // ) external onlyGovernance {
+    //     pool.burn(_tickLower, _tickUpper, _liquidity);
+    //     (, , , uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(
+    //         PositionKey.compute(address(this), _tickLower, _tickUpper)
+    //     );
+    //     pool.collect(
+    //         _to,
+    //         _tickLower,
+    //         _tickUpper,
+    //         uint128(tokensOwed0),
+    //         uint128(tokensOwed1)
+    //     );
+    // }
 }

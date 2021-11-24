@@ -9,10 +9,10 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 interface IDefiEdgeStrategyDeployer {
     function createStrategy(
-        address _manager,
-        address _pool,
-        bool[] memory _usdAsBase,
-        DefiEdgeStrategy.Tick[] memory _ticks
+        address manager,
+        address pool,
+        bool[] memory usdAsBase,
+        DefiEdgeStrategy.Tick[] memory ticks
     ) external returns (address);
 }
 
@@ -24,8 +24,14 @@ contract DefiEdgeStrategyFactory {
     mapping(uint256 => address) public strategyByIndex; // map strategies by index
     mapping(address => bool) public isValid; // make strategy valid when deployed
 
+    mapping(address => address) public strategyByManager; // strategy manager contracts linked with strategies
+
     // total number of strategies
     uint256 public totalIndex;
+
+    uint256 public PROTOCOL_FEE; // 1e8 means 100%
+    uint256 public allowedDeviation; // 1e18 means 1%
+    uint256 public allowedSlippage; // 1e18 means 1%
 
     // governance address
     address public governance;
@@ -34,7 +40,6 @@ contract DefiEdgeStrategyFactory {
     address public pendingGovernance;
 
     // protocol fee
-    uint256 public PROTOCOL_FEE; // 1e8 means 100%
     address public feeTo; // receive protocol fees here
 
     address public deployerProxy;
@@ -45,6 +50,17 @@ contract DefiEdgeStrategyFactory {
     // mapping of blacklisted strategies
     mapping(address => bool) public denied;
 
+    struct CreateStrategyParams {
+        address operator;
+        address feeTo;
+        uint256 managementFee;
+        uint256 performanceFee;
+        uint256 limit;
+        address pool;
+        bool[] usdAsBase;
+        DefiEdgeStrategy.Tick[] ticks;
+    }
+
     // Modifiers
     modifier onlyGovernance() {
         require(msg.sender == governance, "NO");
@@ -52,17 +68,22 @@ contract DefiEdgeStrategyFactory {
     }
 
     constructor(
-        address _deployerProxy,
         address _governance,
+        address _deployerProxy,
         address _chainlinkRegistry,
         address _uniswapV3factory,
-        address _swapRouter
+        address _swapRouter,
+        uint256 _allowedSlippage,
+        uint256 _allowedDeviation
     ) {
+        governance = _governance;
         deployerProxy = _deployerProxy;
         governance = _governance;
         uniswapV3Factory = _uniswapV3factory;
         chainlinkRegistry = _chainlinkRegistry;
         swapRouter = _swapRouter;
+        allowedSlippage = _allowedSlippage;
+        allowedDeviation = _allowedDeviation;
     }
 
     // /**
@@ -71,21 +92,59 @@ contract DefiEdgeStrategyFactory {
     //  * @param _operator Address of the operator
     //  * @param _ticks Array of the ticks
     //  */
-    function createStrategy(
-        address _pool,
-        bool[] memory _usdAsBase,
-        DefiEdgeStrategy.Tick[] memory _ticks
-    ) external {
-        address manager = address(new StrategyManager());
+    function createStrategy(CreateStrategyParams calldata params) external {
+        IUniswapV3Pool pool = IUniswapV3Pool(params.pool);
+
+        require(
+            IUniswapV3Factory(uniswapV3Factory).getPool(
+                pool.token0(),
+                pool.token1(),
+                pool.fee()
+            ) == address(pool),
+            "IP"
+        );
+
+        address manager = address(
+            new StrategyManager(
+                address(this),
+                params.operator,
+                params.feeTo,
+                params.managementFee,
+                params.performanceFee,
+                params.limit,
+                allowedDeviation
+            )
+        );
 
         address strategy = IDefiEdgeStrategyDeployer(deployerProxy)
-            .createStrategy(manager, _pool, _usdAsBase, _ticks);
+            .createStrategy(
+                manager,
+                params.pool,
+                params.usdAsBase,
+                params.ticks
+            );
+
+        strategyByManager[manager] = strategy;
 
         strategyByIndex[totalIndex.add(1)] = strategy;
-        
+
         totalIndex = totalIndex.add(1);
         isValid[strategy] = true;
         emit NewStrategy(strategy, msg.sender);
+    }
+
+    function changeDefaultAllowedDeviation(uint256 _allowedDeviation)
+        external
+        onlyGovernance
+    {
+        allowedDeviation = _allowedDeviation;
+    }
+
+    function changeAllowedSlippage(uint256 _allowedSlippage)
+        external
+        onlyGovernance
+    {
+        allowedSlippage = _allowedSlippage;
     }
 
     /**

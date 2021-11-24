@@ -2,19 +2,20 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import "@chainlink/contracts/src/v0.7/interfaces/FeedRegistryInterface.sol";
+// contracts
 import "@chainlink/contracts/src/v0.7/Denominations.sol";
-
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-
-import "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/Math.sol";
 
+// libraries
 import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
+import "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 
-import "@openzeppelin/contracts/math/Math.sol";
+// interfaces
+import "@chainlink/contracts/src/v0.7/interfaces/FeedRegistryInterface.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "../interfaces/IStrategyFactory.sol";
 
 interface IERC20Minimal {
     function decimals() external view returns (uint256);
@@ -140,7 +141,44 @@ library OracleLibrary {
         return false;
     }
 
-    function allowSwap() public view returns (bool) {
-        
+    /**
+     * @notice Checks for price slippage at the time of swap
+     * @param _factory Address of the DefiEdge strategy factory
+     * @param _amountIn Amount to be swapped
+     * @param _amountOut Amount received after swap
+     * @param _tokenIn Token to be swapped
+     * @param _tokenOut Token to which tokenIn should be swapped
+     * @return true if the swap is allowed, else false
+     */
+    function allowSwap(
+        address _factory,
+        uint256 _amountIn,
+        uint256 _amountOut,
+        address _tokenIn,
+        address _tokenOut,
+        bool[2] memory _isBase
+    ) public view returns (bool) {
+        IStrategyFactory factory = IStrategyFactory(_factory);
+
+        uint256 amountInUSD = _amountIn.mul(
+            getPriceInUSD(factory.chainlinkRegistry(), _tokenIn, _isBase[0])
+        );
+        uint256 amountOutUSD = _amountOut.mul(
+            getPriceInUSD(factory.chainlinkRegistry(), _tokenOut, _isBase[1])
+        );
+
+        uint256 diff;
+
+        diff = amountInUSD.mul(BASE).div(amountOutUSD);
+
+        // check if the price is above deviation
+        if (
+            diff > (BASE.add(factory.allowedSlippage())) ||
+            diff < (BASE.sub(factory.allowedSlippage()))
+        ) {
+            return false;
+        }
+
+        return true;
     }
 }

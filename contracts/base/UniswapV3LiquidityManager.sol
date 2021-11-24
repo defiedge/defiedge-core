@@ -2,19 +2,17 @@
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
+// contracts
 import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "../base/StrategyBase.sol";
 
-import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
-// import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
-
+// interfaces
+import "../libraries/LiquidityHelper.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 
+// libraries
+import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-
-// import libraries
-import "../libraries/LiquidityHelper.sol";
-
-import "../base/StrategyBase.sol";
 
 contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
     using SafeMath for uint256;
@@ -22,7 +20,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
     ISwapRouter public swapRouter;
 
-    event Swap(uint256 amountIn, uint256 amountOut, bool zeroToOne);
+    event Swap(uint256 amountIn, uint256 amountOut, bool _zeroForOne);
 
     event FeesClaimed(
         address indexed strategy,
@@ -102,7 +100,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             );
             if (_currentLiquidity > 0) {
                 uint256 liquidity = uint256(_currentLiquidity).mul(_shares).div(
-                    totalSupply()
+                    totalSupply
                 );
                 (tokensBurned0, tokensBurned1) = pool.burn(
                     _tickLower,
@@ -183,16 +181,18 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
      * @notice Swaps through the path calculated by Uniswap auto-router
      */
     function swapExactInput(
-        bool zeroForOne,
-        bytes memory path,
-        uint256 deadline,
-        uint256 amountIn,
-        uint256 amountOutMinimum
+        bool _usePath,
+        bool _zeroForOne,
+        bytes memory _path,
+        uint256 _deadline,
+        uint256 _amountIn,
+        uint256 _amountOutMinimum,
+        uint160 _sqrtPriceLimitX96
     ) external {
         address tokenIn;
         address tokenOut;
         bool[2] memory isBase; // is direct USD feed is available for the token?
-        if (zeroForOne) {
+        if (_zeroForOne) {
             tokenIn = pool.token0();
             tokenOut = pool.token1();
             isBase = [true, false];
@@ -201,71 +201,49 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             tokenOut = pool.token0();
             isBase = [false, true];
         }
-        IERC20(tokenIn).approve(address(swapRouter), amountIn);
-        uint256 amountOut = swapRouter.exactInput(
-            ISwapRouter.ExactInputParams({
-                path: path,
-                recipient: address(this),
-                deadline: deadline,
-                amountIn: amountIn,
-                amountOutMinimum: amountOutMinimum
-            })
-        );
-        uint256 amountInUSD = amountIn.mul(
-            OracleLibrary.getPriceInUSD(
-                factory.chainlinkRegistry(),
-                tokenIn,
-                isBase[0]
-            )
-        );
-        uint256 amountOutUSD = amountOut.mul(
-            OracleLibrary.getPriceInUSD(
-                factory.chainlinkRegistry(),
-                tokenOut,
-                isBase[1]
-            )
-        );
-        // allow only 2% of slippage via autorouter
-        // TODO: make this splippage controlled by governance
+        IERC20(tokenIn).approve(address(swapRouter), _amountIn);
+
+        uint256 amountOut;
+
+        if (_usePath) {
+            amountOut = swapRouter.exactInput(
+                ISwapRouter.ExactInputParams({
+                    path: _path,
+                    recipient: address(this),
+                    deadline: _deadline,
+                    amountIn: _amountIn,
+                    amountOutMinimum: _amountOutMinimum
+                })
+            );
+        } else {
+            swapRouter.exactInputSingle(
+                ISwapRouter.ExactInputSingleParams({
+                    tokenIn: tokenIn,
+                    tokenOut: tokenOut,
+                    fee: pool.fee(),
+                    recipient: address(this),
+                    deadline: _deadline,
+                    amountIn: _amountIn,
+                    amountOutMinimum: _amountOutMinimum,
+                    sqrtPriceLimitX96: _sqrtPriceLimitX96
+                })
+            );
+        }
+
         require(
-            amountInUSD <= amountOutUSD.add(amountOutUSD.mul(2).div(100)),
+            OracleLibrary.allowSwap(
+                factory.chainlinkRegistry(),
+                _amountIn,
+                _amountIn,
+                tokenIn,
+                tokenOut,
+                isBase
+            ),
             "S"
         );
-    }
 
-    // /**
-    //  * @notice Swap one token to another
-    //  */
-    // function swapExactInputSingle(
-    //     bool _zeroForOne,
-    //     uint256 _deadline,
-    //     uint256 _amountIn,
-    //     uint256 _amountOutMinimum,
-    //     uint160 _sqrtPriceLimitX96
-    // ) external onlyOperator isValidStrategy hasDeviation {
-    //     address tokenIn;
-    //     address tokenOut;
-    //     if (_zeroForOne) {
-    //         tokenIn = pool.token0();
-    //         tokenOut = pool.token1();
-    //     } else {
-    //         tokenIn = pool.token1();
-    //         tokenOut = pool.token0();
-    //     }
-    //     IERC20(tokenIn).approve(address(swapRouter), _amountIn);
-    //     swapRouter.exactInputSingle(
-    //         ISwapRouter.ExactInputSingleParams({
-    //             tokenIn: tokenIn,
-    //             tokenOut: tokenOut,
-    //             fee: pool.fee(),
-    //             recipient: address(this),
-    //             deadline: _deadline,
-    //             amountIn: _amountIn,
-    //             amountOutMinimum: _amountOutMinimum,
-    //             sqrtPriceLimitX96: _sqrtPriceLimitX96
-    //         })
-    //     );
-    // }
+        emit Swap(_amountIn, amountOut, _zeroForOne);
+    }
 
     /**
      * @dev Callback for Uniswap V3 pool.

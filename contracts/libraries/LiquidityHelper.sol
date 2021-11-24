@@ -2,15 +2,18 @@
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
+// contracts
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../DefiEdgeStrategy.sol";
+
+// libraries
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
-
-import "../interfaces/IStrategy.sol";
-
 import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
 
+// interfaces
+import "../interfaces/IStrategy.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 library LiquidityHelper {
@@ -80,4 +83,32 @@ library LiquidityHelper {
             _liquidity
         );
     }
+
+    // /**
+    //  * @dev Replaces old ticks with new ticks
+    //  * @param _ticks New ticks
+    //  */
+    // function invalidTicks(DefiEdgeStrategy.Tick[] memory _ticks)
+    //     external
+    //     pure
+    //     returns (bool isInvalid)
+    // {
+    //     // checks for valid ticks length
+    //     require(_ticks.length <= 5, "ITL");
+    //     for (uint256 i = 0; i < _ticks.length; i++) {
+    //         int24 tickLower = _ticks[i].tickLower;
+    //         int24 tickUpper = _ticks[i].tickUpper;
+
+    //         // check that two tick upper and tick lowers are not in array cannot be same
+    //         for (uint256 j = 0; j < i; j++) {
+    //             if (i != j) {
+    //                 if (tickLower == _ticks[j].tickLower) {
+    //                     if (tickUpper != _ticks[j].tickUpper == true) {
+    //                         isInvalid = true;
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 }

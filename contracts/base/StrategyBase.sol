@@ -1,19 +1,17 @@
 //SPDX-License-Identifier: BSL
 pragma solidity =0.7.6;
+pragma abicoder v2;
 
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-
-// import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
+// contracts
 import "../ERC20.sol";
 
-import "../interfaces/IStrategyFactory.sol";
-import "../interfaces/IStrategyManager.sol";
-
+// libraries
 import "../libraries/ShareHelper.sol";
 import "../libraries/OracleLibrary.sol";
 
-// contract StrategyBase is ERC20("DEShare", "DefiEdge") {
+// interfaces
+import "../interfaces/IStrategyManager.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 contract StrategyBase is ERC20 {
     using SafeMath for uint256;
@@ -47,12 +45,6 @@ contract StrategyBase is ERC20 {
     // Modifiers
     modifier onlyOperator() {
         require(msg.sender == manager.operator(), "N");
-        _;
-    }
-
-    // Modifiers
-    modifier onlyGovernance() {
-        require(msg.sender == factory.governance(), "N");
         _;
     }
 
@@ -131,7 +123,7 @@ contract StrategyBase is ERC20 {
             _amount1,
             _totalAmount0,
             _totalAmount1,
-            totalSupply(),
+            totalSupply,
             price
         );
 
