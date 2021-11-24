@@ -105,7 +105,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
 
         // share limit
         if (manager.limit() != 0) {
-            require(totalSupply <= manager.limit(), "L");
+            require(totalSupply() <= manager.limit(), "L");
         }
 
         // emit event
@@ -170,11 +170,11 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         }
 
         if (collect0 > 0) {
-            collect0 = collect0.mul(_shares).div(totalSupply);
+            collect0 = collect0.mul(_shares).div(totalSupply());
         }
 
         if (collect1 > 0) {
-            collect1 = collect1.mul(_shares).div(totalSupply);
+            collect1 = collect1.mul(_shares).div(totalSupply());
         }
 
         // check slippage
@@ -250,18 +250,17 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         emit Hold();
     }
 
-    // // TODO: Make this function work correctly
-    // function emergencyWithdraw(
-    //     address _token,
-    //     address _to,
-    //     uint256 _amount
-    // ) external {
-    //     require(
-    //         msg.sender == factory.governance() && !manager.freezeEmergency(),
-    //         "N"
-    //     );
-    //     TransferHelper.safeTransfer(_token, _to, _amount);
-    // }
+    // TODO: Make this function work correctly
+    function emergencyWithdraw(
+        address _token,
+        address _to,
+        uint256 _amount
+    ) external {
+        require(
+            msg.sender == factory.governance() && !manager.freezeEmergency()
+        );
+        TransferHelper.safeTransfer(_token, _to, _amount);
+    }
 
     // // TODO: Make this function work correctly
     // function emergencyBurn(

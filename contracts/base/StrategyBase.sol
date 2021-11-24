@@ -16,12 +16,7 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 contract StrategyBase is ERC20 {
     using SafeMath for uint256;
 
-    event ChangeFee(uint256 tier);
-    event ChangeOperator(address indexed operator);
-    event ChangeLimit(uint256 limit);
-    event ChangeAllowedDeviation(uint256 deviation);
     event ClaimFee(uint256 managerFee, uint256 protocolFee);
-    event ChangePerformanceFee(uint256 performanceFee);
 
     struct Tick {
         uint256 amount0;
@@ -33,7 +28,6 @@ contract StrategyBase is ERC20 {
     // store ticks
     Tick[] public ticks;
 
-    uint256 public accProtocolFee;
     uint256 public accManagementFee;
 
     IStrategyFactory public factory;
@@ -111,20 +105,16 @@ contract StrategyBase is ERC20 {
         uint256 _totalAmount1,
         address _user
     ) internal returns (uint256 share) {
-        uint256 price = OracleLibrary.getPriceInUSD(
-            factory.chainlinkRegistry(),
-            pool.token0(),
-            usdAsBase[0]
-        );
-
         // calculate number of shares
         share = ShareHelper.calculateShares(
+            factory.chainlinkRegistry(),
+            pool.token0(),
+            usdAsBase[0],
             _amount0,
             _amount1,
             _totalAmount0,
             _totalAmount1,
-            totalSupply,
-            price
+            totalSupply()
         );
 
         require(share > 0, "IS");
@@ -136,34 +126,28 @@ contract StrategyBase is ERC20 {
             accManagementFee = accManagementFee.add(managerShare);
         }
 
-        uint256 protocolShare;
-        // take protocol fee
-        if (factory.feeTo() != address(0)) {
-            protocolShare = share.mul(factory.PROTOCOL_FEE()).div(1e8);
-            accProtocolFee = accProtocolFee.add(protocolShare);
-        }
-
         // issue shares
-        _mint(_user, share.sub(managerShare).sub((protocolShare)));
+        _mint(_user, share.sub(managerShare));
+    }
+
+    function totalSupply() public view override returns (uint256) {
+        return _totalSupply.add(accManagementFee);
     }
 
     /**
      * @notice Claims the fee for protocol and management
+     * Protocol receives X percentage from manager fee
      */
     function claimFee() external {
-        uint256 protocolFee = accProtocolFee;
-        uint256 managerFee = accManagementFee;
-
-        if (accProtocolFee > 0) {
-            _mint(factory.feeTo(), accProtocolFee);
-            accProtocolFee = 0;
-        }
-
         if (accManagementFee > 0) {
-            _mint(manager.feeTo(), accManagementFee);
+            uint256 protocolShare = accManagementFee
+                .mul(factory.PROTOCOL_FEE())
+                .div(1e8);
+
+            _mint(factory.feeTo(), protocolShare);
+            _mint(manager.feeTo(), accManagementFee.sub(protocolShare));
+            emit ClaimFee(accManagementFee, protocolShare);
             accManagementFee = 0;
         }
-
-        emit ClaimFee(managerFee, protocolFee);
     }
 }

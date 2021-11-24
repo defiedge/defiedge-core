@@ -37,10 +37,10 @@ abstract contract ERC20 is Context, IERC20 {
 
     mapping(address => mapping(address => uint256)) public override allowance;
 
-    uint256 public override totalSupply;
+    uint256 internal _totalSupply;
 
-    string public name = "DefiEdge Share";
-    string public symbol = "DEShare";
+    bytes32 public name = "DefiEdge Share";
+    bytes32 public symbol = "DEShare";
     uint8 public decimals = 18;
 
     /**
@@ -229,7 +229,7 @@ abstract contract ERC20 is Context, IERC20 {
 
         _beforeTokenTransfer(address(0), account, amount);
 
-        totalSupply = totalSupply.add(amount);
+        _totalSupply = _totalSupply.add(amount);
         _balances[account] = _balances[account].add(amount);
         emit Transfer(address(0), account, amount);
     }
@@ -251,7 +251,7 @@ abstract contract ERC20 is Context, IERC20 {
         _beforeTokenTransfer(account, address(0), amount);
 
         _balances[account] = _balances[account].sub(amount, "b");
-        totalSupply = totalSupply.sub(amount);
+        _totalSupply = _totalSupply.sub(amount);
         emit Transfer(account, address(0), amount);
     }
 

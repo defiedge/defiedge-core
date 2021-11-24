@@ -100,7 +100,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             );
             if (_currentLiquidity > 0) {
                 uint256 liquidity = uint256(_currentLiquidity).mul(_shares).div(
-                    totalSupply
+                    totalSupply()
                 );
                 (tokensBurned0, tokensBurned1) = pool.burn(
                     _tickLower,
