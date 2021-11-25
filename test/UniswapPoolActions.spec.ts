@@ -1,8 +1,10 @@
 import { ethers, waffle } from "hardhat";
-import { BigNumber, utils, Signer } from "ethers";
+import { BigNumber, utils, Signer, constants } from "ethers";
 import chai from "chai";
+import bn from 'bignumber.js';
 
 const TestERC20Factory = ethers.getContractFactory("TestERC20");
+const WETH9Factory = ethers.getContractFactory("WETH9");
 const UniswapV3FactoryFactory = ethers.getContractFactory("UniswapV3Factory");
 
 const UniswapV3OracleTestFactory = ethers.getContractFactory(
@@ -11,12 +13,15 @@ const UniswapV3OracleTestFactory = ethers.getContractFactory(
 const ShareHelperLibrary = ethers.getContractFactory("ShareHelper");
 const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper");
 const OracleLibraryLibrary = ethers.getContractFactory("OracleLibrary");
-
-const LiquidityHelperTestFactory = ethers.getContractFactory(
-  "LiquidityHelperTest"
+const ChainlinkRegistryMockFactory = ethers.getContractFactory(
+  "ChainlinkRegistryMock"
+)
+const SwapRouterContract = ethers.getContractFactory(
+  "SwapRouter"
 );
 
 import { TestERC20 } from "../typechain/TestERC20";
+import { WETH9 } from "../typechain/WETH9";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
 import { UniswapV3Pool } from "../typechain/UniswapV3Pool";
 import { DefiEdgeStrategy } from "../typechain/DefiEdgeStrategy";
@@ -27,12 +32,15 @@ import { LiquidityHelperTest } from "../typechain/LiquidityHelperTest";
 import { ShareHelper } from "../typechain/ShareHelper";
 import { LiquidityHelper } from "../typechain/LiquidityHelper";
 import { OracleLibrary } from "../typechain/OracleLibrary";
+import { ChainlinkRegistryMock } from "../typechain/ChainlinkRegistryMock";
+import { SwapRouter } from "../typechain/SwapRouter";
 
 import {
   calculateTick,
   encodePriceSqrt,
   expandTo18Decimals,
   expandToString,
+  encodePath
 } from "./utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Provider } from "@ethersproject/abstract-provider";
@@ -52,6 +60,9 @@ let oracle: UniswapV3OracleTest;
 let shareHelper: ShareHelper;
 let liquidityHelper: LiquidityHelper;
 let oracleLibrary: OracleLibrary;
+let chainlinkRegistry: ChainlinkRegistryMock;
+let router: SwapRouter;
+let weth9: WETH9;
 
 describe("UniswapPoolActions", () => {
   beforeEach(async () => {
@@ -60,11 +71,16 @@ describe("UniswapPoolActions", () => {
     // deploy tokens
     token0 = (await (await TestERC20Factory).deploy(18)) as TestERC20;
     token1 = (await (await TestERC20Factory).deploy(18)) as TestERC20;
+    weth9 = (await (await WETH9Factory).deploy()) as WETH9;
 
     // deploy uniswap factory
     const uniswapV3Factory = (await (
       await UniswapV3FactoryFactory
     ).deploy()) as UniswapV3Factory;
+
+    router = (await (
+      await SwapRouterContract
+    ).deploy(uniswapV3Factory.address, weth9.address)) as SwapRouter;
 
     await uniswapV3Factory.createPool(token0.address, token1.address, "3000");
     // get uniswap pool instance
@@ -81,10 +97,20 @@ describe("UniswapPoolActions", () => {
       )
     );
 
-    // deploy sharehelper library
+    // deploy oracleLibrary library
     oracleLibrary = (await (
       await OracleLibraryLibrary
     ).deploy()) as OracleLibrary;
+
+    chainlinkRegistry = (await (
+      await ChainlinkRegistryMockFactory
+    ).deploy(pool.token0(), pool.token1())) as ChainlinkRegistryMock;
+
+    await chainlinkRegistry.setDecimals(8);
+    await chainlinkRegistry.setAnswer(
+      expandTo18Decimals(3000),
+      expandTo18Decimals(1)
+    );    
 
     shareHelper = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
 
@@ -106,7 +132,9 @@ describe("UniswapPoolActions", () => {
     // deploy strategy factory
     factory = (await DefiEdgeStrategyFactoryF.deploy(
       signers[0].address,
-      uniswapV3Factory.address
+      chainlinkRegistry.address,
+      uniswapV3Factory.address,
+      router.address
     )) as DefiEdgeStrategyFactory;
 
     // liquidityHelper = (await (
@@ -392,12 +420,158 @@ describe("UniswapPoolActions", () => {
     });
   });
 
-  describe("#uniswapV3SwapCallback", async () => {
-    it("should revert if msg.sender is not uniswap v3 pool", async () => {
-      expect(strategy.connect(signers[0]).uniswapV3SwapCallback("0", "0", "0x"))
-        .to.be.reverted;
+  // describe("#uniswapV3SwapCallback", async () => {
+  //   it("should revert if msg.sender is not uniswap v3 pool", async () => {
+  //     expect(strategy.connect(signers[0]).uniswapV3SwapCallback("0", "0", "0x"))
+  //       .to.be.reverted;
+  //   });
+  // });
+
+  describe("#swapExactInput", async () => {
+    beforeEach("add some liquidity", async () => {
+      await mint(signers[0]);
+      await strategy.hold();
     });
-  });
+
+    it("should revert if caller is not operator", async () => {
+
+      const params = {
+        zeroForOne: false,
+        path: encodePath([token1.address, token0.address], [3000]),
+        deadline: constants.MaxUint256,
+        amountIn: expandTo18Decimals(0.0001),
+        amountOutMinimum: 0,
+      } 
+      await expect(
+        strategy
+          .connect(signers[1])
+          .swapExactInput(params)
+      ).to.be.revertedWith('N');
+    });
+
+    it("should swap the amount", async () => {
+
+      const params = {
+        zeroForOne: false,
+        path: encodePath([token0.address, token1.address], [3000]),
+        deadline: constants.MaxUint256,
+        amountIn: expandTo18Decimals(0.0001),
+        amountOutMinimum: 0,
+      } 
+
+      let swap = await strategy.swapExactInput(params);
+
+
+      expect(swap)
+        .to.emit(pool, "Swap")
+        .withArgs(
+          router.address,
+          strategy.address,
+          -33126097943,
+          expandTo18Decimals(0.0001),
+          BigInt("4346523400550973496567325094984"),
+          80100
+        );
+    });
+
+
+    it("should transfer tokens", async () => {
+
+      const params = {
+        zeroForOne: false,
+        path: encodePath([token1.address, token0.address], [3000]),
+        deadline: constants.MaxUint256,
+        amountIn: expandTo18Decimals(0.0001),
+        amountOutMinimum: 0,
+      } 
+
+      let swap = await strategy.swapExactInput(params);
+
+      expect(swap).to.emit(token1, "Transfer").withArgs(strategy.address, pool.address, expandTo18Decimals(0.0001));
+      expect(swap).to.emit(token0, "Transfer").withArgs(pool.address, strategy.address, '33126097943');
+        
+    });
+  })
+
+  describe("#swapExactInputSingle", async () => {
+    beforeEach("add some liquidity", async () => {
+      await mint(signers[0]);
+      await strategy.hold();
+    });
+
+    it("should revert if caller is not operator", async () => {
+      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+      const sqrtPriceLimitX96 =
+        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.1)).toFixed(0);
+
+      const params = {
+        zeroForOne: true,
+        fee: 0,
+        recipient: signers[0].address,
+        deadline: constants.MaxUint256,
+        amountIn: expandTo18Decimals(0.0001),
+        amountOutMinimum: 0,
+        sqrtPriceLimitX96: sqrtPriceLimitX96
+      } 
+      await expect(
+        strategy
+          .connect(signers[1])
+          .swapExactInputSingle(params)
+      ).to.be.revertedWith('N');
+    });
+
+    it("should swap the amount", async () => {
+      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+      const sqrtPriceLimitX96 =
+        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
+     
+      const params = {
+        zeroForOne: false,
+        fee: 0,
+        recipient: strategy.address,
+        deadline: constants.MaxUint256,
+        amountIn: expandTo18Decimals(0.0001),
+        amountOutMinimum: 0,
+        sqrtPriceLimitX96: sqrtPriceLimitX96
+      } 
+
+      await expect(
+        await strategy.swapExactInputSingle(params)
+      )
+        .to.emit(pool, "Swap")
+        .withArgs(
+          router.address,
+          strategy.address,
+          -33126097943,
+          expandTo18Decimals(0.0001),
+          BigInt("4346523400550973496567325094984"),
+          80100
+        );
+    });
+
+
+    it("should transfer tokens", async () => {
+      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+      const sqrtPriceLimitX96 =
+        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
+     
+      const params = {
+        zeroForOne: false,
+        fee: 0,
+        recipient: strategy.address,
+        deadline: constants.MaxUint256,
+        amountIn: expandTo18Decimals(0.0001),
+        amountOutMinimum: 0,
+        sqrtPriceLimitX96: sqrtPriceLimitX96
+      } 
+
+      let swap = await strategy.swapExactInputSingle(params);
+
+      expect(swap).to.emit(token0, "Transfer").withArgs(strategy.address, pool.address, expandTo18Decimals(0.0001));
+      expect(swap).to.emit(token1, "Transfer").withArgs(pool.address, strategy.address, '33126097943');
+        
+    });
+  })
 });
 
 async function approve(address: string, from: string | Signer | Provider) {

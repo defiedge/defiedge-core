@@ -113,6 +113,11 @@ contract DefiEdgeStrategyFactory {
                 params.performanceFee,
                 params.limit,
                 allowedDeviation
+                _pool,
+                _operator,
+                swapRouter,
+                _ticks,
+                _usdAsBase
             )
         );
 

@@ -3,6 +3,7 @@ import { BigNumber, Signer } from "ethers";
 import chai from "chai";
 
 const TestERC20Factory = ethers.getContractFactory("TestERC20");
+const WETH9Factory = ethers.getContractFactory("WETH9");
 const UniswapV3FactoryFactory = ethers.getContractFactory("UniswapV3Factory");
 
 const ShareHelperTestFactory = ethers.getContractFactory("ShareHelperTest");
@@ -11,8 +12,16 @@ const UniswapV3OracleTestFactory = ethers.getContractFactory(
 );
 const ShareHelperLibrary = ethers.getContractFactory("ShareHelper");
 const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper");
+const OracleLibraryLibrary = ethers.getContractFactory("OracleLibrary");
+const ChainlinkRegistryMockFactory = ethers.getContractFactory(
+  "ChainlinkRegistryMock"
+)
+const SwapRouterContract = ethers.getContractFactory(
+  "SwapRouter"
+);
 
 import { TestERC20 } from "../typechain/TestERC20";
+import { WETH9 } from "../typechain/WETH9";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
 import { UniswapV3Pool } from "../typechain/UniswapV3Pool";
 import { DefiEdgeStrategy } from "../typechain/DefiEdgeStrategy";
@@ -22,6 +31,9 @@ import { ShareHelperTest } from "../typechain/ShareHelperTest";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
 import { ShareHelper } from "../typechain/ShareHelper";
 import { LiquidityHelper } from "../typechain/LiquidityHelper";
+import { OracleLibrary } from "../typechain/OracleLibrary";
+import { ChainlinkRegistryMock } from "../typechain/ChainlinkRegistryMock";
+import { SwapRouter } from "../typechain/SwapRouter";
 
 import {
   calculateTick,
@@ -46,6 +58,10 @@ let shareHelper: ShareHelperTest;
 let oracle: UniswapV3OracleTest;
 let shareHelperL: ShareHelper;
 let liquidityHelper: LiquidityHelper;
+let oracleLibrary: OracleLibrary;
+let chainlinkRegistry: ChainlinkRegistryMock;
+let router: SwapRouter;
+let weth9: WETH9;
 
 describe("ShareHelper", () => {
   beforeEach(async () => {
@@ -54,11 +70,16 @@ describe("ShareHelper", () => {
     // deploy tokens
     token0 = (await (await TestERC20Factory).deploy(18)) as TestERC20;
     token1 = (await (await TestERC20Factory).deploy(18)) as TestERC20;
+    weth9 = (await (await WETH9Factory).deploy()) as WETH9;
 
     // deploy uniswap factory
     const uniswapV3Factory = (await (
       await UniswapV3FactoryFactory
     ).deploy()) as UniswapV3Factory;
+
+    router = (await (
+      await SwapRouterContract
+    ).deploy(uniswapV3Factory.address, weth9.address)) as SwapRouter;
 
     await uniswapV3Factory.createPool(token0.address, token1.address, "3000");
     // get uniswap pool instance
@@ -82,10 +103,26 @@ describe("ShareHelper", () => {
       await LiquidityHelperLibrary
     ).deploy()) as LiquidityHelper;
 
+    // deploy oracleLibrary library
+    oracleLibrary = (await (
+      await OracleLibraryLibrary
+    ).deploy()) as OracleLibrary;
+
+    chainlinkRegistry = (await (
+      await ChainlinkRegistryMockFactory
+    ).deploy(pool.token0(), pool.token1())) as ChainlinkRegistryMock;
+
+    await chainlinkRegistry.setDecimals(8);
+    await chainlinkRegistry.setAnswer(
+      expandTo18Decimals(3000),
+      expandTo18Decimals(1)
+    );    
+
     const DefiEdgeStrategyFactoryF = await ethers.getContractFactory(
       "DefiEdgeStrategyFactory",
       {
         libraries: {
+          OracleLibrary: oracleLibrary.address,
           ShareHelper: shareHelperL.address,
           LiquidityHelper: liquidityHelper.address,
         },
@@ -95,7 +132,9 @@ describe("ShareHelper", () => {
     // deploy strategy factory
     factory = (await DefiEdgeStrategyFactoryF.deploy(
       signers[0].address,
-      uniswapV3Factory.address
+      chainlinkRegistry.address,
+      uniswapV3Factory.address,
+      router.address
     )) as DefiEdgeStrategyFactory;
 
     // create strategy
