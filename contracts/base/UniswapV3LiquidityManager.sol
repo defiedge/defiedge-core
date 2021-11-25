@@ -177,7 +177,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
     /**
      * @notice Swaps through the path calculated by Uniswap auto-router
      */
-    function swapExactInput(
+    function swap(
         bool _usePath,
         bool _zeroForOne,
         bytes memory _path,
