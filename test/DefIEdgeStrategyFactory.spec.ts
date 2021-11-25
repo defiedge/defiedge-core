@@ -4,6 +4,7 @@ import chai from "chai";
 
 const TestERC20Factory = ethers.getContractFactory("TestERC20");
 const UniswapV3FactoryFactory = ethers.getContractFactory("UniswapV3Factory");
+const WETH9Factory = ethers.getContractFactory("WETH9");
 
 const UniswapV3OracleTestFactory = ethers.getContractFactory(
   "UniswapV3OracleTest"
@@ -14,8 +15,13 @@ const OracleLibraryLibrary = ethers.getContractFactory("OracleLibrary");
 const ChainlinkRegistryMockFactory = ethers.getContractFactory(
   "ChainlinkRegistryMock"
 )
+const SwapRouterContract = ethers.getContractFactory(
+  "SwapRouter"
+);
+
 
 import { TestERC20 } from "../typechain/TestERC20";
+import { WETH9 } from "../typechain/WETH9";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
 import { UniswapV3Pool } from "../typechain/UniswapV3Pool";
 import { DefiEdgeStrategy } from "../typechain/DefiEdgeStrategy";
@@ -26,6 +32,7 @@ import { ShareHelper } from "../typechain/ShareHelper";
 import { LiquidityHelper } from "../typechain/LiquidityHelper";
 import { OracleLibrary } from "../typechain/OracleLibrary";
 import { ChainlinkRegistryMock } from "../typechain/ChainlinkRegistryMock";
+import { SwapRouter } from "../typechain/SwapRouter";
 
 import {
   calculateTick,
@@ -51,6 +58,8 @@ let shareHelper: ShareHelper;
 let liquidityHelper: LiquidityHelper;
 let oracleLibrary: OracleLibrary;
 let chainlinkRegistry: ChainlinkRegistryMock;
+let router: SwapRouter;
+let weth9: WETH9;
 
 describe("DefiEdgeStrategyFactory", () => {
   beforeEach(async () => {
@@ -59,11 +68,16 @@ describe("DefiEdgeStrategyFactory", () => {
     // deploy tokens
     token0 = (await (await TestERC20Factory).deploy(18)) as TestERC20;
     token1 = (await (await TestERC20Factory).deploy(18)) as TestERC20;
+    weth9 = (await (await WETH9Factory).deploy()) as WETH9;
 
     // deploy uniswap factory
     const uniswapV3Factory = (await (
       await UniswapV3FactoryFactory
     ).deploy()) as UniswapV3Factory;
+
+    router = (await (
+      await SwapRouterContract
+    ).deploy(uniswapV3Factory.address, weth9.address)) as SwapRouter;
 
     await uniswapV3Factory.createPool(token0.address, token1.address, "3000");
     // get uniswap pool instance
@@ -117,7 +131,8 @@ describe("DefiEdgeStrategyFactory", () => {
     factory = (await DefiEdgeStrategyFactoryF.deploy(
       signers[0].address,
       chainlinkRegistry.address,
-      uniswapV3Factory.address
+      uniswapV3Factory.address,
+      router.address
     )) as DefiEdgeStrategyFactory;
 
     // create strategy
@@ -195,6 +210,9 @@ describe("DefiEdgeStrategyFactory", () => {
   describe("#constructor", async () => {
     it("should set the governance address", async () => {
       expect(await factory.governance()).to.equal(signers[0].address);
+    });
+    it("should set uniswap swap router contract address", async () => {
+      expect(await factory.swapRouter()).to.be.equal(router.address);
     });
   });
 

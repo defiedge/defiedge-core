@@ -3,6 +3,7 @@ import { BigNumber, utils, Signer } from "ethers";
 import chai from "chai";
 
 const TestERC20Factory = ethers.getContractFactory("TestERC20");
+const WETH9Factory = ethers.getContractFactory("WETH9");
 const UniswapV3FactoryFactory = ethers.getContractFactory("UniswapV3Factory");
 
 const UniswapV3OracleTestFactory = ethers.getContractFactory(
@@ -14,8 +15,12 @@ const OracleLibraryLibrary = ethers.getContractFactory("OracleLibrary");
 const ChainlinkRegistryMockFactory = ethers.getContractFactory(
   "ChainlinkRegistryMock"
 );
+const SwapRouterContract = ethers.getContractFactory(
+  "SwapRouter"
+);
 
 import { TestERC20 } from "../typechain/TestERC20";
+import { WETH9 } from "../typechain/WETH9";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
 import { UniswapV3Pool } from "../typechain/UniswapV3Pool";
 import { DefiEdgeStrategy } from "../typechain/DefiEdgeStrategy";
@@ -26,6 +31,7 @@ import { ShareHelper } from "../typechain/ShareHelper";
 import { LiquidityHelper } from "../typechain/LiquidityHelper";
 import { OracleLibrary } from "../typechain/OracleLibrary";
 import { ChainlinkRegistryMock } from "../typechain/ChainlinkRegistryMock";
+import { SwapRouter } from "../typechain/SwapRouter";
 
 import {
   calculateTick,
@@ -51,6 +57,8 @@ let shareHelper: ShareHelper;
 let liquidityHelper: LiquidityHelper;
 let oracleLibrary: OracleLibrary;
 let chainlinkRegistry: ChainlinkRegistryMock;
+let router: SwapRouter;
+let weth9: WETH9;
 
 describe("DeFiEdgeStrategy", () => {
   beforeEach(async () => {
@@ -59,11 +67,16 @@ describe("DeFiEdgeStrategy", () => {
     // deploy tokens
     token0 = (await (await TestERC20Factory).deploy(18)) as TestERC20;
     token1 = (await (await TestERC20Factory).deploy(18)) as TestERC20;
+    weth9 = (await (await WETH9Factory).deploy()) as WETH9;
 
     // deploy uniswap factory
     const uniswapV3Factory = (await (
       await UniswapV3FactoryFactory
     ).deploy()) as UniswapV3Factory;
+
+    router = (await (
+      await SwapRouterContract
+    ).deploy(uniswapV3Factory.address, weth9.address)) as SwapRouter;
 
     await uniswapV3Factory.createPool(token0.address, token1.address, "3000");
     // get uniswap pool instance
@@ -117,7 +130,8 @@ describe("DeFiEdgeStrategy", () => {
     factory = (await DefiEdgeStrategyFactoryF.deploy(
       signers[0].address,
       chainlinkRegistry.address,
-      uniswapV3Factory.address
+      uniswapV3Factory.address,
+      router.address
     )) as DefiEdgeStrategyFactory;
 
     // create strategy
@@ -195,6 +209,9 @@ describe("DeFiEdgeStrategy", () => {
   describe("#Constants", async () => {
     it("should set onHold to false by default", async () => {
       expect(await strategy.onHold()).to.be.equal(false);
+    });
+    it("should set uniswap swap router contract address", async () => {
+      expect(await strategy.swapRouter()).to.be.equal(router.address);
     });
   });
 
@@ -368,13 +385,13 @@ describe("DeFiEdgeStrategy", () => {
     it("should transfer amount0 back to the user", async () => {
       await strategy.connect(signers[0]).burn("3452260981108611401314", 0, 0);
       const balanceAfter = await token0.balanceOf(signers[0].address);
-      expect("998499989999999999999999999").to.equal(balanceAfter.toString());
+      expect("948499999999999999999999999").to.equal(balanceAfter.toString());
     });
 
     it("should transfer amount1 back to the user", async () => {
       await strategy.connect(signers[0]).burn("3452260981108611401314", 0, 0);
       const balanceAfter = await token1.balanceOf(signers[0].address);
-      expect("948499999999999999999999999").to.equal(balanceAfter.toString());
+      expect("998499989999999999999999999").to.equal(balanceAfter.toString());
     });
 
     it("should emit burn event", async () => {
@@ -542,86 +559,99 @@ describe("DeFiEdgeStrategy", () => {
     });
   });
 
-  describe("#Swap", async () => {
-    beforeEach("add some liquidity", async () => {
-      await mint(signers[0]);
-      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
-      const sqrtPriceLimitX96 =
-        Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.1;
-      strategy.swap(
-        false,
-        expandTo18Decimals(0.0001),
-        expandToString(sqrtPriceLimitX96)
-      );
-    });
+  // describe("#Swap", async () => {
+  //   beforeEach("add some liquidity", async () => {
+  //     await mint(signers[0]);
+  //     await strategy.hold();
+  //   });
 
-    it("should revert if caller is not operator", async () => {
-      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
-      const sqrtPriceLimitX96 =
-        Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.1;
-      expect(
-        strategy
-          .connect(signers[1])
-          .swap(
-            true,
-            expandTo18Decimals(0.0001),
-            expandToString(sqrtPriceLimitX96)
-          )
-      ).to.be.reverted;
-    });
+  //   it("should revert if caller is not operator", async () => {
+  //     const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+  //     const sqrtPriceLimitX96 =
+  //       (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.1)).toFixed(0);
 
-    it("should burn all liquidity", async () => {
-      const positionKey = getPositionKey(
-        strategy.address,
-        calculateTick(2500, 60),
-        calculateTick(3500, 60)
-      );
+  //     const params = {
+  //       zeroForOne: true,
+  //       fee: 0,
+  //       recipient: signers[0].address,
+  //       deadline: constants.MaxUint256,
+  //       amountIn: expandTo18Decimals(0.0001),
+  //       amountOutMinimum: 0,
+  //       sqrtPriceLimitX96: sqrtPriceLimitX96
+  //     } 
+  //     await expect(
+  //       strategy
+  //         .connect(signers[1])
+  //         .swapExactInputSingle(params)
+  //     ).to.be.revertedWith('N');
+  //   });
 
-      const position = await pool.positions(positionKey);
-      expect(position.liquidity).to.equal(0);
-    });
+  //   it("should burn all liquidity", async () => {
+  //     const positionKey = getPositionKey(
+  //       strategy.address,
+  //       calculateTick(2500, 60),
+  //       calculateTick(3500, 60)
+  //     );
 
-    it("should delete the ticks", async () => {
-      expect(await strategy.tickLength()).to.equal(0);
-    });
+  //     const position = await pool.positions(positionKey);
+  //     expect(position.liquidity).to.equal(0);
+  //   });
 
-    it("should swap the amount", async () => {
-      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
-      const sqrtPriceLimitX96 =
-        Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.1;
-      await expect(
-        await strategy.swap(
-          false,
-          expandTo18Decimals(0.001),
-          expandToString(sqrtPriceLimitX96)
-        )
-      )
-        .to.emit(pool, "Swap")
-        .withArgs(
-          strategy.address,
-          strategy.address,
-          -331260979439,
-          expandTo18Decimals(0.001),
-          BigInt("4346523400550977358374333877067"),
-          80100
-        );
-    });
+  //   it("should delete the ticks", async () => {
+  //     expect(await strategy.tickLength()).to.equal(0);
+  //   });
 
-    it("should emit swap event with correct valuess", async () => {
-      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
-      const sqrtPriceLimitX96 =
-        Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.5;
-      expect(
-        await strategy.swap(
-          false,
-          expandTo18Decimals(0.001),
-          expandToString(sqrtPriceLimitX96)
-        )
-      )
-        .to.emit(strategy, "Swap")
-        .withArgs(expandTo18Decimals(0.001), 331260979439, false);
-    });
-  });
+  //   it("should swap the amount", async () => {
+  //     const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+  //     const sqrtPriceLimitX96 =
+  //       (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
+     
+  //     const params = {
+  //       zeroForOne: false,
+  //       fee: 0,
+  //       recipient: strategy.address,
+  //       deadline: constants.MaxUint256,
+  //       amountIn: expandTo18Decimals(0.0001),
+  //       amountOutMinimum: 0,
+  //       sqrtPriceLimitX96: sqrtPriceLimitX96
+  //     } 
+
+  //     await expect(
+  //       await strategy.swapExactInputSingle(params)
+  //     )
+  //       .to.emit(pool, "Swap")
+  //       .withArgs(
+  //         router.address,
+  //         strategy.address,
+  //         -33126097943,
+  //         expandTo18Decimals(0.0001),
+  //         BigInt("4346523400550973496567325094984"),
+  //         80100
+  //       );
+  //   });
+
+    // it("should emit swap event with correct valuess", async () => {
+    //   const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+    //   const sqrtPriceLimitX96 =
+    //     (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
+     
+    //   const params = {
+    //     zeroForOne: false,
+    //     fee: 0,
+    //     recipient: strategy.address,
+    //     deadline: constants.MaxUint256,
+    //     amountIn: expandTo18Decimals(0.0001),
+    //     amountOutMinimum: 0,
+    //     sqrtPriceLimitX96: sqrtPriceLimitX96
+    //   } 
+
+    //   expect(
+    //     await strategy.swapExactInputSingle(params)
+    //   )
+    //     .to.emit(strategy, "Swap")
+    //     .withArgs(expandTo18Decimals(0.001), 331260979439, false);
+    // });
+  // });
 
   describe("#Hold", async () => {
     beforeEach("add liquidity and rebalance", async () => {
