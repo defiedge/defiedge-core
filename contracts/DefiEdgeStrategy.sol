@@ -52,7 +52,6 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             ) == address(pool),
             "IP"
         );
-        operator = _operator;
         swapRouter = ISwapRouter(_swapRouter);
         for (uint256 i = 0; i < _ticks.length; i++) {
             ticks.push(Tick(0, 0, _ticks[i].tickLower, _ticks[i].tickUpper));
