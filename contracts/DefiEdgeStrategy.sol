@@ -27,6 +27,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
      * @param _factory Strategy factory address
      * @param _pool Address of the pool
      * @param _operator Address of the strategy operator
+     * @param _swapRouter Address of the Uniswap V3 swap router
      * @param _ticks Array of the ticks
      * @param _usdAsBase If the Chainlink feed is pegged with USD
      */
@@ -34,6 +35,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         address _factory,
         address _pool,
         address _operator,
+        address _swapRouter,
         Tick[] memory _ticks,
         bool[] memory _usdAsBase
     ) validTicks(_ticks) {
@@ -50,6 +52,7 @@ contract DefiEdgeStrategy is UniswapPoolActions {
             "IP"
         );
         operator = _operator;
+        swapRouter = ISwapRouter(_swapRouter);
         for (uint256 i = 0; i < _ticks.length; i++) {
             ticks.push(Tick(0, 0, _ticks[i].tickLower, _ticks[i].tickUpper));
         }

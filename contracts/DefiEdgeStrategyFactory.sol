@@ -69,6 +69,7 @@ contract DefiEdgeStrategyFactory {
                 address(this),
                 _pool,
                 _operator,
+                swapRouter,
                 _ticks,
                 _usdAsBase
             )
