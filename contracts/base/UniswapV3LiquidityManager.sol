@@ -229,7 +229,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
         require(
             OracleLibrary.allowSwap(
-                factory.chainlinkRegistry(),
+                chainlinkRegistry,
                 _amountIn,
                 _amountIn,
                 tokenIn,

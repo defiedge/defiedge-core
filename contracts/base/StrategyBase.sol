@@ -34,6 +34,7 @@ contract StrategyBase is ERC20 {
     IStrategyFactory public factory; // instance of the strategy factory
     IUniswapV3Pool public pool; // instance of the Uniswap V3 pool
     ISwapRouter public swapRouter; // instance of the Uniswap V3 Periphery Swap Router
+    address internal chainlinkRegistry;
 
     IStrategyManager public manager; // instance of manager contract
 
@@ -84,7 +85,7 @@ contract StrategyBase is ERC20 {
         require(
             !OracleLibrary.hasDeviation(
                 address(pool),
-                factory.chainlinkRegistry(),
+                chainlinkRegistry,
                 usdAsBase,
                 manager.allowedDeviation()
             ),
@@ -110,7 +111,7 @@ contract StrategyBase is ERC20 {
     ) internal returns (uint256 share) {
         // calculate number of shares
         share = ShareHelper.calculateShares(
-            factory.chainlinkRegistry(),
+            chainlinkRegistry,
             pool.token0(),
             usdAsBase[0],
             _amount0,

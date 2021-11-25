@@ -26,6 +26,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
      * @param _factory Address of the strategy factory
      * @param _pool Address of the pool
      * @param _swapRouter Address of the Uniswap V3 periphery swap router
+     * @param _chainlinkRegistry Chainlink registry address
      * @param _manager Address of the manager
      * @param _usdAsBase If the Chainlink feed is pegged with USD
      * @param _ticks Array of the ticks
@@ -34,6 +35,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         address _factory,
         address _pool,
         address _swapRouter,
+        address _chainlinkRegistry,
         address _manager,
         bool[] memory _usdAsBase,
         Tick[] memory _ticks
@@ -41,6 +43,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         manager = IStrategyManager(_manager);
         factory = IStrategyFactory(_factory);
         swapRouter = ISwapRouter(_swapRouter);
+        chainlinkRegistry = _chainlinkRegistry;
         pool = IUniswapV3Pool(_pool);
         usdAsBase = _usdAsBase;
         for (uint256 i = 0; i < _ticks.length; i++) {

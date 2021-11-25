@@ -10,6 +10,7 @@ contract DefiEdgeStrategyDeployer {
         address _factory,
         address _pool,
         address _swapRouter,
+        address _chainlinkRegistry,
         address _manager,
         bool[] memory _usdAsBase,
         DefiEdgeStrategy.Tick[] memory _ticks
@@ -19,6 +20,7 @@ contract DefiEdgeStrategyDeployer {
                 _factory,
                 _pool,
                 _swapRouter,
+                _chainlinkRegistry,
                 _manager,
                 _usdAsBase,
                 _ticks

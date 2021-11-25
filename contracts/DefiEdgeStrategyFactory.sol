@@ -12,6 +12,7 @@ interface IDefiEdgeStrategyDeployer {
         address _factory,
         address _pool,
         address _swapRouter,
+        address _chainlinkRegistry,
         address _manager,
         bool[] memory _usdAsBase,
         DefiEdgeStrategy.Tick[] memory _ticks
@@ -123,6 +124,7 @@ contract DefiEdgeStrategyFactory {
                 address(this),
                 params.pool,
                 swapRouter,
+                chainlinkRegistry,
                 manager,
                 params.usdAsBase,
                 params.ticks
