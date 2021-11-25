@@ -19,6 +19,13 @@ import "./interfaces/external/IWETH9.sol";
 
 import "hardhat/console.sol";
 
+interface IUniswapV3Factory{
+    function getPool(
+        address tokenA,
+        address tokenB,
+        uint24 fee
+    ) external view returns (address pool);
+}
 
 /// @title Uniswap V3 Swap Router
 /// @notice Router for stateless execution of swaps against Uniswap V3
@@ -50,20 +57,14 @@ contract SwapRouter is
         address tokenB,
         uint24 fee
     ) private view returns (IUniswapV3Pool) {
-        console.log(
-            "pool address from contrac",
-            PoolAddress.computeAddress(
-                factory,
-                PoolAddress.getPoolKey(tokenA, tokenB, fee)
-            )
-        );
-        return
-            IUniswapV3Pool(
-                PoolAddress.computeAddress(
-                    factory,
-                    PoolAddress.getPoolKey(tokenA, tokenB, fee)
-                )
-            );
+        // console.log(exactInput
+        return IUniswapV3Pool(IUniswapV3Factory(factory).getPool(tokenA, tokenB, fee));
+            // IUniswapV3Pool(
+            //     PoolAddress.computeAddress(
+            //         factory,
+            //         PoolAddress.getPoolKey(tokenA, tokenB, fee)
+            //     )
+            // );
     }
 
     struct SwapCallbackData {
@@ -82,12 +83,20 @@ contract SwapRouter is
         (address tokenIn, address tokenOut, uint24 fee) = data
         .path
         .decodeFirstPool();
-        CallbackValidation.verifyCallback(factory, tokenIn, tokenOut, fee);
+        // CallbackValidation.verifyCallback(factory, tokenIn, tokenOut, fee);
+        address pool = IUniswapV3Factory(factory).getPool(tokenIn, tokenOut, fee);
+        require(msg.sender == address(pool));
 
         (bool isExactInput, uint256 amountToPay) = amount0Delta > 0
             ? (tokenIn < tokenOut, uint256(amount0Delta))
             : (tokenOut < tokenIn, uint256(amount1Delta));
         if (isExactInput) {
+        // console.log('call back received');
+
+            // console.log('tokenIn: ', tokenIn);
+            // console.log('payer: ', data.payer);
+            // console.log('recipient: ', msg.sender);
+            // console.log('amountToPay: ', amountToPay);
             pay(tokenIn, data.payer, msg.sender, amountToPay);
         } else {
             // either initiate the next swap or pay
@@ -111,7 +120,6 @@ contract SwapRouter is
     ) private returns (uint256 amountOut) {
         // allow swapping to the router address with address 0
         if (recipient == address(0)) recipient = address(this);
-
         (address tokenIn, address tokenOut, uint24 fee) = data
         .path
         .decodeFirstPool();

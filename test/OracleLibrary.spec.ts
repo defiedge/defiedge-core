@@ -1,11 +1,12 @@
 import { ethers, waffle } from "hardhat";
-import { BigNumber, utils, Signer, constants } from "ethers";
+import { BigNumber, Signer } from "ethers";
 import chai from "chai";
 
 const TestERC20Factory = ethers.getContractFactory("TestERC20");
-const UniswapV3FactoryFactory = ethers.getContractFactory("UniswapV3Factory");
 const WETH9Factory = ethers.getContractFactory("WETH9");
+const UniswapV3FactoryFactory = ethers.getContractFactory("UniswapV3Factory");
 
+const ShareHelperTestFactory = ethers.getContractFactory("ShareHelperTest");
 const UniswapV3OracleTestFactory = ethers.getContractFactory(
   "UniswapV3OracleTest"
 );
@@ -19,7 +20,6 @@ const SwapRouterContract = ethers.getContractFactory(
   "SwapRouter"
 );
 
-
 import { TestERC20 } from "../typechain/TestERC20";
 import { WETH9 } from "../typechain/WETH9";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
@@ -27,6 +27,7 @@ import { UniswapV3Pool } from "../typechain/UniswapV3Pool";
 import { DefiEdgeStrategy } from "../typechain/DefiEdgeStrategy";
 import { DefiEdgeStrategyFactory } from "../typechain/DefiEdgeStrategyFactory";
 import { Periphery } from "../typechain/Periphery";
+import { ShareHelperTest } from "../typechain/ShareHelperTest";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
 import { ShareHelper } from "../typechain/ShareHelper";
 import { LiquidityHelper } from "../typechain/LiquidityHelper";
@@ -50,18 +51,19 @@ let token0: TestERC20;
 let token1: TestERC20;
 let pool: UniswapV3Pool;
 let signers: SignerWithAddress[];
-let factory: DefiEdgeStrategyFactory;
+let factory;
 let strategy: DefiEdgeStrategy;
 let periphery: Periphery;
+let shareHelper: ShareHelperTest;
 let oracle: UniswapV3OracleTest;
-let shareHelper: ShareHelper;
+let shareHelperL: ShareHelper;
 let liquidityHelper: LiquidityHelper;
 let oracleLibrary: OracleLibrary;
 let chainlinkRegistry: ChainlinkRegistryMock;
 let router: SwapRouter;
 let weth9: WETH9;
 
-describe("DefiEdgeStrategyFactory", () => {
+describe("OracleLibrary", () => {
   beforeEach(async () => {
     signers = await ethers.getSigners();
 
@@ -95,7 +97,7 @@ describe("DefiEdgeStrategyFactory", () => {
     );
 
     // deploy sharehelper library
-    shareHelper = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
+    shareHelperL = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
 
     liquidityHelper = (await (
       await LiquidityHelperLibrary
@@ -112,16 +114,16 @@ describe("DefiEdgeStrategyFactory", () => {
 
     await chainlinkRegistry.setDecimals(8);
     await chainlinkRegistry.setAnswer(
-      expandTo18Decimals(3000),
-      expandTo18Decimals(1)
-    );
+      "300000000000",
+      "100000000"
+    );    
 
     const DefiEdgeStrategyFactoryF = await ethers.getContractFactory(
       "DefiEdgeStrategyFactory",
       {
         libraries: {
           OracleLibrary: oracleLibrary.address,
-          ShareHelper: shareHelper.address,
+          ShareHelper: shareHelperL.address,
           LiquidityHelper: liquidityHelper.address,
         },
       }
@@ -168,10 +170,6 @@ describe("DefiEdgeStrategyFactory", () => {
 
     periphery = (await (await PeripheryFactory).deploy()) as Periphery;
 
-    oracle = (await (
-      await UniswapV3OracleTestFactory
-    ).deploy()) as UniswapV3OracleTest;
-
     // add liquidity to the pool
     await token0.approve(periphery.address, expandTo18Decimals(50000000));
     await token1.approve(periphery.address, expandTo18Decimals(150000000000));
@@ -192,112 +190,107 @@ describe("DefiEdgeStrategyFactory", () => {
     // increase cardinary
     await pool.increaseObservationCardinalityNext(150);
 
-    // swap tokens
-    const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
 
-    const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9;
 
-    await ethers.provider.send("evm_increaseTime", [1801]);
+    // deploy strategy factory
+    shareHelper = (await (
+      await ShareHelperTestFactory
+    ).deploy()) as ShareHelperTest;
 
-    await periphery.swap(
-      pool.address,
-      false,
-      "10000000000000000000",
-      expandToString(sqrtPriceLimitX96)
-    );
+    oracle = (await (
+      await UniswapV3OracleTestFactory
+    ).deploy()) as UniswapV3OracleTest;
   });
 
-  describe("#constructor", async () => {
-    it("should set the governance address", async () => {
-      expect(await factory.governance()).to.equal(signers[0].address);
-    });
-    it("should set uniswap swap router contract address", async () => {
-      expect(await factory.swapRouter()).to.be.equal(router.address);
-    });
-  });
+  describe("#getUniswapPrice", async () => {
+    it("should return correct uniswap price", async () => {
 
-  describe("#changeFee", async () => {
-    it("should be called by governance only", async () => {
-      expect(factory.connect(signers[1]).changeFee(10000000)).to.be.reverted;
-    });
-    it("should change the protocol fee", async () => {
-      await factory.changeFee(1000000);
-      expect(await factory.PROTOCOL_FEE()).to.equal(1000000);
-    });
-  });
+      expect(await oracleLibrary.getUniswapPrice(pool.address)).to.equal("2999999999999999999999");
 
-  describe("#changeFeeTo", async () => {
-    it("should revert if not called by governance", async () => {
-      expect(factory.connect(signers[1]).changeFeeTo(signers[0].address)).to.be
-        .reverted;
-    });
-    it("should change feeTo address", async () => {
-      await factory.changeFeeTo(signers[1].address);
-      expect(await factory.feeTo()).to.equal(signers[1].address);
-    });
-  });
+      // swap tokens
+      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
 
-  describe("#changeGovernance", async () => {
-    it("should revert if new governance address is zero", async () => {
-      expect(factory.changeGovernance(constants.AddressZero)).to.be.reverted;
-    });
-    it("should set pending governance as new governance address", async () => {
-      await factory.changeGovernance(signers[1].address);
-      expect(await factory.pendingGovernance()).to.equal(signers[1].address);
+      const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.1;
+
+      await periphery.swap(
+        pool.address,
+        false,
+        "10000000000000000000",
+        expandToString(sqrtPriceLimitX96)
+      );
+
+      expect(await oracleLibrary.getUniswapPrice(pool.address)).to.equal("3009711562429121195141");
+
+      await periphery.swap(
+        pool.address,
+        false,
+        "10000000000000000000",
+        expandToString(sqrtPriceLimitX96)
+      );
+
+      expect(await oracleLibrary.getUniswapPrice(pool.address)).to.equal("3009711562482602675097");
+
     });
   });
 
-  describe("#acceptGovernance", async () => {
-    it("should revert if caller is not pending governance", async () => {
-      expect(factory.acceptGovernance()).to.be.reverted;
-    });
-    it("should set governance as pending governance", async () => {
-      await factory.changeGovernance(signers[1].address);
-      expect(await factory.pendingGovernance()).to.equal(signers[1].address);
-    });
-  });
+  describe("#getChainlinkPrice", async () => {
+  
+    it("should return correct chainlink price", async () => {
 
-  describe("#deny", async () => {
-    it("should be called by governance only", async () => {
-      expect(factory.connect(signers[1]).deny(strategy.address)).to.be.reverted;
-    });
-    it("should set boolean to true in denied mapping", async () => {
-      await factory.deny(strategy.address);
-      expect(await factory.denied(strategy.address)).to.equal(true);
-    });
-  });
+      expect(await oracleLibrary.getChainlinkPrice(chainlinkRegistry.address, token0.address, token1.address)).to.equal("3000000000000000000000");
 
-  // describe("#allowAgain", async () => {
-  //   it("should be called by governance only", async () => {
-  //     expect(factory.connect(signers[1]).allowAgain(strategy.address)).to.be
-  //       .reverted;
-  //   });
-  //   it("should set boolean to false in denied mapping", async () => {
-  //     await factory.deny(strategy.address);
-  //     await factory.allowAgain(strategy.address);
-  //     expect(await factory.denied(strategy.address)).to.equal(false);
-  //   });
-  // });
+      await chainlinkRegistry.setAnswer(
+        "400000000000",
+        "100000000"
+      );    
+
+      expect(await oracleLibrary.getChainlinkPrice(chainlinkRegistry.address, token0.address, token1.address)).to.equal("4000000000000000000000");
+
+    })
+  })
+
+  describe("#getPriceInUSD", async () => {
+  
+    it("should return correct price", async () => {
+
+      expect(await oracleLibrary.getPriceInUSD(chainlinkRegistry.address, token0.address, true)).to.equal("1000000000000000000");
+   
+    })
+  })
+
+  describe("#hasDeviation", async () => {
+  
+    it("should return false if price has no daviation", async () => {
+
+      expect(await oracleLibrary.hasDeviation(
+        pool.address, 
+        chainlinkRegistry.address,
+        [true, true],
+        "10000000000000000"
+      )).to.equal(false);
+   
+    })
+
+    it("should return true if price has daviation", async () => {
+
+      await chainlinkRegistry.setAnswer(
+        "40000000000000000000000000000000000000000000",
+        "100000000"
+      );    
+
+      expect(await oracleLibrary.hasDeviation(
+        pool.address, 
+        chainlinkRegistry.address,
+        [true, true],
+        "10000000000000000"
+      )).to.equal(true);
+   
+    })
+  })
 });
 
 async function approve(address: string, from: string | Signer | Provider) {
   // give approval
   await token0.connect(from).approve(address, expandTo18Decimals(150000000000));
   await token1.connect(from).approve(address, expandTo18Decimals(150000000000));
-}
-
-async function mint(signer: string | Signer | Provider) {
-  await approve(strategy.address, signer);
-  return await strategy
-    .connect(signer)
-    .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
-}
-
-function getPositionKey(address: any, lowerTick: any, upperTick: any) {
-  return utils.keccak256(
-    utils.solidityPack(
-      ["address", "int24", "int24"],
-      [address, lowerTick, upperTick]
-    )
-  );
 }
