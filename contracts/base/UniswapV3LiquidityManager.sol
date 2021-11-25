@@ -141,11 +141,11 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             );
         }
 
-        if (fee1 > 0) {
+        if (fee0 > 0) {
             TransferHelper.safeTransfer(
                 pool.token1(),
                 manager.feeTo(),
-                fee1.mul(performanceFee).div(1e8)
+                fee0.mul(performanceFee).div(1e8)
             );
         }
 
@@ -192,11 +192,11 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         if (_zeroForOne) {
             tokenIn = pool.token0();
             tokenOut = pool.token1();
-            isBase = [true, false];
+            isBase = [usdAsBase[0], usdAsBase[1]];
         } else {
             tokenIn = pool.token1();
             tokenOut = pool.token0();
-            isBase = [false, true];
+            isBase = [usdAsBase[1], usdAsBase[0]];
         }
         IERC20(tokenIn).approve(address(swapRouter), _amountIn);
 
@@ -320,11 +320,18 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
                 // update fees earned in Uniswap pool
                 // Uniswap recalculates the fees and updates the variables when amount is passed as 0
-                (uint256 tokensOwed0, uint256 tokensOwed1) = pool.burn(
-                    tick.tickLower,
-                    tick.tickUpper,
-                    0
-                );
+                pool.burn(tick.tickLower, tick.tickUpper, 0);
+
+                // fees are credited as tokensOwed in Uniswap when burn is called with 0
+                // https://github.com/Uniswap/v3-core/blob/main/contracts/interfaces/pool/IUniswapV3PoolActions.sol#L43
+                (, , , uint256 tokensOwed0, uint256 tokensOwed1) = pool
+                    .positions(
+                        PositionKey.compute(
+                            address(this),
+                            tick.tickLower,
+                            tick.tickUpper
+                        )
+                    );
 
                 totalFee0 = totalFee0.add(tokensOwed0);
                 totalFee1 = totalFee1.add(tokensOwed1);
