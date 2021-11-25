@@ -9,10 +9,12 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 interface IDefiEdgeStrategyDeployer {
     function createStrategy(
-        address manager,
-        address pool,
-        bool[] memory usdAsBase,
-        DefiEdgeStrategy.Tick[] memory ticks
+        address _factory,
+        address _pool,
+        address _swapRouter,
+        address _manager,
+        bool[] memory _usdAsBase,
+        DefiEdgeStrategy.Tick[] memory _ticks
     ) external returns (address);
 }
 
@@ -118,8 +120,10 @@ contract DefiEdgeStrategyFactory {
 
         address strategy = IDefiEdgeStrategyDeployer(deployerProxy)
             .createStrategy(
-                manager,
+                address(this),
                 params.pool,
+                swapRouter,
+                manager,
                 params.usdAsBase,
                 params.ticks
             );

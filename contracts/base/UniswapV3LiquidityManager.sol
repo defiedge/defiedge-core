@@ -12,13 +12,10 @@ import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 
 // libraries
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
-import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
     using SafeMath for uint256;
     using SafeCast for uint256;
-
-    ISwapRouter public swapRouter;
 
     event Swap(uint256 amountIn, uint256 amountOut, bool _zeroForOne);
 
@@ -188,7 +185,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         uint256 _amountIn,
         uint256 _amountOutMinimum,
         uint160 _sqrtPriceLimitX96
-    ) external {
+    ) external onlyOperator hasDeviation {
         address tokenIn;
         address tokenOut;
         bool[2] memory isBase; // is direct USD feed is available for the token?

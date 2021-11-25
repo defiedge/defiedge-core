@@ -12,6 +12,7 @@ import "../libraries/OracleLibrary.sol";
 // interfaces
 import "../interfaces/IStrategyManager.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 contract StrategyBase is ERC20 {
     using SafeMath for uint256;
@@ -30,11 +31,13 @@ contract StrategyBase is ERC20 {
 
     uint256 public accManagementFee;
 
-    IStrategyFactory public factory;
-    IUniswapV3Pool public pool;
-    bool[] public usdAsBase;
+    IStrategyFactory public factory; // instance of the strategy factory
+    IUniswapV3Pool public pool; // instance of the Uniswap V3 pool
+    ISwapRouter public swapRouter; // instance of the Uniswap V3 Periphery Swap Router
 
-    IStrategyManager public manager;
+    IStrategyManager public manager; // instance of manager contract
+
+    bool[] public usdAsBase; // for Chainlink oracle
 
     // Modifiers
     modifier onlyOperator() {

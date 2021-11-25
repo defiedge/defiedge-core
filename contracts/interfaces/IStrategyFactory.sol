@@ -19,4 +19,6 @@ interface IStrategyFactory {
     function uniswapV3Factory() external view returns (address);
 
     function chainlinkRegistry() external view returns (address);
+
+    function swapRouter() external view returns (address);
 }

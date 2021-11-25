@@ -23,36 +23,26 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
     event Rebalance(Tick[] ticks);
 
     /**
-     * @param _manager Address of the strategy manager contract
-     * @param _factory Strategy factory address
+     * @param _factory Address of the strategy factory
      * @param _pool Address of the pool
-     * @param _operator Address of the strategy operator
-     * @param _swapRouter Address of the Uniswap V3 swap router
-     * @param _ticks Array of the ticks
+     * @param _swapRouter Address of the Uniswap V3 periphery swap router
+     * @param _manager Address of the manager
      * @param _usdAsBase If the Chainlink feed is pegged with USD
+     * @param _ticks Array of the ticks
      */
     constructor(
-        address _manager,
         address _factory,
         address _pool,
-        address _operator,
         address _swapRouter,
-        Tick[] memory _ticks,
-        bool[] memory _usdAsBase
+        address _manager,
+        bool[] memory _usdAsBase,
+        Tick[] memory _ticks
     ) validTicks(_ticks) {
+        manager = IStrategyManager(_manager);
         factory = IStrategyFactory(_factory);
+        swapRouter = ISwapRouter(_swapRouter);
         pool = IUniswapV3Pool(_pool);
         usdAsBase = _usdAsBase;
-        manager = IStrategyManager(_manager);
-        require(
-            IUniswapV3Factory(factory.uniswapV3Factory()).getPool(
-                pool.token0(),
-                pool.token1(),
-                pool.fee()
-            ) == address(pool),
-            "IP"
-        );
-        swapRouter = ISwapRouter(_swapRouter);
         for (uint256 i = 0; i < _ticks.length; i++) {
             ticks.push(Tick(0, 0, _ticks[i].tickLower, _ticks[i].tickUpper));
         }

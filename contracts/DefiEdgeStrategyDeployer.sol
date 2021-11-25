@@ -7,18 +7,21 @@ import "./DefiEdgeStrategy.sol";
 
 contract DefiEdgeStrategyDeployer {
     function createStrategy(
-        address _manager,
+        address _factory,
         address _pool,
+        address _swapRouter,
+        address _manager,
         bool[] memory _usdAsBase,
         DefiEdgeStrategy.Tick[] memory _ticks
     ) external returns (address strategy) {
         strategy = address(
             new DefiEdgeStrategy(
-                _manager,
-                address(this),
+                _factory,
                 _pool,
-                _ticks,
-                _usdAsBase
+                _swapRouter,
+                _manager,
+                _usdAsBase,
+                _ticks
             )
         );
     }
