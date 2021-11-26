@@ -141,11 +141,11 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             );
         }
 
-        if (fee0 > 0) {
+        if (fee1 > 0) {
             TransferHelper.safeTransfer(
                 pool.token1(),
                 manager.feeTo(),
-                fee0.mul(performanceFee).div(1e8)
+                fee1.mul(performanceFee).div(1e8)
             );
         }
 
