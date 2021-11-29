@@ -9,7 +9,7 @@ const UniswapV3FactoryFactory = ethers.getContractFactory("UniswapV3Factory");
 const UniswapV3OracleTestFactory = ethers.getContractFactory(
   "UniswapV3OracleTest"
 );
-const ShareHelperLibrary = ethers.getContractFactory("ShareHelper");
+
 const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper");
 const OracleLibraryLibrary = ethers.getContractFactory("OracleLibrary");
 const ChainlinkRegistryMockFactory = ethers.getContractFactory(
@@ -24,6 +24,8 @@ import { WETH9 } from "../typechain/WETH9";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
 import { UniswapV3Pool } from "../typechain/UniswapV3Pool";
 import { DefiEdgeStrategy } from "../typechain/DefiEdgeStrategy";
+import { StrategyManager } from "../typechain/StrategyManager";
+import { DefiEdgeStrategyDeployer } from "../typechain/DefiEdgeStrategyDeployer";
 import { DefiEdgeStrategyFactory } from "../typechain/DefiEdgeStrategyFactory";
 import { Periphery } from "../typechain/Periphery";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
@@ -51,6 +53,8 @@ let pool: UniswapV3Pool;
 let signers: SignerWithAddress[];
 let factory: DefiEdgeStrategyFactory;
 let strategy: DefiEdgeStrategy;
+let strategyManager: StrategyManager;
+let strategyDeplopyer: DefiEdgeStrategyDeployer;
 let periphery: Periphery;
 let oracle: UniswapV3OracleTest;
 let shareHelper: ShareHelper;
@@ -93,6 +97,17 @@ describe("DeFiEdgeStrategy", () => {
       )
     );
 
+    // deploy sharehelper library
+    oracleLibrary = (await (
+      await OracleLibraryLibrary
+    ).deploy()) as OracleLibrary;
+
+    const ShareHelperLibrary = ethers.getContractFactory("ShareHelper", {
+      libraries: {
+        OracleLibrary: oracleLibrary.address
+      }
+    });
+
     // deploy strategy factory
     shareHelper = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
 
@@ -100,10 +115,20 @@ describe("DeFiEdgeStrategy", () => {
       await LiquidityHelperLibrary
     ).deploy()) as LiquidityHelper;
 
-    // deploy sharehelper library
-    oracleLibrary = (await (
-      await OracleLibraryLibrary
-    ).deploy()) as OracleLibrary;
+    const DefiEdgeStrategyDeployerContract = ethers.getContractFactory("DefiEdgeStrategyDeployer",
+     {
+        libraries: {
+          ShareHelper: shareHelper.address,
+          OracleLibrary: oracleLibrary.address,
+          LiquidityHelper: liquidityHelper.address
+        }
+      }
+    );
+
+    strategyDeplopyer = (await (
+      await DefiEdgeStrategyDeployerContract
+    ).deploy()) as DefiEdgeStrategyDeployer;
+
 
     chainlinkRegistry = (await (
       await ChainlinkRegistryMockFactory
@@ -111,35 +136,35 @@ describe("DeFiEdgeStrategy", () => {
 
     await chainlinkRegistry.setDecimals(8);
     await chainlinkRegistry.setAnswer(
-      expandTo18Decimals(3000),
-      expandTo18Decimals(1)
-    );
+      "300000000000",
+      "100000000"
+    ); 
 
     const DefiEdgeStrategyFactoryF = await ethers.getContractFactory(
-      "DefiEdgeStrategyFactory",
-      {
-        libraries: {
-          OracleLibrary: oracleLibrary.address,
-          ShareHelper: shareHelper.address,
-          LiquidityHelper: liquidityHelper.address,
-        },
-      }
+      "DefiEdgeStrategyFactory"
     );
 
     // deploy strategy factory
     factory = (await DefiEdgeStrategyFactoryF.deploy(
       signers[0].address,
+      strategyDeplopyer.address,
       chainlinkRegistry.address,
       uniswapV3Factory.address,
-      router.address
+      router.address,
+      "10000000000000000",
+      "10000000000000000"
     )) as DefiEdgeStrategyFactory;
 
-    // create strategy
-    await factory.createStrategy(
-      pool.address,
-      signers[0].address,
-      [true, true],
-      [
+
+    let params = {
+      operator: signers[0].address,
+      feeTo: signers[1].address,
+      managementFee: "500000", // 0.5%
+      performanceFee: "500000", // 0.5%
+      limit: 0,
+      pool: pool.address,
+      usdAsBase: [true, true],
+      ticks: [
         {
           amount0: 0,
           amount1: 0,
@@ -147,8 +172,12 @@ describe("DeFiEdgeStrategy", () => {
           tickUpper: calculateTick(3500, 60),
         },
       ]
-    );
+    }
 
+    // create strategy
+    await factory.createStrategy(params);
+
+    
     // get strategy
     strategy = (await ethers.getContractAt(
       "DefiEdgeStrategy",
@@ -158,8 +187,13 @@ describe("DeFiEdgeStrategy", () => {
     // // initialize strategy
     // await strategy.initialize();
 
+    strategyManager = (await ethers.getContractAt(
+      "StrategyManager",
+      await strategy.manager()
+      )) as StrategyManager;
+        
     // set deviation in strategy
-    await strategy.changeAllowedDeviation("10000000000000000"); // 1%
+    await strategyManager.changeAllowedDeviation("10000000000000000"); // 1%
 
     const PeripheryFactory = ethers.getContractFactory("Periphery", {
       libraries: { LiquidityHelper: liquidityHelper.address },
@@ -216,28 +250,32 @@ describe("DeFiEdgeStrategy", () => {
   });
 
   describe("#Constructor", async () => {
-    it("should pass via validStrategy modifier", async () => {
-      expect(
-        factory.createStrategy(
-          pool.address,
-          signers[0].address,
-          [true, true],
-          [
-            {
-              amount0: "1",
-              amount1: "1",
-              tickLower: "60",
-              tickUpper: "60",
-            },
-            {
-              amount0: "1",
-              amount1: "1",
-              tickLower: "60",
-              tickUpper: "60",
-            },
-          ]
-        )
-      ).to.be.reverted;
+    it("should pass via validTicks modifier", async () => {
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: "1",
+            amount1: "1",
+            tickLower: "60",
+            tickUpper: "60",
+          },
+          {
+            amount0: "1",
+            amount1: "1",
+            tickLower: "60",
+            tickUpper: "60",
+          },
+        ]
+      }
+    
+      expect(factory.createStrategy(params)).to.be.reverted;
     });
   });
 
@@ -271,7 +309,8 @@ describe("DeFiEdgeStrategy", () => {
           expandTo18Decimals(3500),
           0,
           0,
-          expandTo18Decimals(5000)
+          expandTo18Decimals(5000),
+          0
         )
       ).to.be.reverted;
     });
@@ -283,6 +322,7 @@ describe("DeFiEdgeStrategy", () => {
           expandTo18Decimals(3500),
           expandTo18Decimals(1),
           expandTo18Decimals(3500),
+          0,
           0
         )
       ).to.be.reverted;
@@ -293,7 +333,7 @@ describe("DeFiEdgeStrategy", () => {
         .to.emit(strategy, "Mint")
         .withArgs(
           signers[1].address,
-          "3452260981108611401314",
+          "64522609811086114013",
           expandTo18Decimals(1),
           "3452260981108611401314"
         );
@@ -318,8 +358,8 @@ describe("DeFiEdgeStrategy", () => {
 
       amount0 = parseInt(tick.amount0.toString());
       amount1 = parseInt(tick.amount1.toString());
-      // const shares = parseInt((await strategy.balanceOf(signers[0].address)).toString())
-      const shares = "3452260981108611401314";
+      const shares = (await strategy.balanceOf(signers[0].address)).toString();
+      // const shares = "64199996762030683443";
       const totalSupply = parseInt((await strategy.totalSupply()).toString());
 
       // calculate amounts to be given back
@@ -332,9 +372,9 @@ describe("DeFiEdgeStrategy", () => {
           strategy.address,
           calculateTick(2500, 60),
           calculateTick(3500, 60),
-          "731166206079261908657",
-          "999999999999999999",
-          "3452260981108611401313"
+          "727510375048865599114",
+          "994999999999999999",
+          "3434999676203068344308"
         );
     });
 
@@ -349,7 +389,7 @@ describe("DeFiEdgeStrategy", () => {
           parseInt(tick.amount1.toString()) - 3452260981108611401313
         ),
       };
-      await strategy.connect(signers[0]).burn("3452260981108611401314", 0, 0);
+      await strategy.connect(signers[0]).burn("64199996762030683443", 0, 0);
       tick = await strategy.ticks(0);
       const after = {
         amount0: "0",
@@ -374,7 +414,7 @@ describe("DeFiEdgeStrategy", () => {
       const totalSupplyBefore = parseInt(
         (await strategy.balanceOf(signers[0].address)).toString()
       );
-      await strategy.connect(signers[0]).burn("3452260981108611401314", 0, 0);
+      await strategy.connect(signers[0]).burn("64199996762030683443", 0, 0);
       const totalSupplyAfter = parseInt(
         (await strategy.balanceOf(signers[0].address)).toString()
       );
@@ -383,26 +423,26 @@ describe("DeFiEdgeStrategy", () => {
     });
 
     it("should transfer amount0 back to the user", async () => {
-      await strategy.connect(signers[0]).burn("3452260981108611401314", 0, 0);
+      await strategy.connect(signers[0]).burn("64199996762030683443", 0, 0);
       const balanceAfter = await token0.balanceOf(signers[0].address);
-      expect("948499999999999999999999999").to.equal(balanceAfter.toString());
+      expect("948499999994999999999999999").to.equal(balanceAfter.toString());
     });
 
     it("should transfer amount1 back to the user", async () => {
-      await strategy.connect(signers[0]).burn("3452260981108611401314", 0, 0);
+      await strategy.connect(signers[0]).burn("64199996762030683443", 0, 0);
       const balanceAfter = await token1.balanceOf(signers[0].address);
-      expect("998499989999999999999999999").to.equal(balanceAfter.toString());
+      expect("998499972738695094456942994").to.equal(balanceAfter.toString());
     });
 
     it("should emit burn event", async () => {
-      const shares = "3452260981108611401314";
+      const shares = "64199996762030683443";
       expect(await strategy.connect(signers[0]).burn(shares, 0, 0))
         .to.emit(strategy, "Burn")
         .withArgs(
           signers[0].address,
           shares,
-          "999999999999999999",
-          "3452260981108611401313"
+          "994999999999999999",
+          "3434999676203068344308"
         );
     });
   });
@@ -513,7 +553,7 @@ describe("DeFiEdgeStrategy", () => {
 
     beforeEach("Rebalance the ticks", async () => {
       await mint(signers[1]);
-      oldTicks = await strategy.getTicks();
+      oldTicks = [await strategy.ticks(0)];
       strategy.rebalance([
         {
           amount0: expandTo18Decimals(0.001),
@@ -529,7 +569,7 @@ describe("DeFiEdgeStrategy", () => {
     });
 
     it("should delete ticks", async () => {
-      expect(await strategy.getTicks()).to.not.equal(oldTicks);
+      expect([await strategy.ticks(0)]).to.not.equal(oldTicks);
     });
 
     it("should mint liquidity to the ticks", async () => {
@@ -685,7 +725,7 @@ describe("DeFiEdgeStrategy", () => {
 
     it("should delete the ticks", async () => {
       await strategy.hold();
-      expect(await strategy.tickLength()).to.equal(0);
+      await expect(strategy.ticks(0)).to.be.reverted;
     });
 
     it("should emit the hold event", async () => {
@@ -705,7 +745,7 @@ async function mint(signer: string | Signer | Provider) {
   await approve(strategy.address, signer);
   return await strategy
     .connect(signer)
-    .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
+    .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 0);
 }
 
 function getPositionKey(address: any, lowerTick: any, upperTick: any) {

@@ -10,7 +10,6 @@ const ShareHelperTestFactory = ethers.getContractFactory("ShareHelperTest");
 const UniswapV3OracleTestFactory = ethers.getContractFactory(
   "UniswapV3OracleTest"
 );
-const ShareHelperLibrary = ethers.getContractFactory("ShareHelper");
 const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper");
 const OracleLibraryLibrary = ethers.getContractFactory("OracleLibrary");
 const ChainlinkRegistryMockFactory = ethers.getContractFactory(
@@ -25,6 +24,8 @@ import { WETH9 } from "../typechain/WETH9";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
 import { UniswapV3Pool } from "../typechain/UniswapV3Pool";
 import { DefiEdgeStrategy } from "../typechain/DefiEdgeStrategy";
+import { StrategyManager } from "../typechain/StrategyManager";
+import { DefiEdgeStrategyDeployer } from "../typechain/DefiEdgeStrategyDeployer";
 import { DefiEdgeStrategyFactory } from "../typechain/DefiEdgeStrategyFactory";
 import { Periphery } from "../typechain/Periphery";
 import { ShareHelperTest } from "../typechain/ShareHelperTest";
@@ -53,6 +54,8 @@ let pool: UniswapV3Pool;
 let signers: SignerWithAddress[];
 let factory;
 let strategy: DefiEdgeStrategy;
+let strategyManager: StrategyManager;
+let strategyDeplopyer: DefiEdgeStrategyDeployer;
 let periphery: Periphery;
 let shareHelper: ShareHelperTest;
 let oracle: UniswapV3OracleTest;
@@ -97,16 +100,36 @@ describe("OracleLibrary", () => {
     );
 
     // deploy sharehelper library
+    oracleLibrary = (await (
+      await OracleLibraryLibrary
+    ).deploy()) as OracleLibrary;
+
+    const ShareHelperLibrary = ethers.getContractFactory("ShareHelper", {
+      libraries: {
+        OracleLibrary: oracleLibrary.address
+      }
+    });
+
+    // deploy sharehelper library
     shareHelperL = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
 
     liquidityHelper = (await (
       await LiquidityHelperLibrary
     ).deploy()) as LiquidityHelper;
 
-    // deploy oracleLibrary library
-    oracleLibrary = (await (
-      await OracleLibraryLibrary
-    ).deploy()) as OracleLibrary;
+    const DefiEdgeStrategyDeployerContract = ethers.getContractFactory("DefiEdgeStrategyDeployer",
+     {
+        libraries: {
+          ShareHelper: shareHelperL.address,
+          OracleLibrary: oracleLibrary.address,
+          LiquidityHelper: liquidityHelper.address
+        }
+      }
+    );
+
+    strategyDeplopyer = (await (
+      await DefiEdgeStrategyDeployerContract
+    ).deploy()) as DefiEdgeStrategyDeployer;
 
     chainlinkRegistry = (await (
       await ChainlinkRegistryMockFactory
@@ -119,30 +142,29 @@ describe("OracleLibrary", () => {
     );    
 
     const DefiEdgeStrategyFactoryF = await ethers.getContractFactory(
-      "DefiEdgeStrategyFactory",
-      {
-        libraries: {
-          OracleLibrary: oracleLibrary.address,
-          ShareHelper: shareHelperL.address,
-          LiquidityHelper: liquidityHelper.address,
-        },
-      }
+      "DefiEdgeStrategyFactory"
     );
 
     // deploy strategy factory
     factory = (await DefiEdgeStrategyFactoryF.deploy(
       signers[0].address,
+      strategyDeplopyer.address,
       chainlinkRegistry.address,
       uniswapV3Factory.address,
-      router.address
+      router.address,
+      "10000000000000000",
+      "10000000000000000"
     )) as DefiEdgeStrategyFactory;
 
-    // create strategy
-    await factory.createStrategy(
-      pool.address,
-      signers[0].address,
-      [true, true],
-      [
+    let params = {
+      operator: signers[0].address,
+      feeTo: signers[1].address,
+      managementFee: "500000", // 0.5%
+      performanceFee: "500000", // 0.5%
+      limit: 0,
+      pool: pool.address,
+      usdAsBase: [true, true],
+      ticks: [
         {
           amount0: 0,
           amount1: 0,
@@ -150,8 +172,10 @@ describe("OracleLibrary", () => {
           tickUpper: calculateTick(3500, 60),
         },
       ]
-    );
+    }
 
+    // create strategy
+    await factory.createStrategy(params);
     // get strategy
     strategy = (await ethers.getContractAt(
       "DefiEdgeStrategy",
@@ -161,8 +185,13 @@ describe("OracleLibrary", () => {
     // // initialize strategy
     // await strategy.initialize();
 
+    strategyManager = (await ethers.getContractAt(
+      "StrategyManager",
+      await strategy.manager()
+      )) as StrategyManager;
+        
     // set deviation in strategy
-    await strategy.changeAllowedDeviation("10000000000000000"); // 1%
+    await strategyManager.changeAllowedDeviation("10000000000000000"); // 1%
 
     const PeripheryFactory = ethers.getContractFactory("Periphery", {
       libraries: { LiquidityHelper: liquidityHelper.address },
@@ -236,15 +265,16 @@ describe("OracleLibrary", () => {
   describe("#getChainlinkPrice", async () => {
   
     it("should return correct chainlink price", async () => {
-
-      expect(await oracleLibrary.getChainlinkPrice(chainlinkRegistry.address, token0.address, token1.address)).to.equal("3000000000000000000000");
+      let token0A = await pool.token0();
+      let token1A = await pool.token1();
+      expect(await oracleLibrary.getChainlinkPrice(chainlinkRegistry.address, token0A, token1A)).to.equal("3000000000000000000000");
 
       await chainlinkRegistry.setAnswer(
         "400000000000",
         "100000000"
       );    
 
-      expect(await oracleLibrary.getChainlinkPrice(chainlinkRegistry.address, token0.address, token1.address)).to.equal("4000000000000000000000");
+      expect(await oracleLibrary.getChainlinkPrice(chainlinkRegistry.address, token0A, token1A)).to.equal("4000000000000000000000");
 
     })
   })
@@ -252,8 +282,8 @@ describe("OracleLibrary", () => {
   describe("#getPriceInUSD", async () => {
   
     it("should return correct price", async () => {
-
-      expect(await oracleLibrary.getPriceInUSD(chainlinkRegistry.address, token0.address, true)).to.equal("1000000000000000000");
+      let token1A = await pool.token1();
+      expect(await oracleLibrary.getPriceInUSD(chainlinkRegistry.address, token1A, true)).to.equal("1000000000000000000");
    
     })
   })

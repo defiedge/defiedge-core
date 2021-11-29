@@ -10,7 +10,6 @@ const UniswapV3FactoryFactory = ethers.getContractFactory("UniswapV3Factory");
 const UniswapV3OracleTestFactory = ethers.getContractFactory(
   "UniswapV3OracleTest"
 );
-const ShareHelperLibrary = ethers.getContractFactory("ShareHelper");
 const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper");
 const OracleLibraryLibrary = ethers.getContractFactory("OracleLibrary");
 const ChainlinkRegistryMockFactory = ethers.getContractFactory(
@@ -25,6 +24,8 @@ import { WETH9 } from "../typechain/WETH9";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
 import { UniswapV3Pool } from "../typechain/UniswapV3Pool";
 import { DefiEdgeStrategy } from "../typechain/DefiEdgeStrategy";
+import { StrategyManager } from "../typechain/StrategyManager";
+import { DefiEdgeStrategyDeployer } from "../typechain/DefiEdgeStrategyDeployer";
 import { DefiEdgeStrategyFactory } from "../typechain/DefiEdgeStrategyFactory";
 import { Periphery } from "../typechain/Periphery";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
@@ -54,6 +55,8 @@ let pool: UniswapV3Pool;
 let signers: SignerWithAddress[];
 let factory: DefiEdgeStrategyFactory;
 let strategy: DefiEdgeStrategy;
+let strategyManager: StrategyManager;
+let strategyDeplopyer: DefiEdgeStrategyDeployer;
 let periphery: Periphery;
 let oracle: UniswapV3OracleTest;
 // let liquidityHelper: LiquidityHelperTest;
@@ -64,7 +67,7 @@ let chainlinkRegistry: ChainlinkRegistryMock;
 let router: SwapRouter;
 let weth9: WETH9;
 
-describe("UniswapPoolActions", () => {
+describe("UniswapV3LiquidityManager", () => {
   beforeEach(async () => {
     signers = await ethers.getSigners();
 
@@ -108,9 +111,15 @@ describe("UniswapPoolActions", () => {
 
     await chainlinkRegistry.setDecimals(8);
     await chainlinkRegistry.setAnswer(
-      expandTo18Decimals(3000),
-      expandTo18Decimals(1)
+      "300000000000",
+      "100000000"
     );    
+
+    const ShareHelperLibrary = ethers.getContractFactory("ShareHelper", {
+      libraries: {
+        OracleLibrary: oracleLibrary.address
+      }
+    });
 
     shareHelper = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
 
@@ -118,35 +127,44 @@ describe("UniswapPoolActions", () => {
       await LiquidityHelperLibrary
     ).deploy()) as LiquidityHelper;
 
+    const DefiEdgeStrategyDeployerContract = ethers.getContractFactory("DefiEdgeStrategyDeployer",
+    {
+       libraries: {
+         ShareHelper: shareHelper.address,
+         OracleLibrary: oracleLibrary.address,
+         LiquidityHelper: liquidityHelper.address
+       }
+     }
+    );
+
+    strategyDeplopyer = (await (
+      await DefiEdgeStrategyDeployerContract
+    ).deploy()) as DefiEdgeStrategyDeployer;
+
     const DefiEdgeStrategyFactoryF = await ethers.getContractFactory(
-      "DefiEdgeStrategyFactory",
-      {
-        libraries: {
-          OracleLibrary: oracleLibrary.address,
-          ShareHelper: shareHelper.address,
-          LiquidityHelper: liquidityHelper.address,
-        },
-      }
+      "DefiEdgeStrategyFactory"
     );
 
     // deploy strategy factory
     factory = (await DefiEdgeStrategyFactoryF.deploy(
       signers[0].address,
+      strategyDeplopyer.address,
       chainlinkRegistry.address,
       uniswapV3Factory.address,
-      router.address
+      router.address,
+      "50000000000000000",
+      "10000000000000000"
     )) as DefiEdgeStrategyFactory;
 
-    // liquidityHelper = (await (
-    //   await LiquidityHelperTestFactory
-    // ).deploy()) as LiquidityHelperTest;
-
-    // create strategy
-    await factory.createStrategy(
-      pool.address,
-      signers[0].address,
-      [true, true],
-      [
+    let params = {
+      operator: signers[0].address,
+      feeTo: signers[1].address,
+      managementFee: "500000", // 0.5%
+      performanceFee: "500000", // 0.5%
+      limit: 0,
+      pool: pool.address,
+      usdAsBase: [true, true],
+      ticks: [
         {
           amount0: 0,
           amount1: 0,
@@ -154,7 +172,10 @@ describe("UniswapPoolActions", () => {
           tickUpper: calculateTick(3500, 60),
         },
       ]
-    );
+    }
+
+    // create strategy
+    await factory.createStrategy(params);
 
     // get strategy
     strategy = (await ethers.getContractAt(
@@ -165,8 +186,13 @@ describe("UniswapPoolActions", () => {
     // // initialize strategy
     // await strategy.initialize();
 
+    strategyManager = (await ethers.getContractAt(
+      "StrategyManager",
+      await strategy.manager()
+    )) as StrategyManager;
+        
     // set deviation in strategy
-    await strategy.changeAllowedDeviation("10000000000000000"); // 1%
+    await strategyManager.changeAllowedDeviation("10000000000000000"); // 1%
 
     const PeripheryFactory = ethers.getContractFactory("Periphery", {
       libraries: { LiquidityHelper: liquidityHelper.address },
@@ -219,7 +245,7 @@ describe("UniswapPoolActions", () => {
         .to.emit(strategy, "Mint")
         .withArgs(
           signers[0].address,
-          "3452260981108611401314",
+          "64522609811086114013",
           expandTo18Decimals(1),
           "3452260981108611401314"
         );
@@ -254,39 +280,41 @@ describe("UniswapPoolActions", () => {
     });
 
     it("should emit mint event with correct values - strategy contract", async () => {
-      const shares = "3452260981108611401314";
+      const shares = "64199996762030683443";
       expect(await strategy.connect(signers[0]).burn(shares, 0, 0))
         .to.emit(strategy, "Burn")
         .withArgs(
           signers[0].address,
           shares,
-          "999999999999999999",
-          "3452260981108611401313"
+          "994999999999999999",
+          "3434999676203068344308"
         );
     });
 
     it("should emit fees claimed event with correct values - strategy contract", async () => {
-      const shares = "3452260981108611401314";
+      const shares = "64199996762030683443";
       expect(await strategy.connect(signers[0]).burn(shares, 0, 0))
         .to.emit(strategy, "FeesClaimed")
         .withArgs(signers[0].address, "0", "0");
     });
 
     it("should emit burn event with correct values - uniswap pool contract", async () => {
-      expect(await mint(signers[0]))
+      const shares = "64199996762030683443";
+
+      expect(await strategy.burn(shares, 0, 0))
         .to.emit(pool, "Burn")
         .withArgs(
           strategy.address,
           calculateTick(2500, 60),
           calculateTick(3500, 60),
-          "0",
-          "0",
-          "0"
+          "727510375048865599114",
+          "994999999999999999",
+          "3434999676203068344308"
         );
     });
 
     it("should emit collect event with correct values - uniswap pool contract", async () => {
-      const shares = "3452260981108611401314";
+      const shares = "64199996762030683443";
 
       expect(await strategy.connect(signers[0]).burn(shares, 0, 0))
         .to.emit(pool, "Collect")
@@ -295,8 +323,8 @@ describe("UniswapPoolActions", () => {
           strategy.address,
           calculateTick(2500, 60),
           calculateTick(3500, 60),
-          "999999999999999999",
-          "3452260981108611401313"
+          "994999999999999999",
+          "3434999676203068344308"
         );
     });
   });
@@ -321,7 +349,7 @@ describe("UniswapPoolActions", () => {
     it("should emit fees claimed event with correct values - strategy contract", async () => {
       expect(await strategy.hold())
         .to.emit(strategy, "FeesClaimed")
-        .withArgs(signers[0].address, "0", "0");
+        .withArgs(strategy.address, "0", "0");
     });
 
     it("should emit collect event with correct values - uniswap pool contract", async () => {
@@ -374,7 +402,7 @@ describe("UniswapPoolActions", () => {
       expect(positionAfter.feeGrowthInside1LastX128.toString()).to.equal(
         "499087288263231916915033707"
       );
-      expect(positionAfter.tokensOwed1.toString()).to.equal("0");
+      expect(positionAfter.tokensOwed1.toString()).to.equal("1072391033");
     });
 
     it("should update liquidity amount", async () => {
@@ -427,7 +455,7 @@ describe("UniswapPoolActions", () => {
   //   });
   // });
 
-  describe("#swapExactInput", async () => {
+  describe("#swap", async () => {
     beforeEach("add some liquidity", async () => {
       await mint(signers[0]);
       await strategy.hold();
@@ -435,31 +463,41 @@ describe("UniswapPoolActions", () => {
 
     it("should revert if caller is not operator", async () => {
 
-      const params = {
-        zeroForOne: false,
-        path: encodePath([token1.address, token0.address], [3000]),
-        deadline: constants.MaxUint256,
-        amountIn: expandTo18Decimals(0.0001),
-        amountOutMinimum: 0,
-      } 
+      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+      const sqrtPriceLimitX96 =
+        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.9)).toFixed(0);
+
       await expect(
         strategy
           .connect(signers[1])
-          .swapExactInput(params)
+          .swap(
+            false,
+            false,
+            encodePath([token0.address, token1.address], [3000]),
+            constants.MaxUint256,
+            expandTo18Decimals(0.0001),
+            0,
+            sqrtPriceLimitX96
+          )
       ).to.be.revertedWith('N');
+
     });
 
-    it("should swap the amount", async () => {
+    it("swapExactInput - should swap the amount", async () => {
 
-      const params = {
-        zeroForOne: false,
-        path: encodePath([token0.address, token1.address], [3000]),
-        deadline: constants.MaxUint256,
-        amountIn: expandTo18Decimals(0.0001),
-        amountOutMinimum: 0,
-      } 
+      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+      const sqrtPriceLimitX96 =
+        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.1)).toFixed(0);
 
-      let swap = await strategy.swapExactInput(params);
+      let swap = await strategy.swap(
+        false,
+        true,
+        encodePath([token0.address, token1.address], [3000]),
+        constants.MaxUint256,
+        expandTo18Decimals(0.0001),
+        0,
+        sqrtPriceLimitX96
+      );
 
 
       expect(swap)
@@ -467,63 +505,42 @@ describe("UniswapPoolActions", () => {
         .withArgs(
           router.address,
           strategy.address,
-          -33126097943,
-          expandTo18Decimals(0.0001),
-          BigInt("4346523400550973496567325094984"),
+          "100000000000000",
+          "-300068242774103142",
+          BigInt("4346523400549810817866004402175"),
           80100
         );
     });
 
 
-    it("should transfer tokens", async () => {
+    it("swapExactInput - should transfer tokens", async () => {
 
-      const params = {
-        zeroForOne: false,
-        path: encodePath([token1.address, token0.address], [3000]),
-        deadline: constants.MaxUint256,
-        amountIn: expandTo18Decimals(0.0001),
-        amountOutMinimum: 0,
-      } 
-
-      let swap = await strategy.swapExactInput(params);
-
-      expect(swap).to.emit(token1, "Transfer").withArgs(strategy.address, pool.address, expandTo18Decimals(0.0001));
-      expect(swap).to.emit(token0, "Transfer").withArgs(pool.address, strategy.address, '33126097943');
-        
-    });
-  })
-
-  describe("#swapExactInputSingle", async () => {
-    beforeEach("add some liquidity", async () => {
-      await mint(signers[0]);
-      await strategy.hold();
-    });
-
-    it("should revert if caller is not operator", async () => {
       const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
       const sqrtPriceLimitX96 =
         (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.1)).toFixed(0);
 
-      const params = {
-        zeroForOne: true,
-        fee: 0,
-        recipient: signers[0].address,
-        deadline: constants.MaxUint256,
-        amountIn: expandTo18Decimals(0.0001),
-        amountOutMinimum: 0,
-        sqrtPriceLimitX96: sqrtPriceLimitX96
-      } 
-      await expect(
-        strategy
-          .connect(signers[1])
-          .swapExactInputSingle(params)
-      ).to.be.revertedWith('N');
+      let token0A = (await ethers.getContractAt("TestERC20", await pool.token0()));
+      let token1A = (await ethers.getContractAt("TestERC20", await pool.token1()));
+
+      let swap = await strategy.swap(
+        false,
+        true,
+        encodePath([token0.address, token1.address], [3000]),
+        constants.MaxUint256,
+        expandTo18Decimals(0.0001),
+        0,
+        sqrtPriceLimitX96);
+
+      expect(swap).to.emit(token0A, "Transfer").withArgs(strategy.address, pool.address, expandTo18Decimals(0.0001));
+      expect(swap).to.emit(token1A, "Transfer").withArgs(pool.address, strategy.address, '300068242774103142');
+        
     });
 
-    it("should swap the amount", async () => {
+
+    it("swapExactInputSingle - should swap the amount", async () => {
       const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
       const sqrtPriceLimitX96 =
-        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
+        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.01)).toFixed(0);
      
       const params = {
         zeroForOne: false,
@@ -536,25 +553,36 @@ describe("UniswapPoolActions", () => {
       } 
 
       await expect(
-        await strategy.swapExactInputSingle(params)
+        await strategy.swap(
+          false,
+          true,
+          encodePath([token0.address, token1.address], [3000]),
+          constants.MaxUint256,
+          expandTo18Decimals(0.0001),
+          0,
+          sqrtPriceLimitX96
+        )
       )
         .to.emit(pool, "Swap")
         .withArgs(
           router.address,
           strategy.address,
-          -33126097943,
-          expandTo18Decimals(0.0001),
-          BigInt("4346523400550973496567325094984"),
+          "100000000000000",
+          "-300068242774103142",
+          BigInt("4346523400549810817866004402175"),
           80100
         );
     });
 
 
-    it("should transfer tokens", async () => {
+    it("swapExactInputSingle - should transfer tokens", async () => {
       const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
       const sqrtPriceLimitX96 =
         (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
      
+      let token0A = (await ethers.getContractAt("TestERC20", await pool.token0()));
+      let token1A = (await ethers.getContractAt("TestERC20", await pool.token1()));
+
       const params = {
         zeroForOne: false,
         fee: 0,
@@ -565,10 +593,20 @@ describe("UniswapPoolActions", () => {
         sqrtPriceLimitX96: sqrtPriceLimitX96
       } 
 
-      let swap = await strategy.swapExactInputSingle(params);
+      let swap = await strategy.swap(
+                  false,
+                  false,
+                  encodePath([token1.address, token0.address], [3000]),
+                  constants.MaxUint256,
+                  expandTo18Decimals(0.0001),
+                  0,
+                  sqrtPriceLimitX96
+                )
 
-      expect(swap).to.emit(token0, "Transfer").withArgs(strategy.address, pool.address, expandTo18Decimals(0.0001));
-      expect(swap).to.emit(token1, "Transfer").withArgs(pool.address, strategy.address, '33126097943');
+
+
+      expect(swap).to.emit(token1A, "Transfer").withArgs(strategy.address, pool.address, expandTo18Decimals(0.0001));
+      expect(swap).to.emit(token0A, "Transfer").withArgs(pool.address, strategy.address, '33126097943');
         
     });
   })
@@ -584,7 +622,7 @@ async function mint(signer: string | Signer | Provider) {
   await approve(strategy.address, signer);
   return await strategy
     .connect(signer)
-    .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
+    .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 0);
 }
 
 function getPositionKey(address: any, lowerTick: any, upperTick: any) {
