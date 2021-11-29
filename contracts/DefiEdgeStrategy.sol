@@ -45,6 +45,8 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         swapRouter = ISwapRouter(_swapRouter);
         chainlinkRegistry = _chainlinkRegistry;
         pool = IUniswapV3Pool(_pool);
+        token0 = pool.token0();
+        token1 = pool.token1();
         usdAsBase = _usdAsBase;
         for (uint256 i = 0; i < _ticks.length; i++) {
             ticks.push(Tick(0, 0, _ticks[i].tickLower, _ticks[i].tickUpper));
@@ -58,13 +60,15 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
      * @param _amount0Min Minimum amount of token0 to be minted
      * @param _amount1Min Minimum amount of token1 to be minted
      * @param _minShare Minimum amount of shares to be received to the user
+     * @param _tick Tick where the liquidity should be deployed,
      */
     function mint(
         uint256 _amount0,
         uint256 _amount1,
         uint256 _amount0Min,
         uint256 _amount1Min,
-        uint256 _minShare
+        uint256 _minShare,
+        int256 _tick
     )
         external
         isValidStrategy
@@ -80,14 +84,28 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         (uint256 totalAmount0, uint256 totalAmount1, , ) = this
             .getAUMWithFees();
 
-        // index 0 will always be an primary tick
-        (amount0, amount1) = mintLiquidity(
-            ticks[0].tickLower,
-            ticks[0].tickUpper,
-            _amount0,
-            _amount1,
-            msg.sender
-        );
+        if (_tick >= 0) {
+            // index 0 will always be an primary tick
+            (amount0, amount1) = mintLiquidity(
+                ticks[0].tickLower,
+                ticks[0].tickUpper,
+                _amount0,
+                _amount1,
+                msg.sender
+            );
+
+            // update data in the tick
+            ticks[0].amount0 = ticks[0].amount0.add(amount0);
+            ticks[0].amount1 = ticks[0].amount1.add(amount1);
+        } else {
+            if (amount0 > 0) {
+                IERC20(token0).transferFrom(msg.sender, address(this), amount0);
+            }
+
+            if (amount1 > 0) {
+                IERC20(token1).transferFrom(msg.sender, address(this), amount1);
+            }
+        }
 
         // issue share based on the liquidity added
         share = issueShare(
@@ -97,10 +115,6 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             totalAmount1,
             msg.sender
         );
-
-        // update data in the tick
-        ticks[0].amount0 = ticks[0].amount0.add(amount0);
-        ticks[0].amount1 = ticks[0].amount1.add(amount1);
 
         // prevent front running of strategy fee
         require(share >= _minShare, "SC");
@@ -143,8 +157,8 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         uint256 collect1;
 
         // give from unused amounts
-        collect0 = IERC20(pool.token0()).balanceOf(address(this));
-        collect1 = IERC20(pool.token1()).balanceOf(address(this));
+        collect0 = IERC20(token0).balanceOf(address(this));
+        collect1 = IERC20(token1).balanceOf(address(this));
 
         // burn liquidity based on shares from existing ticks
         if (ticks.length != 0) {
@@ -190,10 +204,10 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
 
         // transfer tokens
         if (amount0 > 0) {
-            TransferHelper.safeTransfer(pool.token0(), msg.sender, amount0);
+            TransferHelper.safeTransfer(token0, msg.sender, amount0);
         }
         if (amount1 > 0) {
-            TransferHelper.safeTransfer(pool.token1(), msg.sender, amount1);
+            TransferHelper.safeTransfer(token1, msg.sender, amount1);
         }
 
         emit Burn(msg.sender, _shares, amount0, amount1);

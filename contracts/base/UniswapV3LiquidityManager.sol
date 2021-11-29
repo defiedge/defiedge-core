@@ -135,7 +135,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         uint256 performanceFee = manager.performanceFee();
         if (fee0 > 0) {
             TransferHelper.safeTransfer(
-                pool.token0(),
+                token0,
                 manager.feeTo(),
                 fee0.mul(performanceFee).div(1e8)
             );
@@ -143,7 +143,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
         if (fee1 > 0) {
             TransferHelper.safeTransfer(
-                pool.token1(),
+                token1,
                 manager.feeTo(),
                 fee1.mul(performanceFee).div(1e8)
             );
@@ -190,12 +190,12 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         address tokenOut;
         bool[2] memory isBase; // is direct USD feed is available for the token?
         if (_zeroForOne) {
-            tokenIn = pool.token0();
-            tokenOut = pool.token1();
+            tokenIn = token0;
+            tokenOut = token1;
             isBase = [usdAsBase[0], usdAsBase[1]];
         } else {
-            tokenIn = pool.token1();
-            tokenOut = pool.token0();
+            tokenIn = token1;
+            tokenOut = token0;
             isBase = [usdAsBase[1], usdAsBase[0]];
         }
         IERC20(tokenIn).approve(address(swapRouter), _amountIn);

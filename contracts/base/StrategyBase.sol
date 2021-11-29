@@ -13,6 +13,7 @@ import "../libraries/OracleLibrary.sol";
 import "../interfaces/IStrategyManager.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract StrategyBase is ERC20 {
     using SafeMath for uint256;
@@ -33,6 +34,10 @@ contract StrategyBase is ERC20 {
 
     IStrategyFactory public factory; // instance of the strategy factory
     IUniswapV3Pool public pool; // instance of the Uniswap V3 pool
+
+    address internal token0;
+    address internal token1;
+
     ISwapRouter public swapRouter; // instance of the Uniswap V3 Periphery Swap Router
     address internal chainlinkRegistry;
 
