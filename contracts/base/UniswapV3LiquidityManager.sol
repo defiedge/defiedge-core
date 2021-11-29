@@ -213,7 +213,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
                 })
             );
         } else {
-            swapRouter.exactInputSingle(
+            amountOut = swapRouter.exactInputSingle(
                 ISwapRouter.ExactInputSingleParams({
                     tokenIn: tokenIn,
                     tokenOut: tokenOut,
@@ -229,9 +229,9 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
         require(
             OracleLibrary.allowSwap(
-                chainlinkRegistry,
+                address(factory),
                 _amountIn,
-                _amountIn,
+                amountOut,
                 tokenIn,
                 tokenOut,
                 isBase
