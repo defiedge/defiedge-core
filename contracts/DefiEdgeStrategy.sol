@@ -87,16 +87,16 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         if (_tick >= 0) {
             // index 0 will always be an primary tick
             (amount0, amount1) = mintLiquidity(
-                ticks[0].tickLower,
-                ticks[0].tickUpper,
+                ticks[uint256(_tick)].tickLower,
+                ticks[uint256(_tick)].tickUpper,
                 _amount0,
                 _amount1,
                 msg.sender
             );
 
             // update data in the tick
-            ticks[0].amount0 = ticks[0].amount0.add(amount0);
-            ticks[0].amount1 = ticks[0].amount1.add(amount1);
+            ticks[uint256(_tick)].amount0 = ticks[uint256(_tick)].amount0.add(amount0);
+            ticks[uint256(_tick)].amount1 = ticks[uint256(_tick)].amount1.add(amount1);
         } else {
             if (amount0 > 0) {
                 IERC20(token0).transferFrom(msg.sender, address(this), amount0);
