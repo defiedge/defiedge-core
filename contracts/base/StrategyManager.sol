@@ -130,7 +130,7 @@ contract StrategyManager {
         external
         onlyOperator
     {
-        require(_performanceFee <= 2 * 1e6);
+        require(_performanceFee <= 20 * 1e6);
         performanceFee = _performanceFee;
         emit ChangePerformanceFee(_performanceFee);
     }
