@@ -41,7 +41,6 @@ import {
   encodePriceSqrt,
   expandTo18Decimals,
   expandToString,
-  encodePath
 } from "./utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Provider } from "@ethersproject/abstract-provider";
@@ -66,7 +65,7 @@ let chainlinkRegistry: ChainlinkRegistryMock;
 let router: SwapRouter;
 let weth9: WETH9;
 
-describe("StrategyBase", () => {
+describe("StrategyManager", () => {
   beforeEach(async () => {
     signers = await ethers.getSigners();
 
@@ -239,229 +238,70 @@ describe("StrategyBase", () => {
   });
 
   describe("#Constants", async () => {
-    // it("should set management fee to 0", async () => {
-    //   expect(await strategy.managementFee()).to.equal(0);
-    // });
-
-    // it("should set feeToo as zero address initially", async () => {
-    //   expect(await strategy.feeTo()).to.equal(constants.AddressZero);
-    // });
 
     it("should assign factory contract properly", async () => {
-      expect(await strategy.factory()).to.equal(factory.address);
+      expect(await strategyManager.factory()).to.equal(factory.address);
     });
 
-    it("should set the pool address correctly", async () => {
-      expect(await strategy.pool()).to.equal(pool.address);
+    it("should set the operator address correctly", async () => {
+      expect(await strategyManager.operator()).to.equal(signers[0].address);
     });
 
-    it("should set initial ticks", async () => {
-      expect((await strategy.ticks(0)).tickLower).to.equal(
-        calculateTick(2500, 60)
-      );
-      expect((await strategy.ticks(0)).tickUpper).to.equal(
-        calculateTick(3500, 60)
-      );
+    it("should set the feeTo address correctly", async () => {
+      expect(await strategyManager.feeTo()).to.equal(signers[1].address);
     });
 
-    it("should update ticks after rebalance", async () => {
-      const tickLower = calculateTick(2700, 60);
-      const tickUpper = calculateTick(3800, 60);
-      await strategy.mint(
-        expandTo18Decimals(1),
-        expandTo18Decimals(3500),
-        0,
-        0,
-        0,
-        0
-      );
-      await strategy.rebalance([
-        {
-          amount0: expandTo18Decimals(1),
-          amount1: expandTo18Decimals(1),
-          tickLower,
-          tickUpper,
-        },
-      ]);
-      expect((await strategy.ticks(0)).tickLower).to.equal(tickLower);
-      expect((await strategy.ticks(0)).tickUpper).to.equal(tickUpper);
+    it("should set the managementFee address correctly", async () => {
+      expect(await strategyManager.managementFee()).to.equal("500000");
     });
 
-    // it("should delete ticks on hold", async () => {
-    //   await strategy.hold();
-    //   expect(await strategy.tickLength()).to.equal(0);
-    // });
-  });
-
-  describe("#validTicks modifier", async () => {
-    beforeEach("add liquidity", async () => {
-      await strategy.mint(
-        expandTo18Decimals(1),
-        expandTo18Decimals(3500),
-        0,
-        0,
-        0,
-        0
-      );
+    it("should set the performanceFee address correctly", async () => {
+      expect(await strategyManager.performanceFee()).to.equal("500000");
     });
 
-    it("should revert if tick length is more than 5", async () => {
-      const ticks = [];
-      for (let i = 0; i < 6; i++) {
-        const tick = {
-          amount0: expandTo18Decimals(0.00001),
-          amount1: expandTo18Decimals(0.00001),
-          tickLower: calculateTick(2000 + i * 60, 60),
-          tickUpper: calculateTick(4000 + i * 60, 60),
-        };
-        ticks.push(tick);
-      }
-      expect(strategy.rebalance(ticks)).to.be.revertedWith("ITL");
+    it("should set the limit address correctly", async () => {
+      expect(await strategyManager.limit()).to.equal("0");
     });
 
-    it("should revert if two tick upper and tick lower are same", async () => {
-      const ticks = [
-        {
-          amount0: expandTo18Decimals(0.00001),
-          amount1: expandTo18Decimals(0.00001),
-          tickLower: calculateTick(2000, 60),
-          tickUpper: calculateTick(4000, 60),
-        },
-        {
-          amount0: expandTo18Decimals(0.00001),
-          amount1: expandTo18Decimals(0.00001),
-          tickLower: calculateTick(2000, 60),
-          tickUpper: calculateTick(4000, 60),
-        },
-      ];
-      expect(strategy.rebalance(ticks)).to.be.revertedWith("TS");
+    it("should set the allowedDeviation address correctly", async () => {
+      expect(await strategyManager.allowedDeviation()).to.equal("10000000000000000");
     });
   });
 
-  describe("#hasDeviation modifier", async () => {
-    beforeEach("add liquidity", async () => {
-      
-      await strategy.mint(
-        expandTo18Decimals(100),
-        expandTo18Decimals(350000),
-        0,
-        0,
-        0,
-        0
+  describe("#strategy", async () => {
+    it("should return correct strategy address", async () => {
+      expect(await strategyManager.strategy()).to.equal(strategy.address);
+    });
+  })
+  
+  describe("#changeFee", async () => {
+    it("should revert if operator is not calling", async () => {
+      await expect(strategyManager.connect(signers[1]).changeFee(1)).to.be.revertedWith(
+        "N"
       );
-
-      // set deviation in strategy
-      await strategyManager.changeAllowedDeviation("100000000000000"); // 0.01% - setting it to very low for tests
     });
 
-    it("should revert while redeploying", async () => {
-      await expect(
-        strategy.rebalance([
-          {
-            amount0: expandTo18Decimals(1),
-            amount1: expandTo18Decimals(1),
-            tickLower: calculateTick(2500, 60),
-            tickUpper: calculateTick(3600, 60),
-          },
-        ])
-      ).to.be.revertedWith("D");
+    it("should set fees to 1%", async () => {
+      await strategyManager.changeFee(1000000);
+      expect(await strategyManager.managementFee()).to.equal(1000000);
     });
 
-    it("should revert while swap", async () => {
-      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
-      const sqrtPriceLimitX96 =
-        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
-
-      await expect(
-        strategy.swap(
-          false,
-          true,
-          encodePath([token0.address, token1.address], [3000]),
-          constants.MaxUint256,
-          expandTo18Decimals(0.0001),
-          0,
-          sqrtPriceLimitX96
-        )
-      ).to.be.revertedWith("D");
+    it("should set fees to 2%", async () => {
+      await strategyManager.changeFee(2000000);
+      expect(await strategyManager.managementFee()).to.equal(2000000);
     });
 
-    it("should revert while hold", async () => {
-      await expect(strategy.hold()).to.be.revertedWith("D");
+    it("should set fees to 5%", async () => {
+      await strategyManager.changeFee(5000000);
+      expect(await strategyManager.managementFee()).to.equal(5000000);
+    });
+
+    it("should emit changeFee event", async () => {
+      await expect(await strategyManager.changeFee(1000000))
+        .to.emit(strategyManager, "ChangeFee")
+        .withArgs(1000000);
     });
   });
-  describe("#issueShare", async () => {
-    it("should mint shares to user", async () => {
-      await approve(strategy.address, signers[1]);
-      await strategy
-        .connect(signers[1])
-        .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 0);
-      expect(await strategy.balanceOf(signers[1].address)).to.equal(
-        "64199996762030683443"
-      );
-    });
-
-    it("should mint fees to manager", async () => {
-      // set 1% fee
-      await strategyManager.changeFee("1000000");
-      await strategyManager.changeFeeTo(signers[2].address);
-
-      await approve(strategy.address, signers[1]);
-
-      await strategy
-        .connect(signers[1])
-        .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 0);
-
-      expect(await strategy.accManagementFee()).to.equal(
-        "645226098110861140"
-      );
-    });
-
-    // it("should mint protocol fees", async () => {
-    //   await factory.changeFee("1000000");
-    //   await factory.changeFeeTo(signers[1].address);
-
-    //   await approve(strategy.address, signers[1]);
-
-    //   await strategy.mint(
-    //     expandTo18Decimals(1),
-    //     expandTo18Decimals(3500),
-    //     0,
-    //     0,
-    //     0
-    //   );
-
-    //   expect(await strategy.accProtocolFee()).to.equal("34522609811086114013");
-    // });
-  });
-
-  // describe("#changeFee", async () => {
-  //   it("should revert if operator is not calling", async () => {
-  //     expect(strategy.connect(signers[1]).changeFee(1)).to.be.revertedWith(
-  //       "NO"
-  //     );
-  //   });
-
-  //   it("should set fees to 1%", async () => {
-  //     await strategy.changeFee(0);
-  //     expect(await strategy.managementFee()).to.equal(1000000);
-  //   });
-
-  //   it("should set fees to 2%", async () => {
-  //     await strategy.changeFee(1);
-  //     expect(await strategy.managementFee()).to.equal(2000000);
-  //   });
-
-  //   it("should set fees to 5%", async () => {
-  //     await strategy.changeFee(2);
-  //     expect(await strategy.managementFee()).to.equal(5000000);
-  //   });
-
-  //   it("should emit changeFee event", async () => {
-  //     await expect(await strategy.changeFee(0))
-  //       .to.emit(strategy, "ChangeFee")
-  //       .withArgs(1000000);
-  //   });
-  // });
 
   describe("#changeFeeTo", async () => {
     it("should revert if operator is not calling", async () => {
@@ -489,7 +329,7 @@ describe("StrategyBase", () => {
     });
   });
 
-  describe("#acceptGovernance", async () => {
+  describe("#acceptOperator", async () => {
     beforeEach("call change operator", async () => {
       await strategyManager.changeOperator(signers[1].address);
     });
@@ -510,101 +350,131 @@ describe("StrategyBase", () => {
     });
   });
 
-  describe("#tickLength", async () => {
-    it("returns length of the tick", async () => {
-      await strategy.mint(
-        expandTo18Decimals(1),
-        expandTo18Decimals(3500),
-        0,
-        0,
-        0,
-        0
-      );
-      await strategy.rebalance([
-        {
-          amount0: expandTo18Decimals(0.00001),
-          amount1: expandTo18Decimals(0.00001),
-          tickLower: calculateTick(2000, 60),
-          tickUpper: calculateTick(4000, 60),
-        },
-      ]);
+  describe("#changeLimit", async () => {
+    it("should revert if operator is not calling", async () => {
+      expect(strategyManager.connect(signers[1]).changeLimit(1)).to.be.revertedWith("N");
+    });
 
-      await expect(strategy.ticks(1)).to.be.reverted; // hence strategy have only one tick
-
+    it("should update limit", async () => {
+      await strategyManager.changeLimit(10);
+      expect(await strategyManager.limit()).to.equal(10);
     });
   });
 
-  describe("#claimFee", async () => {
-    beforeEach(async () => {
-      // set 1% fee
-      await strategyManager.changeFee("1000000");
-      await strategyManager.changeFeeTo(signers[2].address);
-
-      await factory.changeFee("1000000");
-      await factory.changeFeeTo(signers[3].address);
-
-      await approve(strategy.address, signers[1]);
-
-      await strategy
-        .connect(signers[1])
-        .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 0);
-    });
-
-    it("should mint accProtocolFee  & accManagementFee to feeTo address", async () => {
-      expect(await strategy.accManagementFee()).to.equal(
-        "645226098110861140"
-      );
-
-      // expect(await strategy.accProtocolFee()).to.equal("34522609811086114013");
-
-      let claimFee = await strategy.claimFee();
-
-      expect(claimFee)
-        .to.emit(strategy, "Transfer")
-        .withArgs(
-          "0x0000000000000000000000000000000000000000",
-          signers[2].address,
-          "638773837129752529"
-        );
-      expect(claimFee)
-        .to.emit(strategy, "Transfer")
-        .withArgs(
-          "0x0000000000000000000000000000000000000000",
-          signers[3].address,
-          "6452260981108611"
-        );
-    });
-
-    it("should update account balance after claimFee", async () => {
-      expect(await strategy.balanceOf(signers[2].address)).to.equal("0");
-      expect(await strategy.balanceOf(signers[3].address)).to.equal("0");
-
-      await strategy.claimFee();
-
-      expect(await strategy.balanceOf(signers[2].address)).to.equal(
-        "638773837129752529"
-      );
-      expect(await strategy.balanceOf(signers[3].address)).to.equal(
-        "6452260981108611"
+  describe("#changePerformanceFee", async () => {
+    it("should revert if operator is not calling", async () => {
+      await expect(strategyManager.connect(signers[1]).changePerformanceFee(1)).to.be.revertedWith(
+        "N"
       );
     });
+    it("should revert if performanceFee is more than 20%", async () => {
+      await expect(strategyManager.changePerformanceFee(20000001)).to.be.reverted;
+    });
 
-    it("should set accProtocolFee  & accManagementFee to zero after claiming fee", async () => {
-      expect(await strategy.accManagementFee()).to.equal(
-        "645226098110861140"
-      );
-      // expect(await strategy.accProtocolFee()).to.equal("34522609811086114013");
+    it("should set fees to 1%", async () => {
+      await strategyManager.changePerformanceFee(1000000);
+      expect(await strategyManager.performanceFee()).to.equal(1000000);
+    });
 
-      await strategy.claimFee();
+    it("should set fees to 2%", async () => {
+      await strategyManager.changePerformanceFee(2000000);
+      expect(await strategyManager.performanceFee()).to.equal(2000000);
+    });
 
-      expect(await strategy.accManagementFee()).to.equal("0");
-      // expect(await strategy.accProtocolFee()).to.equal("0");
+    it("should set fees to 5%", async () => {
+      await strategyManager.changePerformanceFee(5000000);
+      expect(await strategyManager.performanceFee()).to.equal(5000000);
+    });
+
+    it("should emit changePerformanceFee event", async () => {
+      await expect(await strategyManager.changePerformanceFee(1000000))
+        .to.emit(strategyManager, "ChangePerformanceFee")
+        .withArgs(1000000);
     });
   });
+
+  describe("#freezeEmergencyFunctions", async () => {
+    it("should revert if operator is not calling", async () => {
+      expect(strategyManager.connect(signers[1]).freezeEmergencyFunctions()).to.be.revertedWith("N");
+    });
+
+    it("should set freezeEmergency to true", async () => {
+      await strategyManager.freezeEmergencyFunctions();
+      expect(await strategyManager.freezeEmergency()).to.equal(true);
+    });
+  });
+
+
+  describe("#changeAllowedDeviation", async () => {
+    it("should revert if operator is not calling", async () => {
+      await expect(strategyManager.connect(signers[1]).changeAllowedDeviation(1)).to.be.revertedWith(
+        "N"
+      );
+    });
+
+    it("should set deviation to 1%", async () => {
+      await strategyManager.changeAllowedDeviation(1000000);
+      expect(await strategyManager.allowedDeviation()).to.equal(1000000);
+    });
+
+    it("should emit changeAllowedDeviation event", async () => {
+      await expect(await strategyManager.changeAllowedDeviation(1000000))
+        .to.emit(strategyManager, "ChangeAllowedDeviation")
+        .withArgs(1000000);
+    });
+  });
+
+  describe("#managementFee", async () => {
+    it("should mint share for manager while mint", async () => {
+      
+      expect(await strategy.accManagementFee()).to.equal(0);
+
+      await mint(signers[0])
+
+      expect(await strategy.accManagementFee()).to.equal("322613049055430570");
+
+    });
+  })
+
+  describe("#performanceFee", async () => {
+    it("should transfer performanceFee to feeTo address while burnLiquidity", async () => {
+      
+      await mint(signers[0])
+
+      // swap tokens
+      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
+
+      const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9;
+      await periphery.swap(
+        pool.address,
+        false,
+        "10000000000000000000",
+        expandToString(sqrtPriceLimitX96)
+      );
+
+      const shares = "64199996762030683443";
+
+      let burn = await strategy.burn(shares, 0, 0)
+
+      let token1A = (await ethers.getContractAt("TestERC20", await pool.token1()));
+
+
+      expect(burn).to.emit(strategy, "FeesClaimed").withArgs(signers[0].address, "0", "1072391033");
+
+      expect(burn).to.emit(token1A, "Transfer").withArgs(strategy.address, signers[1].address, "5361955");
+    });
+  })
 });
+
 
 async function approve(address: string, from: string | Signer | Provider) {
   // give approval
   await token0.connect(from).approve(address, expandTo18Decimals(150000000000));
   await token1.connect(from).approve(address, expandTo18Decimals(150000000000));
+}
+async function mint(signer: string | Signer | Provider) {
+  await approve(strategy.address, signer);
+  return await strategy
+    .connect(signer)
+    .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 0);
 }
