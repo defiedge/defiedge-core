@@ -95,15 +95,29 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             );
 
             // update data in the tick
-            ticks[uint256(_tick)].amount0 = ticks[uint256(_tick)].amount0.add(amount0);
-            ticks[uint256(_tick)].amount1 = ticks[uint256(_tick)].amount1.add(amount1);
+            ticks[uint256(_tick)].amount0 = ticks[uint256(_tick)].amount0.add(
+                amount0
+            );
+            ticks[uint256(_tick)].amount1 = ticks[uint256(_tick)].amount1.add(
+                amount1
+            );
         } else {
             if (amount0 > 0) {
-                IERC20(token0).transferFrom(msg.sender, address(this), amount0);
+                TransferHelper.safeTransferFrom(
+                    token0,
+                    msg.sender,
+                    address(this),
+                    _amount0
+                );
             }
 
             if (amount1 > 0) {
-                IERC20(token1).transferFrom(msg.sender, address(this), amount1);
+                TransferHelper.safeTransferFrom(
+                    token1,
+                    msg.sender,
+                    address(this),
+                    _amount1
+                );
             }
         }
 
