@@ -159,4 +159,11 @@ contract StrategyBase is ERC20 {
             accManagementFee = 0;
         }
     }
+
+    /**
+     * @notice Returns the current ticks
+     */
+    function getTicks() public view returns (Tick[] memory) {
+        return ticks;
+    }
 }
