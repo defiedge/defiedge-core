@@ -246,11 +246,285 @@ describe("DefiEdgeStrategyFactory", () => {
     it("should set uniswap swap router contract address", async () => {
       expect(await factory.swapRouter()).to.be.equal(router.address);
     });
+    it("should set uniswap deployerProxy contract address", async () => {
+      expect(await factory.deployerProxy()).to.be.equal(strategyDeplopyer.address);
+    });
+    it("should set uniswap uniswapV3Factory contract address", async () => {
+      expect(await factory.uniswapV3Factory()).to.be.equal(await router.factory());
+    });
+    it("should set uniswap chainlinkRegistry contract address", async () => {
+      expect(await factory.chainlinkRegistry()).to.be.equal(chainlinkRegistry.address);
+    });
+    it("should set uniswap chainlinkRegistry contract address", async () => {
+      expect(await factory.allowedSlippage()).to.be.equal("10000000000000000");
+    });
+    it("should set uniswap chainlinkRegistry contract address", async () => {
+      expect(await factory.allowedDeviation()).to.be.equal("10000000000000000");
+    });
+  });
+
+  describe("#createStrategy", async () => {
+
+    it("should revert if pool address is invalid", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: strategyManager.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      await expect(factory.createStrategy(params)).to.be.reverted;
+
+    })
+
+    it("should create strategy manager contract", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      await factory.createStrategy(params);
+
+      let strategyContract = (await ethers.getContractAt(
+        "DefiEdgeStrategy",
+        await factory.strategyByIndex(await factory.totalIndex())
+      ))
+
+      let managerContract = await ethers.getContractAt("StrategyManager", await strategyContract.manager());
+
+      expect(await managerContract.factory()).to.eq(factory.address)
+
+    })
+
+    it("should create strategy contract", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      await factory.createStrategy(params);
+
+      let strategyContract = (await ethers.getContractAt(
+        "DefiEdgeStrategy",
+        await factory.strategyByIndex(await factory.totalIndex())
+      ))
+
+      expect(await strategyContract.factory()).to.eq(factory.address)
+
+    })
+
+    it("should retrieve address by manager address", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      await factory.createStrategy(params);
+
+      let strategyContract = (await ethers.getContractAt(
+        "DefiEdgeStrategy",
+        await factory.strategyByIndex(await factory.totalIndex())
+      ))
+
+      let managerContract = await strategyContract.manager()
+
+      expect(await factory.strategyByManager(managerContract)).to.eq(strategyContract.address)
+
+    })
+
+    it("should retrieve strategy address by index", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      let index = (await factory.totalIndex()).toString()
+
+      await factory.createStrategy(params);
+
+      let strategy = await factory.strategyByIndex(await factory.totalIndex())
+
+      expect(await factory.strategyByIndex(Number(index) + 1)).to.eq(strategy)
+
+    })
+
+    it("should increase total index", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      let oldIndex = (await factory.totalIndex()).toString()
+
+      await factory.createStrategy(params);
+
+      expect(await factory.totalIndex()).to.eq(Number(oldIndex) + 1)
+
+    })
+
+    it("should make strategy valid", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      await factory.createStrategy(params);
+
+      let strategy = await factory.strategyByIndex(await factory.totalIndex())
+
+      expect(await factory.isValid(strategy)).to.eq(true)
+
+    })
+
+    it("should emit new strategy event", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      let create = await factory.createStrategy(params);
+
+      let strategy = await factory.strategyByIndex(await factory.totalIndex())
+
+      expect(create).to.emit(factory, "NewStrategy").withArgs(strategy, signers[0].address)
+
+    })
+
+  })
+
+  describe("#changeDefaultAllowedDeviation", async () => {
+    it("should be called by governance only", async () => {
+      await expect(factory.connect(signers[1]).changeDefaultAllowedDeviation(10000000)).to.be.revertedWith("NO");
+    });
+    it("should change deviation", async () => {
+      await factory.changeDefaultAllowedDeviation(1000000);
+      expect(await factory.allowedDeviation()).to.equal(1000000);
+    });
+  });
+
+  describe("#changeAllowedSlippage", async () => {
+    it("should be called by governance only", async () => {
+      await expect(factory.connect(signers[1]).changeAllowedSlippage(10000000)).to.be.revertedWith("NO");
+    });
+    it("should change slippage", async () => {
+      await factory.changeAllowedSlippage(1000000);
+      expect(await factory.allowedSlippage()).to.equal(1000000);
+    });
   });
 
   describe("#changeFee", async () => {
     it("should be called by governance only", async () => {
-      expect(factory.connect(signers[1]).changeFee(10000000)).to.be.reverted;
+      await expect(factory.connect(signers[1]).changeFee(10000000)).to.be.revertedWith("NO");
     });
     it("should change the protocol fee", async () => {
       await factory.changeFee(1000000);
@@ -260,8 +534,8 @@ describe("DefiEdgeStrategyFactory", () => {
 
   describe("#changeFeeTo", async () => {
     it("should revert if not called by governance", async () => {
-      expect(factory.connect(signers[1]).changeFeeTo(signers[0].address)).to.be
-        .reverted;
+      await expect(factory.connect(signers[1]).changeFeeTo(signers[0].address)).to.be
+        .revertedWith("NO");
     });
     it("should change feeTo address", async () => {
       await factory.changeFeeTo(signers[1].address);
@@ -272,6 +546,9 @@ describe("DefiEdgeStrategyFactory", () => {
   describe("#changeGovernance", async () => {
     it("should revert if new governance address is zero", async () => {
       expect(factory.changeGovernance(constants.AddressZero)).to.be.reverted;
+    });
+    it("should be called by governance only", async () => {
+      await expect(factory.connect(signers[1]).changeGovernance(signers[2].address)).to.be.revertedWith("NO");
     });
     it("should set pending governance as new governance address", async () => {
       await factory.changeGovernance(signers[1].address);
@@ -296,6 +573,12 @@ describe("DefiEdgeStrategyFactory", () => {
     it("should set boolean to true in denied mapping", async () => {
       await factory.deny(strategy.address);
       expect(await factory.denied(strategy.address)).to.equal(true);
+    });
+    it("should set boolean to false in denied mapping", async () => {
+      await factory.deny(strategy.address);
+      expect(await factory.denied(strategy.address)).to.equal(true);
+      await factory.deny(strategy.address);
+      expect(await factory.denied(strategy.address)).to.equal(false);
     });
   });
 
