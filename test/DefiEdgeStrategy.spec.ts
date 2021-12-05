@@ -247,10 +247,87 @@ describe("DeFiEdgeStrategy", () => {
     it("should set uniswap swap router contract address", async () => {
       expect(await strategy.swapRouter()).to.be.equal(router.address);
     });
+    it("should set strategy manager contract address by default", async () => {
+      expect(await strategy.manager()).to.be.equal(strategyManager.address);
+    });
+    it("should set factory contract address by default", async () => {
+      expect(await strategy.factory()).to.be.equal(factory.address);
+    });
+    it("should set pool contract address", async () => {
+      expect(await strategy.pool()).to.be.equal(pool.address);
+    });
+    it("should set pool contract address", async () => {
+      expect(await strategy.pool()).to.be.equal(pool.address);
+    });
+    it("should set usdAsBase", async () => {
+      expect(await strategy.usdAsBase(0)).to.be.equal(true);
+      expect(await strategy.usdAsBase(1)).to.be.equal(true);
+    });
   });
 
   describe("#Constructor", async () => {
-    it("should pass via validTicks modifier", async () => {
+    it("should set ticks", async () => {
+      let tick = await strategy.ticks(0)
+
+      expect(tick.amount0).to.be.equal(0);
+      expect(tick.amount1).to.be.equal(0);
+      expect(tick.tickLower).to.be.equal(calculateTick(2500, 60));
+      expect(tick.tickUpper).to.be.equal(calculateTick(3500, 60));
+
+    });
+
+    it("validTicks - should revert if tick length is more than 5", async () => {
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: "1",
+            amount1: "1",
+            tickLower: "60",
+            tickUpper: "60",
+          },
+          {
+            amount0: "2",
+            amount1: "2",
+            tickLower: "60",
+            tickUpper: "60",
+          },
+          {
+            amount0: "3",
+            amount1: "3",
+            tickLower: "60",
+            tickUpper: "60",
+          },
+          {
+            amount0: "4",
+            amount1: "4",
+            tickLower: "60",
+            tickUpper: "60",
+          },
+          {
+            amount0: "5",
+            amount1: "5",
+            tickLower: "60",
+            tickUpper: "60",
+          },
+          {
+            amount0: "6",
+            amount1: "6",
+            tickLower: "60",
+            tickUpper: "60",
+          }
+        ]
+      }
+    
+      expect(factory.createStrategy(params)).to.be.revertedWith('ITL');
+    });
+    it("validTicks - should revert if two ticks are the same", async () => {
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
@@ -275,11 +352,27 @@ describe("DeFiEdgeStrategy", () => {
         ]
       }
     
-      expect(factory.createStrategy(params)).to.be.reverted;
+      expect(factory.createStrategy(params)).to.be.revertedWith('TS');
     });
   });
 
   describe("#Mint", async () => {
+    it("should revert if strategy is onHold", async () => {
+
+      await mint(signers[0])
+
+      expect(await strategy.onHold()).to.equal(false);
+
+      await strategy.hold();
+
+      expect(await strategy.onHold()).to.equal(true);
+
+      await expect(
+        strategy.mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 0)
+      )
+      .to.be.revertedWith("H")
+
+    });
     it("should mint to the primary ticks", async () => {
       await expect(await mint(signers[1]))
         .to.emit(pool, "Mint")
@@ -302,8 +395,39 @@ describe("DeFiEdgeStrategy", () => {
       );
     });
 
+    it("should update the values in the second ticks", async () => {
+
+      await mint(signers[0]);
+
+      await strategy.rebalance([
+        {
+          amount0: expandTo18Decimals(0.001),
+          amount1: expandTo18Decimals(0.3),
+          tickLower: calculateTick(2500, 60),
+          tickUpper: calculateTick(3300, 60),
+        },
+        {
+          amount0: expandTo18Decimals(0.1),
+          amount1: expandTo18Decimals(0.3),
+          tickLower: calculateTick(3000, 60),
+          tickUpper: calculateTick(4000, 60),
+        }
+      ]);
+
+      await approve(strategy.address, signers[0]);
+      await strategy.mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 1);  
+
+      expect((await strategy.ticks(1)).amount0).to.equal("1100000000000000000");
+      expect((await strategy.ticks(1)).amount1).to.equal(
+        "219340000016"
+      );
+    });
+
     it("should revert if minted share is less than minimum share", async () => {
-      expect(
+
+      await approve(strategy.address, signers[0]);
+
+      await expect(
         strategy.mint(
           expandTo18Decimals(1),
           expandTo18Decimals(3500),
@@ -312,11 +436,11 @@ describe("DeFiEdgeStrategy", () => {
           expandTo18Decimals(5000),
           0
         )
-      ).to.be.reverted;
+      ).to.be.revertedWith("SC");
     });
 
     it("should revert if minted amounts are less than minimum amounts", async () => {
-      expect(
+      await expect(
         strategy.mint(
           expandTo18Decimals(1),
           expandTo18Decimals(3500),
@@ -325,7 +449,25 @@ describe("DeFiEdgeStrategy", () => {
           0,
           0
         )
-      ).to.be.reverted;
+      ).to.be.revertedWith("S");
+    });
+
+    it("should revert if minted amounts exceeds maximum share mint limit", async () => {
+
+      await strategyManager.changeLimit(1);
+
+      await approve(strategy.address, signers[0]);
+
+      await expect(
+        strategy.mint(
+          expandTo18Decimals(1),
+          expandTo18Decimals(3500),
+          0,
+          0,
+          0,
+          0
+        )
+      ).to.be.revertedWith("L");
     });
 
     it("should emit mint event with correct values", async () => {
@@ -338,6 +480,19 @@ describe("DeFiEdgeStrategy", () => {
           "3452260981108611401314"
         );
     });
+
+    it("if tick number is less then 0 then transfer amount0 and amount 1 to strategy contract", async () => {
+
+      await approve(strategy.address, signers[0]);
+      let mint = await strategy.mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, -1);  
+
+      let token0A = (await ethers.getContractAt("TestERC20", await pool.token0()));
+      let token1A = (await ethers.getContractAt("TestERC20", await pool.token1()));
+
+      await expect(mint).to.emit(token0A, "Transfer").withArgs(signers[0].address, strategy.address, expandTo18Decimals(1))
+      await expect(mint).to.emit(token1A, "Transfer").withArgs(signers[0].address, strategy.address, expandTo18Decimals(3500))
+
+    });
   });
 
   describe("#Burn", async () => {
@@ -347,7 +502,7 @@ describe("DeFiEdgeStrategy", () => {
 
     it("should revert if msg.sender has no balance", async () => {
       expect(strategy.connect(signers[1]).burn(expandTo18Decimals(3000), 0, 0))
-        .to.be.reverted;
+        .to.be.revertedWith("INS");
     });
 
     it("should burn the liquidity", async () => {
@@ -366,7 +521,7 @@ describe("DeFiEdgeStrategy", () => {
       amount0 = (amount0 * parseInt(shares.toString())) / totalSupply;
       amount1 = (amount1 * parseInt(shares.toString())) / totalSupply;
 
-      expect(await strategy.connect(signers[0]).burn(shares, 0, 0))
+      await expect(strategy.connect(signers[0]).burn(shares, 0, 0))
         .to.emit(pool, "Burn")
         .withArgs(
           strategy.address,
@@ -407,7 +562,7 @@ describe("DeFiEdgeStrategy", () => {
             "1099999999999999999",
             "3552260981108611397869"
           )
-      ).to.be.reverted;
+      ).to.be.revertedWith("S");
     });
 
     it("should decrease the total supply (burn shares)", async () => {
@@ -424,13 +579,15 @@ describe("DeFiEdgeStrategy", () => {
 
     it("should transfer amount0 back to the user", async () => {
       await strategy.connect(signers[0]).burn("64199996762030683443", 0, 0);
-      const balanceAfter = await token0.balanceOf(signers[0].address);
+      let token0A = (await ethers.getContractAt("TestERC20", await pool.token0()));
+      const balanceAfter = await token0A.balanceOf(signers[0].address);
       expect("948499999994999999999999999").to.equal(balanceAfter.toString());
     });
 
     it("should transfer amount1 back to the user", async () => {
       await strategy.connect(signers[0]).burn("64199996762030683443", 0, 0);
-      const balanceAfter = await token1.balanceOf(signers[0].address);
+      let token1A = (await ethers.getContractAt("TestERC20", await pool.token1()));
+      const balanceAfter = await token1A.balanceOf(signers[0].address);
       expect("998499972738695094456942994").to.equal(balanceAfter.toString());
     });
 
@@ -458,7 +615,7 @@ describe("DeFiEdgeStrategy", () => {
         expandTo18Decimals(0.01)
       );
       expect(
-        strategy.connect(signers[1]).rebalance([
+        strategy.rebalance([
           {
             amount0: expandTo18Decimals(0.001),
             amount1: expandTo18Decimals(0.001),
@@ -466,7 +623,7 @@ describe("DeFiEdgeStrategy", () => {
             tickUpper: "60",
           },
         ])
-      ).to.be.reverted;
+      ).to.be.revertedWith('D');
     });
 
     it("should revert if caller is not operator", async () => {
@@ -479,7 +636,7 @@ describe("DeFiEdgeStrategy", () => {
             tickUpper: "60",
           },
         ])
-      ).to.be.reverted;
+      ).to.be.revertedWith("N");
     });
 
     it("should redeploy when funds are on hold", async () => {

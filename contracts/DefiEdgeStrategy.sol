@@ -99,8 +99,33 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             ticks[uint256(_tick)].amount1 = ticks[uint256(_tick)].amount1.add(
                 amount1
             );
+
+            // issue share based on the liquidity added
+            share = issueShare(
+                amount0,
+                amount1,
+                totalAmount0,
+                totalAmount1,
+                msg.sender
+            );
+
+            // prevent front running of strategy fee
+            require(share >= _minShare, "SC");
+
+            // price slippage check
+            require(amount0 >= _amount0Min && amount1 >= _amount1Min, "S");
+
+            // share limit
+            if (manager.limit() != 0) {
+                require(totalSupply() <= manager.limit(), "L");
+            }
+
+            // emit event
+            emit Mint(msg.sender, share, amount0, amount1);
+            
         } else {
-            if (amount0 > 0) {
+
+            if (_amount0 > 0) {
                 TransferHelper.safeTransferFrom(
                     token0,
                     msg.sender,
@@ -109,7 +134,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                 );
             }
 
-            if (amount1 > 0) {
+            if (_amount1 > 0) {
                 TransferHelper.safeTransferFrom(
                     token1,
                     msg.sender,
@@ -118,29 +143,6 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                 );
             }
         }
-
-        // issue share based on the liquidity added
-        share = issueShare(
-            amount0,
-            amount1,
-            totalAmount0,
-            totalAmount1,
-            msg.sender
-        );
-
-        // prevent front running of strategy fee
-        require(share >= _minShare, "SC");
-
-        // price slippage check
-        require(amount0 >= _amount0Min && amount1 >= _amount1Min, "S");
-
-        // share limit
-        if (manager.limit() != 0) {
-            require(totalSupply() <= manager.limit(), "L");
-        }
-
-        // emit event
-        emit Mint(msg.sender, share, amount0, amount1);
     }
 
     /**

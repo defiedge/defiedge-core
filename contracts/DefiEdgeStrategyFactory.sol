@@ -81,7 +81,6 @@ contract DefiEdgeStrategyFactory {
     ) {
         governance = _governance;
         deployerProxy = _deployerProxy;
-        governance = _governance;
         uniswapV3Factory = _uniswapV3factory;
         chainlinkRegistry = _chainlinkRegistry;
         swapRouter = _swapRouter;
