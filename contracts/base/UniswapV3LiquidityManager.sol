@@ -186,6 +186,13 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         uint256 _amountOutMinimum,
         uint160 _sqrtPriceLimitX96
     ) external onlyOperator hasDeviation {
+        if (ticks.length > 0) {
+            onHold = true;
+            // burn all liquidity
+            burnAllLiquidity(ticks);
+            // delete ticks
+            delete ticks;
+        }
         address tokenIn;
         address tokenOut;
         bool[2] memory isBase; // is direct USD feed is available for the token?

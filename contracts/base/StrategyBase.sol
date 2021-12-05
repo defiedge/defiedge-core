@@ -27,6 +27,8 @@ contract StrategyBase is ERC20 {
         int24 tickUpper;
     }
 
+    bool public onHold;
+
     // store ticks
     Tick[] public ticks;
 

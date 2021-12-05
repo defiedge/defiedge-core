@@ -14,8 +14,6 @@ import "./libraries/LiquidityHelper.sol";
 contract DefiEdgeStrategy is UniswapV3LiquidityManager {
     using SafeMath for uint256;
 
-    bool public onHold;
-
     // events
     event Mint(address user, uint256 share, uint256 amount0, uint256 amount1);
     event Burn(address user, uint256 share, uint256 amount0, uint256 amount1);

@@ -68,35 +68,5 @@ library ShareHelper {
             share = ((token0Price.mul(_amount0)).add(token1Price.mul(_amount1)))
                 .div(100 * 1e18);
         }
-
-        // if (totalShares > 0) {
-        //     uint256 numerator = (_amount0.mul(price)).add(_amount1.mul(BASE));
-        //     uint256 denominator = (_totalAmount0.mul(price)).add(
-        //         _totalAmount1.mul(BASE)
-        //     );
-        //     share = totalShares.mul(numerator).div(denominator);
-        // } else {
-        //     // mint initial shares based on threshold of 10000
-        //     uint256 threshold = uint256(10000).mul(BASE);
-        //     if (price >= BASE) {
-        //         uint256 m;
-        //         m = 1;
-        //         if (price >= threshold) {
-        //             m = (price).div(threshold);
-        //             share = (_amount0.mul(price).add(_amount1.mul(BASE))).div(
-        //                 m.mul(BASE)
-        //             );
-        //         } else {
-        //             m = 1;
-        //             if (price.mul(threshold) <= 1e36) {
-        //                 m = uint256(1e36).div(price.mul(threshold));
-        //             }
-        //             share = (_amount0.mul(price).add(_amount1.mul(BASE))).div(
-        //                 price.mul(m)
-        //             );
-        //         }
-        //     }
-        //     share = Math.max(_amount0, _amount1);
-        // }
     }
 }
