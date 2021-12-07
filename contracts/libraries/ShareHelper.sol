@@ -16,6 +16,14 @@ library ShareHelper {
 
     uint256 public constant BASE = 1e18;
 
+    function normalise(address _token, uint256 _amount)
+        public
+        view
+        returns (uint256)
+    {
+        return uint256(_amount) * (10**(18 - IERC20Minimal(_token).decimals()));
+    }
+
     /**
      * @dev Calculates the shares to be given for specific position
      * @param _registry Chainlink registry
@@ -39,6 +47,11 @@ library ShareHelper {
     ) public view returns (uint256 share) {
         IUniswapV3Pool pool = IUniswapV3Pool(_pool);
 
+        _amount0 = normalise(pool.token0(), _amount0);
+        _amount1 = normalise(pool.token1(), _amount1);
+        _totalAmount0 = normalise(pool.token0(), _totalAmount0);
+        _totalAmount1 = normalise(pool.token1(), _totalAmount1);
+
         // price in USD
         uint256 token0Price = OracleLibrary.getPriceInUSD(
             _registry,
@@ -52,9 +65,7 @@ library ShareHelper {
             _isBase
         );
 
-        uint256 totalShares = _totalShares;
-
-        if (totalShares > 0) {
+        if (_totalShares > 0) {
             uint256 numerator = (token0Price.mul(_amount0)).add(
                 token1Price.mul(_amount1)
             );
@@ -63,7 +74,7 @@ library ShareHelper {
                 token1Price.mul(_totalAmount1)
             );
 
-            share = numerator.mul(totalShares).div(denominator);
+            share = numerator.mul(_totalShares).div(denominator);
         } else {
             share = ((token0Price.mul(_amount0)).add(token1Price.mul(_amount1)))
                 .div(100 * 1e18);
