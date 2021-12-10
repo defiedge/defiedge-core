@@ -64,6 +64,7 @@ let oracleLibrary: OracleLibrary;
 let chainlinkRegistry: ChainlinkRegistryMock;
 let router: SwapRouter;
 let weth9: WETH9;
+let uniswapV3Factory: UniswapV3Factory;
 
 describe("DefiEdgeStrategyFactory", () => {
   beforeEach(async () => {
@@ -75,7 +76,7 @@ describe("DefiEdgeStrategyFactory", () => {
     weth9 = (await (await WETH9Factory).deploy()) as WETH9;
 
     // deploy uniswap factory
-    const uniswapV3Factory = (await (
+    uniswapV3Factory = (await (
       await UniswapV3FactoryFactory
     ).deploy()) as UniswapV3Factory;
 
@@ -265,6 +266,70 @@ describe("DefiEdgeStrategyFactory", () => {
 
   describe("#createStrategy", async () => {
 
+    it("should revert if token0 of pool have is more than 18 decimal", async () => {
+
+      // deploy tokens
+      let token00 = (await (await TestERC20Factory).deploy(22)) as TestERC20;
+      let token01 = (await (await TestERC20Factory).deploy(18)) as TestERC20;
+
+      await uniswapV3Factory.createPool(token00.address, token01.address, "3000");
+      
+      let poolAddress = await uniswapV3Factory.getPool(token00.address, token01.address, "3000")
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: poolAddress,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      await expect(factory.createStrategy(params)).to.be.revertedWith("ID");
+
+    })
+
+    it("should revert if token1 of pool have is more than 18 decimal", async () => {
+
+      // deploy tokens
+      let token00 = (await (await TestERC20Factory).deploy(18)) as TestERC20;
+      let token01 = (await (await TestERC20Factory).deploy(22)) as TestERC20;
+
+      await uniswapV3Factory.createPool(token00.address, token01.address, "3000");
+      
+      let poolAddress = await uniswapV3Factory.getPool(token00.address, token01.address, "3000")
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: poolAddress,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      await expect(factory.createStrategy(params)).to.be.revertedWith("ID");
+
+    })
+
     it("should revert if pool address is invalid", async () => {
 
       let params = {
@@ -274,6 +339,30 @@ describe("DefiEdgeStrategyFactory", () => {
         performanceFee: "500000", // 0.5%
         limit: 0,
         pool: strategyManager.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      await expect(factory.createStrategy(params)).to.be.reverted;
+
+    })
+
+    it("should revert if pool address is zero address(pool is not available)", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: constants.AddressZero,
         usdAsBase: [true, true],
         ticks: [
           {
