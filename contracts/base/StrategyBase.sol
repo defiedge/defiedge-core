@@ -120,7 +120,7 @@ contract StrategyBase is ERC20 {
         share = ShareHelper.calculateShares(
             chainlinkRegistry,
             address(pool),
-            usdAsBase[0],
+            usdAsBase,
             _amount0,
             _amount1,
             _totalAmount0,

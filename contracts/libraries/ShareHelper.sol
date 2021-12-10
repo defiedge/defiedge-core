@@ -38,7 +38,7 @@ library ShareHelper {
     function calculateShares(
         address _registry,
         address _pool,
-        bool _isBase,
+        bool[] memory _isBase,
         uint256 _amount0,
         uint256 _amount1,
         uint256 _totalAmount0,
@@ -56,13 +56,13 @@ library ShareHelper {
         uint256 token0Price = OracleLibrary.getPriceInUSD(
             _registry,
             pool.token0(),
-            _isBase
+            _isBase[0]
         );
 
         uint256 token1Price = OracleLibrary.getPriceInUSD(
             _registry,
             pool.token1(),
-            _isBase
+            _isBase[1]
         );
 
         if (_totalShares > 0) {
