@@ -49,7 +49,12 @@ library OracleLibrary {
             : token1Decimals - token0Decimals;
 
         // normalise the price to 18 decimals
-        price = price.div(10**(decimalsDelta));
+        if(token0Decimals >= token1Decimals){
+            price = price.mul(10**(decimalsDelta));
+        } else {
+            price = price.div(10**(decimalsDelta));
+        }        
+
     }
 
     /**
