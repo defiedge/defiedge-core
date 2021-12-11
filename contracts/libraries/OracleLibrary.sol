@@ -41,8 +41,8 @@ library OracleLibrary {
         uint256 priceX192 = uint256(sqrtPriceX96).mul(sqrtPriceX96);
         price = FullMath.mulDiv(priceX192, BASE, 1 << 192);
 
-        uint256 token0Decimals = 18 - IERC20Minimal(pool.token0()).decimals();
-        uint256 token1Decimals = 18 - IERC20Minimal(pool.token1()).decimals();
+        uint256 token0Decimals = IERC20Minimal(pool.token0()).decimals();
+        uint256 token1Decimals = IERC20Minimal(pool.token1()).decimals();
 
         uint256 decimalsDelta = token0Decimals >= token1Decimals
             ? token0Decimals - token1Decimals
