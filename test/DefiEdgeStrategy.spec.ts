@@ -1,6 +1,7 @@
 import { ethers, waffle } from "hardhat";
 import { BigNumber, utils, Signer } from "ethers";
 import chai from "chai";
+import bn from 'bignumber.js';
 
 const TestERC20Factory = ethers.getContractFactory("TestERC20");
 const WETH9Factory = ethers.getContractFactory("WETH9");
@@ -505,21 +506,57 @@ describe("DeFiEdgeStrategy", () => {
         .to.be.revertedWith("INS");
     });
 
+    it("should calaculate unused balance while burning", async () => {
+      await approve(strategy.address, signers[0]);
+      await strategy.mint(expandTo18Decimals(0.1), expandTo18Decimals(10), 0, 0, 0, -1);
+
+      let sBalance0 = (await token0.balanceOf(strategy.address)).toString()
+      let sBalance1 = (await token1.balanceOf(strategy.address)).toString()
+
+      // console.log('token0 balance: ' + sBalance0)
+      // console.log('token1 balance: ' + sBalance1)
+
+      await approve(strategy.address, signers[0]);
+      await strategy.mint(expandTo18Decimals(0.0025), expandTo18Decimals(10), 0, 0, 0, 0);
+
+      const shares = (await strategy.balanceOf(signers[0].address)).toString();
+      // console.log('shares balance: '+ shares)
+
+      await expect(strategy.connect(signers[0]).burn(shares, 0, 0))
+        .to.emit(strategy, "Burn")
+        .withArgs(
+          signers[0].address,
+          "64353139008112348158",
+          "1092000062500000000",
+          "3436319239516608135156"
+        );    
+    })
+
     it("should burn the liquidity", async () => {
       const tick = await strategy.ticks(0);
 
-      let amount0 = 0,
-        amount1 = 0;
+      let amount0 = tick.amount0.toString();
+      let amount1 = tick.amount1.toString();
 
-      amount0 = parseInt(tick.amount0.toString());
-      amount1 = parseInt(tick.amount1.toString());
+      // console.log('amount0: '+ amount0)
+      // console.log('amount1: '+ amount1)
+
       const shares = (await strategy.balanceOf(signers[0].address)).toString();
       // const shares = "64199996762030683443";
+      console.log('shares balance: '+ shares)
+
       const totalSupply = parseInt((await strategy.totalSupply()).toString());
+      console.log('shares totalSupply: '+ totalSupply)
 
       // calculate amounts to be given back
-      amount0 = (amount0 * parseInt(shares.toString())) / totalSupply;
-      amount1 = (amount1 * parseInt(shares.toString())) / totalSupply;
+      // amount0 = (amount0 * parseInt(shares.toString())) / totalSupply;
+      // amount1 = (amount1 * parseInt(shares.toString())) / totalSupply;
+
+      amount0 = new bn(amount0).multipliedBy(shares).dividedBy(totalSupply).toFixed(0);
+      amount1 = new bn(amount1).multipliedBy(shares).dividedBy(totalSupply).toFixed(0);
+
+      // console.log('amount0: '+ amount0)
+      // console.log('amount1: '+ amount1)
 
       await expect(strategy.connect(signers[0]).burn(shares, 0, 0))
         .to.emit(pool, "Burn")
@@ -532,6 +569,119 @@ describe("DeFiEdgeStrategy", () => {
           "3434999676203068344308"
         );
     });
+
+    it("should burn the liquidity with proper amounts when there is multiple ticks", async () => {
+
+      await strategy.rebalance([
+        {
+          amount0: expandTo18Decimals(0.1),
+          amount1: expandTo18Decimals(350),
+          tickLower: calculateTick(2500, 60),
+          tickUpper: calculateTick(3300, 60),
+        },
+        {
+          amount0: expandTo18Decimals(0.001),
+          amount1: expandTo18Decimals(3.5),
+          tickLower: calculateTick(2200, 60),
+          tickUpper: calculateTick(3600, 60),
+        }
+      ]);
+
+      await approve(strategy.address, signers[0]);
+      await strategy
+        .connect(signers[0])
+        .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 1);
+
+      const tick = await strategy.ticks(0);
+      const tick1 = await strategy.ticks(1);
+
+      let amount0 = tick.amount0.toString();
+      let amount1 = tick.amount1.toString();
+      let amount02 = tick1.amount0.toString();
+      let amount12 = tick1.amount1.toString();
+
+      const shares = (await strategy.balanceOf(signers[0].address)).toString();
+      // const shares = "64199996762030683443";
+      console.log('shares balance: '+ shares)
+
+      const totalSupply = parseInt((await strategy.totalSupply()).toString());
+      console.log('shares totalSupply: '+ totalSupply)
+
+      // calculate amounts to be given back
+      // amount0 = (amount0 * parseInt(shares.toString())) / totalSupply;
+      // amount1 = (amount1 * parseInt(shares.toString())) / totalSupply;
+
+      amount0 = new bn(amount0).multipliedBy(shares).dividedBy(totalSupply).toFixed(0);
+      amount1 = new bn(amount1).multipliedBy(shares).dividedBy(totalSupply).toFixed(0);
+
+      // console.log('amount0: '+ amount0)
+      // console.log('amount1: '+ amount1)
+
+      await expect(strategy.connect(signers[0]).burn(shares, 0, 0))
+        .to.emit(strategy, "Burn")
+        .withArgs(
+          signers[0].address,
+          "119709387062427261951",
+          "1680713802397508225",
+          "6898328513703068344365"
+        );
+    });
+
+    it("should operator claim fee and burn token", async () => {
+      const tick = await strategy.ticks(0);
+
+      let amount0 = tick.amount0.toString();
+      let amount1 = tick.amount1.toString();
+
+      // console.log('amount0: '+ amount0)
+      // console.log('amount1: '+ amount1)
+
+      const shares = (await strategy.balanceOf(signers[0].address)).toString();
+      // const shares = "64199996762030683443";
+      console.log('shares balance: '+ shares)
+
+      const totalSupply = parseInt((await strategy.totalSupply()).toString());
+      console.log('shares totalSupply: '+ totalSupply)
+
+      // calculate amounts to be given back
+      amount0 = new bn(amount0).multipliedBy(shares).dividedBy(totalSupply).toFixed(0);
+      amount1 = new bn(amount1).multipliedBy(shares).dividedBy(totalSupply).toFixed(0);
+
+      // console.log('amount0: '+ amount0)
+      // console.log('amount1: '+ amount1)
+
+      await expect(strategy.connect(signers[0]).burn(shares, 0, 0))
+        .to.emit(pool, "Burn")
+        .withArgs(
+          strategy.address,
+          calculateTick(2500, 60),
+          calculateTick(3500, 60),
+          "727510375048865599114",
+          "994999999999999999",
+          "3434999676203068344308"
+        );
+
+      await factory.changeFeeTo(signers[3].address);
+
+      let claimFee = await strategy.claimFee();
+
+      await expect(claimFee).to.emit(strategy, "ClaimFee").withArgs("322613049055430570", "0");
+
+      const sharesFeeto = (await strategy.balanceOf(signers[1].address)).toString();
+      // const shares = "64199996762030683443";
+      console.log('shares balance feeTo: '+ sharesFeeto)
+
+      await expect(strategy.connect(signers[1]).burn(sharesFeeto, 0, 0))
+      .to.emit(pool, "Burn")
+      .withArgs(
+        strategy.address,
+        calculateTick(2500, 60),
+        calculateTick(3500, 60),
+        "3655831030396309543",
+        "4999999999999999",
+        "17261304905543057005"
+      );
+    })
 
     it("should decrease the tick amount", async () => {
       let tick;
@@ -581,14 +731,14 @@ describe("DeFiEdgeStrategy", () => {
       await strategy.connect(signers[0]).burn("64199996762030683443", 0, 0);
       let token0A = (await ethers.getContractAt("TestERC20", await pool.token0()));
       const balanceAfter = await token0A.balanceOf(signers[0].address);
-      expect("948499999994999999999999999").to.equal(balanceAfter.toString());
+      expect("948499999990024999999999999").to.equal(balanceAfter.toString());
     });
 
     it("should transfer amount1 back to the user", async () => {
       await strategy.connect(signers[0]).burn("64199996762030683443", 0, 0);
       let token1A = (await ethers.getContractAt("TestERC20", await pool.token1()));
       const balanceAfter = await token1A.balanceOf(signers[0].address);
-      expect("998499972738695094456942994").to.equal(balanceAfter.toString());
+      expect("998499955563696713441601275").to.equal(balanceAfter.toString());
     });
 
     it("should emit burn event", async () => {
@@ -598,8 +748,8 @@ describe("DeFiEdgeStrategy", () => {
         .withArgs(
           signers[0].address,
           shares,
-          "994999999999999999",
-          "3434999676203068344308"
+          "990024999999999999",
+          "3417824677822053002589"
         );
     });
   });

@@ -218,13 +218,13 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
 
         // transfer tokens
         if (amount0 > 0) {
-            TransferHelper.safeTransfer(token0, msg.sender, amount0);
+            TransferHelper.safeTransfer(token0, msg.sender, collect0);
         }
         if (amount1 > 0) {
-            TransferHelper.safeTransfer(token1, msg.sender, amount1);
+            TransferHelper.safeTransfer(token1, msg.sender, collect1);
         }
 
-        emit Burn(msg.sender, _shares, amount0, amount1);
+        emit Burn(msg.sender, _shares, collect0, collect1);
     }
 
     /**
