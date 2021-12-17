@@ -286,8 +286,8 @@ describe("UniswapV3LiquidityManager", () => {
         .withArgs(
           signers[0].address,
           shares,
-          "994999999999999999",
-          "3434999676203068344308"
+          "990024999999999999",
+          "3417824677822053002589"
         );
     });
 
