@@ -361,6 +361,17 @@ describe("StrategyManager", () => {
     });
   });
 
+  describe("#changeMaxSwapLimit", async () => {
+    it("should revert if operator is not calling", async () => {
+      expect(strategyManager.connect(signers[1]).changeMaxSwapLimit(1)).to.be.revertedWith("N");
+    });
+
+    it("should update maxAllowedSwap", async () => {
+      await strategyManager.changeMaxSwapLimit(10);
+      expect(await strategyManager.maxAllowedSwap()).to.equal(10);
+    });
+  });
+
   describe("#changePerformanceFee", async () => {
     it("should revert if operator is not calling", async () => {
       await expect(strategyManager.connect(signers[1]).changePerformanceFee(1)).to.be.revertedWith(

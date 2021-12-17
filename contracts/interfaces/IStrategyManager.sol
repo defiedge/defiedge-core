@@ -17,4 +17,6 @@ interface IStrategyManager {
     function feeTo() external view returns (address);
 
     function factory() external view returns (address);
+
+    function increamentSwapCounter() external returns(bool);
 }

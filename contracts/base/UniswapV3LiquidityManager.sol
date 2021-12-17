@@ -246,6 +246,8 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             "S"
         );
 
+        require(manager.increamentSwapCounter(), "LR");
+
         emit Swap(_amountIn, amountOut, _zeroForOne);
     }
 

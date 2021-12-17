@@ -4,6 +4,7 @@ pragma solidity =0.7.6;
 // libraries
 import "../libraries/ShareHelper.sol";
 import "../libraries/OracleLibrary.sol";
+import "../libraries/DateTimeLibrary.sol";
 
 // interfaces
 import "../interfaces/IStrategyFactory.sol";
@@ -41,6 +42,15 @@ contract StrategyManager {
     // if set 0, allows unlimited deposits
     uint256 public limit;
 
+    // number of times user can perform swap in a day
+    uint256 public maxAllowedSwap;
+
+    // current swap counter
+    uint256 public swapCounter;
+
+    // tracks timestamp of the last swap happened
+    uint256 public lastSwapTimestamp;
+
     constructor(
         address _factory,
         address _operator,
@@ -70,6 +80,11 @@ contract StrategyManager {
     // Modifiers
     modifier onlyGovernance() {
         require(msg.sender == factory.governance(), "N");
+        _;
+    }
+
+    modifier onlyStrategy() {
+        require(msg.sender == strategy(), "N");
         _;
     }
 
@@ -152,5 +167,42 @@ contract StrategyManager {
     {
         allowedDeviation = _allowedDeviation;
         emit ChangeAllowedDeviation(_allowedDeviation);
+    }
+
+    /**
+     * @notice Track total swap performed in a day and revert if maximum swap limit reached. 
+     *         Can only be called by strategy contract
+     */
+    function increamentSwapCounter() external onlyStrategy() returns(bool){
+
+        (, uint256 currentMonth, uint256 currentDay) = DateTimeLibrary.timestampToDate(block.timestamp);
+        (, uint256 swapMonth,uint256 swapDay) = DateTimeLibrary.timestampToDate(lastSwapTimestamp);
+
+        if(currentMonth == swapMonth && currentDay == swapDay){
+            // last swap happened on same day
+
+            require(maxAllowedSwap > swapCounter, "LR");
+
+            lastSwapTimestamp = block.timestamp;
+            swapCounter = swapCounter.add(1);
+            return true;
+
+        } else {
+            // last swap happened on other day
+
+            swapCounter = 1;
+            lastSwapTimestamp = block.timestamp; 
+            return true;
+
+        }
+
+    }
+
+    /**
+     * @notice Change strategy maximum swap limit for a day
+     * @param _limit Number of shares the strategy can mint, 0 means unlimited
+     */
+    function changeMaxSwapLimit(uint256 _limit) external onlyOperator {
+        maxAllowedSwap = _limit;
     }
 }

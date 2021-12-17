@@ -279,7 +279,7 @@ describe("UniswapV3LiquidityManager", () => {
       await mint(signers[0]);
     });
 
-    it("should emit mint event with correct values - strategy contract", async () => {
+    it("should emit burn event with correct values - strategy contract", async () => {
       const shares = "64199996762030683443";
       expect(await strategy.connect(signers[0]).burn(shares, 0, 0))
         .to.emit(strategy, "Burn")
@@ -609,6 +609,182 @@ describe("UniswapV3LiquidityManager", () => {
       expect(swap).to.emit(token0A, "Transfer").withArgs(pool.address, strategy.address, '33126097943');
         
     });
+
+    it("should increase swap counter and store timestamp", async () => {
+
+      await strategyManager.changeMaxSwapLimit(2);
+
+      expect(await strategyManager.swapCounter()).to.eq(0);
+      expect(await strategyManager.lastSwapTimestamp()).to.eq(0);
+
+      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+      const sqrtPriceLimitX96 =
+        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
+     
+      let swap = await strategy.swap(
+          false,
+          false,
+          encodePath([token1.address, token0.address], [3000]),
+          constants.MaxUint256,
+          expandTo18Decimals(0.0001),
+          0,
+          sqrtPriceLimitX96
+        )
+
+      let result = await swap.wait();
+
+      let timestamp = (await ethers.provider.getBlock(result.blockNumber)).timestamp     
+
+      expect(await strategyManager.swapCounter()).to.eq(1);
+      expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp);
+    })
+
+    it("should revert if max swap limit crossed for the day", async () => {
+
+      await strategyManager.changeMaxSwapLimit(2);
+
+      expect(await strategyManager.swapCounter()).to.eq(0);
+      expect(await strategyManager.lastSwapTimestamp()).to.eq(0);
+
+      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+      const sqrtPriceLimitX96 =
+        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
+     
+      let swap1 = await strategy.swap(
+          false,
+          false,
+          encodePath([token1.address, token0.address], [3000]),
+          constants.MaxUint256,
+          expandTo18Decimals(0.0001),
+          0,
+          sqrtPriceLimitX96
+        )
+
+      let result1 = await swap1.wait();
+
+      let timestamp1 = (await ethers.provider.getBlock(result1.blockNumber)).timestamp     
+
+      expect(await strategyManager.swapCounter()).to.eq(1);
+      expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp1);
+
+      const sqrtRatioX962 = ((await pool.slot0()).sqrtPriceX96).toString();
+      const sqrtPriceLimitX962=
+        (new bn(sqrtRatioX962).plus(sqrtRatioX962).multipliedBy(0.6)).toFixed(0);
+     
+      let swap2 = await strategy.swap(
+          false,
+          false,
+          encodePath([token1.address, token0.address], [3000]),
+          constants.MaxUint256,
+          expandTo18Decimals(0.0001),
+          0,
+          sqrtPriceLimitX962
+        )
+
+      let result2 = await swap2.wait();
+
+      let timestamp2 = (await ethers.provider.getBlock(result2.blockNumber)).timestamp  
+      
+      expect(await strategyManager.swapCounter()).to.eq(2);
+      expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp2);
+
+      const sqrtRatioX963 = ((await pool.slot0()).sqrtPriceX96).toString();
+      const sqrtPriceLimitX963=
+        (new bn(sqrtRatioX963).plus(sqrtRatioX963).multipliedBy(0.6)).toFixed(0);
+     
+      await expect(strategy.swap(
+          false,
+          false,
+          encodePath([token1.address, token0.address], [3000]),
+          constants.MaxUint256,
+          expandTo18Decimals(0.0001),
+          0,
+          sqrtPriceLimitX963
+      )).to.be.revertedWith("LR")
+    })
+
+    it("should revert if max swap limit crossed for day & allow swap on next day", async () => {
+
+      await strategyManager.changeMaxSwapLimit(2);
+
+      expect(await strategyManager.swapCounter()).to.eq(0);
+      expect(await strategyManager.lastSwapTimestamp()).to.eq(0);
+
+      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+      const sqrtPriceLimitX96 =
+        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
+     
+      let swap1 = await strategy.swap(
+          false,
+          false,
+          encodePath([token1.address, token0.address], [3000]),
+          constants.MaxUint256,
+          expandTo18Decimals(0.0001),
+          0,
+          sqrtPriceLimitX96
+        )
+
+      let result1 = await swap1.wait();
+
+      let timestamp1 = (await ethers.provider.getBlock(result1.blockNumber)).timestamp     
+
+      expect(await strategyManager.swapCounter()).to.eq(1);
+      expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp1);
+
+      const sqrtRatioX962 = ((await pool.slot0()).sqrtPriceX96).toString();
+      const sqrtPriceLimitX962=
+        (new bn(sqrtRatioX962).plus(sqrtRatioX962).multipliedBy(0.6)).toFixed(0);
+     
+      let swap2 = await strategy.swap(
+          false,
+          false,
+          encodePath([token1.address, token0.address], [3000]),
+          constants.MaxUint256,
+          expandTo18Decimals(0.0001),
+          0,
+          sqrtPriceLimitX962
+        )
+
+      let result2 = await swap2.wait();
+
+      let timestamp2 = (await ethers.provider.getBlock(result2.blockNumber)).timestamp  
+      
+      expect(await strategyManager.swapCounter()).to.eq(2);
+      expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp2);
+
+      const sqrtRatioX963 = ((await pool.slot0()).sqrtPriceX96).toString();
+      const sqrtPriceLimitX963=
+        (new bn(sqrtRatioX963).plus(sqrtRatioX963).multipliedBy(0.6)).toFixed(0);
+     
+      await expect(strategy.swap(
+          false,
+          false,
+          encodePath([token1.address, token0.address], [3000]),
+          constants.MaxUint256,
+          expandTo18Decimals(0.0001),
+          0,
+          sqrtPriceLimitX963
+      )).to.be.revertedWith("LR")
+
+      await ethers.provider.send("evm_increaseTime", [84600]); // time travel 1 day
+
+      let swap3 = await strategy.swap(
+        false,
+        false,
+        encodePath([token1.address, token0.address], [3000]),
+        constants.MaxUint256,
+        expandTo18Decimals(0.0001),
+        0,
+        sqrtPriceLimitX963
+      )
+
+      let result3 = await swap3.wait();
+
+      let timestamp3 = (await ethers.provider.getBlock(result3.blockNumber)).timestamp  
+      
+      expect(await strategyManager.swapCounter()).to.eq(1);
+      expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp3);
+    })
   })
 });
 
