@@ -2,9 +2,12 @@
 pragma solidity =0.7.6;
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "../libraries/ShareHelper.sol";
+
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
 import "../interfaces/IStrategyFactory.sol";
+import "../libraries/ShareHelper.sol";
+import "../libraries/OracleLibrary.sol";
 
 contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
     using SafeMath for uint256;
@@ -39,6 +42,8 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
     // allowed price difference for the oracle and the current price
     // 1e18 is 1%
     uint256 public allowedDeviation;
+
+    bool[] public usdAsBase;
 
     struct Tick {
         uint256 amount0;
@@ -100,7 +105,12 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
      */
     modifier hasDeviation() {
         require(
-            !ShareHelper.hasDeviation(address(pool), allowedDeviation),
+            !OracleLibrary.hasDeviation(
+                address(pool),
+                factory.chainlinkRegistry(),
+                usdAsBase,
+                allowedDeviation
+            ),
             "D"
         );
         _;
@@ -125,14 +135,20 @@ contract StrategyBase is ERC20("DefiEdge Share Token", "DEshare") {
         uint256 _totalAmount1,
         address _user
     ) internal returns (uint256 share) {
+        uint256 price = OracleLibrary.getPriceInUSD(
+            factory.chainlinkRegistry(),
+            pool.token0(),
+            usdAsBase[0]
+        );
+
         // calculate number of shares
         share = ShareHelper.calculateShares(
-            address(pool),
             _amount0,
             _amount1,
             _totalAmount0,
             _totalAmount1,
-            getTotalSupply()
+            getTotalSupply(),
+            price
         );
 
         require(share > 0, "IS");
