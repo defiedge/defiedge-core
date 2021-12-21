@@ -197,14 +197,14 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         }
 
         // check if swap exceed allowed daviation and revert if maximum swap limits reached
-        if(
+        if (
             OracleLibrary.isSwapExceedDeviation(
                 address(pool),
                 chainlinkRegistry,
                 usdAsBase,
                 address(manager)
             )
-        ){
+        ) {
             require(manager.increamentSwapCounter(), "LR");
         }
 
@@ -316,12 +316,15 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             uint256 totalFee1
         )
     {
+        // get unused amounts
         amount0 = IERC20(pool.token0()).balanceOf(address(this));
         amount1 = IERC20(pool.token1()).balanceOf(address(this));
+
         // get fees accumulated in each tick
         for (uint256 i = 0; i < ticks.length; i++) {
             Tick memory tick = ticks[i];
 
+            // get current liquidity from the pool
             (uint128 currentLiquidity, , , , ) = pool.positions(
                 PositionKey.compute(
                     address(this),
@@ -357,6 +360,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
                 totalFee0 = totalFee0.add(tokensOwed0);
                 totalFee1 = totalFee1.add(tokensOwed1);
+
                 amount0 = amount0.add(tokensOwed0).add(position0);
                 amount1 = amount1.add(tokensOwed1).add(position1);
             }
