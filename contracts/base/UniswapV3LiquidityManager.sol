@@ -193,6 +193,19 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             // delete ticks
             delete ticks;
         }
+
+        // check if swap exceed allowed daviation and revert if maximum swap limits reached
+        if(
+            OracleLibrary.isSwapExceedDeviation(
+                address(pool),
+                chainlinkRegistry,
+                usdAsBase,
+                address(manager)
+            )
+        ){
+            require(manager.increamentSwapCounter(), "LR");
+        }
+
         address tokenIn;
         address tokenOut;
         bool[2] memory isBase; // is direct USD feed is available for the token?
@@ -245,8 +258,6 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             ),
             "S"
         );
-
-        require(manager.increamentSwapCounter(), "LR");
 
         emit Swap(_amountIn, amountOut, _zeroForOne);
     }

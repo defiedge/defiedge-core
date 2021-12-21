@@ -29,8 +29,12 @@ contract StrategyManager {
     bool public freezeEmergency;
 
     // allowed price difference for the oracle and the current price
-    // 1e18 is 1%
+    // 1e18 is 100%
     uint256 public allowedDeviation;
+
+    // allowed swap price difference for the oracle and the current price to increase swap counter
+    // 1e18 is 100%
+    uint256 public allowedSwapDeviation;
 
     // fee to take when user adds the liquidity
     uint256 public managementFee;
@@ -69,6 +73,7 @@ contract StrategyManager {
         limit = _limit;
 
         allowedDeviation = _allowedDeviation;
+        allowedSwapDeviation = _allowedDeviation.div(2);
     }
 
     // Modifiers
@@ -167,6 +172,17 @@ contract StrategyManager {
     {
         allowedDeviation = _allowedDeviation;
         emit ChangeAllowedDeviation(_allowedDeviation);
+    }
+
+    /**
+     * @notice Changes allowed price deviation for shares and pool
+     * @param _allowedSwapDeviation New allowed price deviation, 1e18 is 100%
+     */
+    function changeSwapDeviation(uint256 _allowedSwapDeviation)
+        external
+        onlyGovernance
+    {
+        allowedSwapDeviation = _allowedSwapDeviation;
     }
 
     /**

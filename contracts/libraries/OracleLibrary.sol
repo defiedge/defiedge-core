@@ -16,6 +16,7 @@ import "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import "@chainlink/contracts/src/v0.7/interfaces/FeedRegistryInterface.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "../interfaces/IStrategyFactory.sol";
+import "../interfaces/IStrategyManager.sol";
 
 interface IERC20Minimal {
     function decimals() external view returns (uint256);
@@ -143,6 +144,51 @@ library OracleLibrary {
             return true;
         }
 
+        return false;
+    }
+
+    /**
+     * @notice Checks the if swap exceed allowed swap deviation or not
+     * @param _pool Address of the pool
+     * @param _registry Chainlink registry
+     * @param _usdAsBase checks if pegged to USD
+     * @param _manager Manager contract address to check allowed deviation
+     */
+    function isSwapExceedDeviation(
+        address _pool,
+        address _registry,
+        bool[] memory _usdAsBase,
+        address _manager
+    ) public view returns (bool) {
+        IUniswapV3Pool pool = IUniswapV3Pool(_pool);
+
+        // get price of token0 Uniswap and convert it to USD
+        uint256 uniswapPriceInUSD = getUniswapPrice(_pool)
+            .mul(getPriceInUSD(_registry, pool.token1(), _usdAsBase[1]))
+            .div(BASE);
+
+        // get price of token0 from Chainlink in USD
+        uint256 chainlinkPriceInUSD = getPriceInUSD(
+            _registry,
+            pool.token0(),
+            _usdAsBase[0]
+        );
+
+        uint256 diff;
+
+        diff = uniswapPriceInUSD.mul(BASE).div(chainlinkPriceInUSD);
+
+        // check price deviation
+        uint256 deviation;
+        if ( diff > BASE ) {
+            deviation = diff.sub(BASE);
+        } else {
+            deviation = BASE.sub(diff);
+        }
+
+        if(deviation > IStrategyManager(_manager).allowedSwapDeviation()){
+            return true;
+        }
         return false;
     }
 

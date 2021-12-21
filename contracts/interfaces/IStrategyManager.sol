@@ -14,6 +14,8 @@ interface IStrategyManager {
 
     function allowedDeviation() external view returns (uint256);
 
+    function allowedSwapDeviation() external view returns (uint256);
+
     function feeTo() external view returns (address);
 
     function factory() external view returns (address);
