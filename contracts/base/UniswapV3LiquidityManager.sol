@@ -133,10 +133,12 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
         // transfer performance fee to manager
         uint256 performanceFee = manager.performanceFee();
+        address feeTo = manager.feeTo();
+
         if (fee0 > 0) {
             TransferHelper.safeTransfer(
                 token0,
-                manager.feeTo(),
+                feeTo,
                 fee0.mul(performanceFee).div(1e8)
             );
         }
@@ -144,7 +146,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         if (fee1 > 0) {
             TransferHelper.safeTransfer(
                 token1,
-                manager.feeTo(),
+                feeTo,
                 fee1.mul(performanceFee).div(1e8)
             );
         }

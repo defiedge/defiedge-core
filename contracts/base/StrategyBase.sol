@@ -94,7 +94,7 @@ contract StrategyBase is ERC20 {
                 address(pool),
                 chainlinkRegistry,
                 usdAsBase,
-                manager.allowedDeviation()
+                address(manager)
             ),
             "D"
         );
@@ -131,9 +131,10 @@ contract StrategyBase is ERC20 {
         require(share > 0, "IS");
 
         uint256 managerShare;
+        uint256 managementFee = manager.managementFee();
         // strategy owner fees
-        if (manager.feeTo() != address(0) && manager.managementFee() > 0) {
-            managerShare = share.mul(manager.managementFee()).div(1e8);
+        if (manager.feeTo() != address(0) && managementFee > 0) {
+            managerShare = share.mul(managementFee).div(1e8);
             accManagementFee = accManagementFee.add(managerShare);
         }
 

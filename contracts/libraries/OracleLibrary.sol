@@ -110,13 +110,13 @@ library OracleLibrary {
      * @param _pool Address of the pool
      * @param _registry Chainlink registry
      * @param _usdAsBase checks if pegged to USD
-     * @param _allowedDeviation Allowed deviation for the pool
+     * @param _manager Manager contract address to check allowed deviation
      */
     function hasDeviation(
         address _pool,
         address _registry,
         bool[] memory _usdAsBase,
-        uint256 _allowedDeviation
+        address _manager
     ) public view returns (bool) {
         IUniswapV3Pool pool = IUniswapV3Pool(_pool);
 
@@ -136,6 +136,7 @@ library OracleLibrary {
 
         diff = uniswapPriceInUSD.mul(BASE).div(chainlinkPriceInUSD);
 
+        uint256 _allowedDeviation = IStrategyManager(_manager).allowedDeviation();
         // check if the price is above deviation
         if (
             diff > (BASE.add(_allowedDeviation)) ||
