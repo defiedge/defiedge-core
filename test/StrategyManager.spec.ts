@@ -435,6 +435,27 @@ describe("StrategyManager", () => {
     });
   });
 
+  describe("#changeSwapDeviation", async () => {
+    it("should revert if operator is not calling", async () => {
+      await expect(strategyManager.connect(signers[1]).changeSwapDeviation(1)).to.be.revertedWith(
+        "N"
+      );
+    });
+
+    it("should revert if value is more then allowedDeviation", async () => {
+      await expect(await strategyManager.changeAllowedDeviation(10))
+
+      await expect(strategyManager.changeSwapDeviation(11)).to.be.revertedWith(
+        "ID"
+      );
+    });
+
+    it("should set  correct deviation", async () => {
+      await strategyManager.changeSwapDeviation("1000");
+      expect(await strategyManager.allowedSwapDeviation()).to.equal("1000");
+    });
+  });
+
   describe("#managementFee", async () => {
     it("should mint share for manager while mint", async () => {
       

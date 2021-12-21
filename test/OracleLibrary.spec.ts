@@ -296,7 +296,7 @@ describe("OracleLibrary", () => {
         pool.address, 
         chainlinkRegistry.address,
         [true, true],
-        "10000000000000000"
+        strategyManager.address
       )).to.equal(false);
    
     })
@@ -312,7 +312,7 @@ describe("OracleLibrary", () => {
         pool.address, 
         chainlinkRegistry.address,
         [true, true],
-        "10000000000000000"
+        strategyManager.address
       )).to.equal(true);
    
     })

@@ -612,6 +612,7 @@ describe("UniswapV3LiquidityManager", () => {
 
     it("should increase swap counter and store timestamp", async () => {
 
+      await strategyManager.changeSwapDeviation("2500000000000000");
       await strategyManager.changeMaxSwapLimit(2);
 
       expect(await strategyManager.swapCounter()).to.eq(0);
@@ -639,8 +640,36 @@ describe("UniswapV3LiquidityManager", () => {
       expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp);
     })
 
+    it("should not increase swap counter if deviation is less than allowed swap deviation", async () => {
+
+      await strategyManager.changeSwapDeviation("10000000000000000");
+      await strategyManager.changeMaxSwapLimit(2);
+
+      expect(await strategyManager.swapCounter()).to.eq(0);
+      expect(await strategyManager.lastSwapTimestamp()).to.eq(0);
+
+      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+      const sqrtPriceLimitX96 =
+        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
+     
+      await strategy.swap(
+          false,
+          false,
+          encodePath([token1.address, token0.address], [3000]),
+          constants.MaxUint256,
+          expandTo18Decimals(0.0001),
+          0,
+          sqrtPriceLimitX96
+        )
+
+
+      expect(await strategyManager.swapCounter()).to.eq(0);
+      expect(await strategyManager.lastSwapTimestamp()).to.eq(0);
+    })
+
     it("should revert if max swap limit crossed for the day", async () => {
 
+      await strategyManager.changeSwapDeviation("2500000000000000");
       await strategyManager.changeMaxSwapLimit(2);
 
       expect(await strategyManager.swapCounter()).to.eq(0);
@@ -705,6 +734,7 @@ describe("UniswapV3LiquidityManager", () => {
 
     it("should revert if max swap limit crossed for day & allow swap on next day", async () => {
 
+      await strategyManager.changeSwapDeviation("2500000000000000");
       await strategyManager.changeMaxSwapLimit(2);
 
       expect(await strategyManager.swapCounter()).to.eq(0);
