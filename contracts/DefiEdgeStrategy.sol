@@ -119,12 +119,8 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             if (manager.limit() != 0) {
                 require(totalSupply() <= manager.limit(), "L");
             }
-
-            // emit event
-            emit Mint(msg.sender, share, amount0, amount1);
-            
+            emit Mint(msg.sender, share, _amount0, _amount1);
         } else {
-
             if (_amount0 > 0) {
                 TransferHelper.safeTransferFrom(
                     token0,
@@ -142,6 +138,8 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                     _amount1
                 );
             }
+            // emit event
+            emit Mint(msg.sender, share, _amount0, _amount1);
         }
     }
 
