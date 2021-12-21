@@ -182,6 +182,7 @@ contract StrategyManager {
         external
         onlyGovernance
     {
+        require(_allowedSwapDeviation < allowedDeviation, "ID");
         allowedSwapDeviation = _allowedSwapDeviation;
     }
 
