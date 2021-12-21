@@ -27,6 +27,14 @@ library OracleLibrary {
 
     using SafeMath for uint256;
 
+    function normalise(address _token, uint256 _amount)
+        public
+        view
+        returns (uint256)
+    {
+        return uint256(_amount) * (10**(18 - IERC20Minimal(_token).decimals()));
+    }
+
     /**
      * @notice Gets latest Uniswap price in the pool
      * @notice _pool Address of the Uniswap V3 pool
@@ -50,12 +58,11 @@ library OracleLibrary {
             : token1Decimals - token0Decimals;
 
         // normalise the price to 18 decimals
-        if(token0Decimals >= token1Decimals){
+        if (token0Decimals >= token1Decimals) {
             price = price.mul(10**(decimalsDelta));
         } else {
             price = price.div(10**(decimalsDelta));
-        }        
-
+        }
     }
 
     /**
@@ -136,7 +143,8 @@ library OracleLibrary {
 
         diff = uniswapPriceInUSD.mul(BASE).div(chainlinkPriceInUSD);
 
-        uint256 _allowedDeviation = IStrategyManager(_manager).allowedDeviation();
+        uint256 _allowedDeviation = IStrategyManager(_manager)
+            .allowedDeviation();
         // check if the price is above deviation
         if (
             diff > (BASE.add(_allowedDeviation)) ||
@@ -181,13 +189,13 @@ library OracleLibrary {
 
         // check price deviation
         uint256 deviation;
-        if ( diff > BASE ) {
+        if (diff > BASE) {
             deviation = diff.sub(BASE);
         } else {
             deviation = BASE.sub(diff);
         }
 
-        if(deviation > IStrategyManager(_manager).allowedSwapDeviation()){
+        if (deviation > IStrategyManager(_manager).allowedSwapDeviation()) {
             return true;
         }
         return false;
@@ -211,6 +219,9 @@ library OracleLibrary {
         bool[2] memory _isBase
     ) public view returns (bool) {
         IStrategyFactory factory = IStrategyFactory(_factory);
+
+        _amountIn = normalise(_tokenIn, _amountIn);
+        _amountOut = normalise(_tokenOut, _amountOut);
 
         uint256 amountInUSD = _amountIn.mul(
             getPriceInUSD(factory.chainlinkRegistry(), _tokenIn, _isBase[0])
