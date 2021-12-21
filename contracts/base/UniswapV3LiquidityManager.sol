@@ -167,12 +167,14 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
                     _ticks[i].tickUpper
                 )
             );
-            burnLiquidity(
-                _ticks[i].tickLower,
-                _ticks[i].tickUpper,
-                0,
-                currentLiquidity
-            );
+            if (currentLiquidity > 0) {
+                burnLiquidity(
+                    _ticks[i].tickLower,
+                    _ticks[i].tickUpper,
+                    0,
+                    currentLiquidity
+                );
+            }
         }
     }
 
@@ -196,7 +198,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             delete ticks;
         }
 
-        // check if swap exceed allowed daviation and revert if maximum swap limits reached
+        // check if swap exceed allowed deviation and revert if maximum swap limits reached
         if (
             OracleLibrary.isSwapExceedDeviation(
                 address(pool),
@@ -211,6 +213,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         address tokenIn;
         address tokenOut;
         bool[2] memory isBase; // is direct USD feed is available for the token?
+
         if (_zeroForOne) {
             tokenIn = token0;
             tokenOut = token1;
@@ -220,6 +223,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             tokenOut = token0;
             isBase = [usdAsBase[1], usdAsBase[0]];
         }
+
         IERC20(tokenIn).approve(address(swapRouter), _amountIn);
 
         uint256 amountOut;
