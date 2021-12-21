@@ -174,6 +174,14 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         collect0 = IERC20(token0).balanceOf(address(this));
         collect1 = IERC20(token1).balanceOf(address(this));
 
+        if (collect0 > 0) {
+            collect0 = collect0.mul(_shares).div(totalSupply());
+        }
+
+        if (collect1 > 0) {
+            collect1 = collect1.mul(_shares).div(totalSupply());
+        }
+
         // burn liquidity based on shares from existing ticks
         if (ticks.length != 0) {
             for (uint256 i = 0; i < ticks.length; i++) {
@@ -200,14 +208,6 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
 
                 emit FeesClaimed(msg.sender, fee0, fee1);
             }
-        }
-
-        if (collect0 > 0) {
-            collect0 = collect0.mul(_shares).div(totalSupply());
-        }
-
-        if (collect1 > 0) {
-            collect1 = collect1.mul(_shares).div(totalSupply());
         }
 
         // check slippage

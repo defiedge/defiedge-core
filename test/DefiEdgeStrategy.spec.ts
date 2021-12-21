@@ -527,8 +527,8 @@ describe("DeFiEdgeStrategy", () => {
         .withArgs(
           signers[0].address,
           "64353139008112348158",
-          "1092000062500000000",
-          "3436319239516608135156"
+          "1096987500000000000",
+          "3453537175393576015198"
         );    
     })
 
@@ -622,8 +622,8 @@ describe("DeFiEdgeStrategy", () => {
         .withArgs(
           signers[0].address,
           "119709387062427261951",
-          "1680713802397508225",
-          "6898328513703068344365"
+          "1684479676679885940",
+          "6917499676203068344340"
         );
     });
 
@@ -731,25 +731,25 @@ describe("DeFiEdgeStrategy", () => {
       await strategy.connect(signers[0]).burn("64199996762030683443", 0, 0);
       let token0A = (await ethers.getContractAt("TestERC20", await pool.token0()));
       const balanceAfter = await token0A.balanceOf(signers[0].address);
-      expect("948499999990024999999999999").to.equal(balanceAfter.toString());
+      expect("948499999994999999999999999").to.equal(balanceAfter.toString());
     });
 
     it("should transfer amount1 back to the user", async () => {
       await strategy.connect(signers[0]).burn("64199996762030683443", 0, 0);
       let token1A = (await ethers.getContractAt("TestERC20", await pool.token1()));
       const balanceAfter = await token1A.balanceOf(signers[0].address);
-      expect("998499955563696713441601275").to.equal(balanceAfter.toString());
+      expect("998499972738695094456942994").to.equal(balanceAfter.toString());
     });
 
     it("should emit burn event", async () => {
       const shares = "64199996762030683443";
-      expect(await strategy.connect(signers[0]).burn(shares, 0, 0))
+      await expect(strategy.connect(signers[0]).burn(shares, 0, 0))
         .to.emit(strategy, "Burn")
         .withArgs(
           signers[0].address,
           shares,
-          "990024999999999999",
-          "3417824677822053002589"
+          "994999999999999999",
+          "3434999676203068344308"
         );
     });
   });
