@@ -223,11 +223,6 @@ library OracleLibrary {
         _amountIn = normalise(_tokenIn, _amountIn);
         _amountOut = normalise(_tokenOut, _amountOut);
 
-        // if price of one token is manipulated it means the price of other is automatically manipulated
-        // get price form Uniswap in USD for token0
-        // get price from Chainlink in USD for token0
-        // Check difference
-
         // get price of token0 Uniswap and convert it to USD
         uint256 amountInUSD = _amountIn.mul(
             getPriceInUSD(factory.chainlinkRegistry(), _tokenIn, _isBase[0])
