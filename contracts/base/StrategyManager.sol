@@ -191,22 +191,26 @@ contract StrategyManager {
      *         Can only be called by strategy contract
      */
     function increamentSwapCounter() external onlyStrategy returns (bool) {
-        (, uint256 currentMonth, uint256 currentDay) = DateTimeLibrary
-            .timestampToDate(block.timestamp);
-        (, uint256 swapMonth, uint256 swapDay) = DateTimeLibrary
+        (
+            uint256 currentYear,
+            uint256 currentMonth,
+            uint256 currentDay
+        ) = DateTimeLibrary.timestampToDate(block.timestamp);
+        (uint256 swapYear, uint256 swapMonth, uint256 swapDay) = DateTimeLibrary
             .timestampToDate(lastSwapTimestamp);
 
-        if (currentMonth == swapMonth && currentDay == swapDay) {
+        if (
+            currentYear == swapYear &&
+            currentMonth == swapMonth &&
+            currentDay == swapDay
+        ) {
             // last swap happened on same day
-
             require(maxAllowedSwap > swapCounter, "LR");
-
             lastSwapTimestamp = block.timestamp;
             swapCounter = swapCounter.add(1);
             return true;
         } else {
             // last swap happened on other day
-
             swapCounter = 1;
             lastSwapTimestamp = block.timestamp;
             return true;
