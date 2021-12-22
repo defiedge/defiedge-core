@@ -203,6 +203,7 @@ library OracleLibrary {
 
     /**
      * @notice Checks for price slippage at the time of swap
+     * @param _pool Address of the pool
      * @param _factory Address of the DefiEdge strategy factory
      * @param _amountIn Amount to be swapped
      * @param _amountOut Amount received after swap
@@ -211,6 +212,7 @@ library OracleLibrary {
      * @return true if the swap is allowed, else false
      */
     function allowSwap(
+        address _pool,
         address _factory,
         uint256 _amountIn,
         uint256 _amountOut,
@@ -223,14 +225,30 @@ library OracleLibrary {
         _amountIn = normalise(_tokenIn, _amountIn);
         _amountOut = normalise(_tokenOut, _amountOut);
 
+        bool usdAsBaseAmountIn = IUniswapV3Pool(_pool).token0() == _tokenIn
+            ? _isBase[0]
+            : _isBase[1];
+
+        bool usdAsBaseAmountOut = IUniswapV3Pool(_pool).token1() == _tokenOut
+            ? _isBase[0]
+            : _isBase[1];
+
         // get price of token0 Uniswap and convert it to USD
         uint256 amountInUSD = _amountIn.mul(
-            getPriceInUSD(factory.chainlinkRegistry(), _tokenIn, _isBase[0])
+            getPriceInUSD(
+                factory.chainlinkRegistry(),
+                _tokenIn,
+                usdAsBaseAmountIn
+            )
         );
 
         // get price of token0 Uniswap and convert it to USD
         uint256 amountOutUSD = _amountOut.mul(
-            getPriceInUSD(factory.chainlinkRegistry(), _tokenOut, _isBase[1])
+            getPriceInUSD(
+                factory.chainlinkRegistry(),
+                _tokenOut,
+                usdAsBaseAmountOut
+            )
         );
 
         uint256 diff;

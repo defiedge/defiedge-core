@@ -255,6 +255,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
         require(
             OracleLibrary.allowSwap(
+                address(pool),
                 address(factory),
                 _amountIn,
                 amountOut,

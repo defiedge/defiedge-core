@@ -138,6 +138,16 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                     _amount1
                 );
             }
+
+            // issue share based on the liquidity added
+            share = issueShare(
+                _amount0,
+                _amount1,
+                totalAmount0,
+                totalAmount1,
+                msg.sender
+            );
+
             // emit event
             emit Mint(msg.sender, share, _amount0, _amount1);
         }
