@@ -187,15 +187,16 @@ contract StrategyManager {
     }
 
     /**
-     * @notice Track total swap performed in a day and revert if maximum swap limit reached. 
+     * @notice Track total swap performed in a day and revert if maximum swap limit reached.
      *         Can only be called by strategy contract
      */
-    function increamentSwapCounter() external onlyStrategy() returns(bool){
+    function increamentSwapCounter() external onlyStrategy returns (bool) {
+        (, uint256 currentMonth, uint256 currentDay) = DateTimeLibrary
+            .timestampToDate(block.timestamp);
+        (, uint256 swapMonth, uint256 swapDay) = DateTimeLibrary
+            .timestampToDate(lastSwapTimestamp);
 
-        (, uint256 currentMonth, uint256 currentDay) = DateTimeLibrary.timestampToDate(block.timestamp);
-        (, uint256 swapMonth,uint256 swapDay) = DateTimeLibrary.timestampToDate(lastSwapTimestamp);
-
-        if(currentMonth == swapMonth && currentDay == swapDay){
+        if (currentMonth == swapMonth && currentDay == swapDay) {
             // last swap happened on same day
 
             require(maxAllowedSwap > swapCounter, "LR");
@@ -203,16 +204,13 @@ contract StrategyManager {
             lastSwapTimestamp = block.timestamp;
             swapCounter = swapCounter.add(1);
             return true;
-
         } else {
             // last swap happened on other day
 
             swapCounter = 1;
-            lastSwapTimestamp = block.timestamp; 
+            lastSwapTimestamp = block.timestamp;
             return true;
-
         }
-
     }
 
     /**

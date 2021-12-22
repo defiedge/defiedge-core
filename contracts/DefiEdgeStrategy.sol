@@ -83,7 +83,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         amount0 = _amount0;
         amount1 = _amount1;
 
-        if (amount0 > 0 && amount1 > 0) {
+        if (amount0 > 0 && amount1 > 0 && ticks.length > 0) {
             // index 0 will always be an primary tick
             (amount0, amount1) = mintLiquidity(
                 ticks[0].tickLower,
