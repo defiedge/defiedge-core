@@ -58,15 +58,13 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
      * @param _amount0Min Minimum amount of token0 to be minted
      * @param _amount1Min Minimum amount of token1 to be minted
      * @param _minShare Minimum amount of shares to be received to the user
-     * @param _tick Tick where the liquidity should be deployed,
      */
     function mint(
         uint256 _amount0,
         uint256 _amount1,
         uint256 _amount0Min,
         uint256 _amount1Min,
-        uint256 _minShare,
-        int256 _tick
+        uint256 _minShare
     )
         external
         isValidStrategy
@@ -82,75 +80,58 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         (uint256 totalAmount0, uint256 totalAmount1, , ) = this
             .getAUMWithFees();
 
-        if (_tick >= 0) {
+        amount0 = _amount0;
+        amount1 = _amount1;
+
+        if (amount0 > 0 && amount1 > 0) {
             // index 0 will always be an primary tick
             (amount0, amount1) = mintLiquidity(
-                ticks[uint256(_tick)].tickLower,
-                ticks[uint256(_tick)].tickUpper,
+                ticks[0].tickLower,
+                ticks[0].tickUpper,
                 _amount0,
                 _amount1,
                 msg.sender
             );
 
             // update data in the tick
-            ticks[uint256(_tick)].amount0 = ticks[uint256(_tick)].amount0.add(
+            ticks[0].amount0 = ticks[0].amount0.add(amount0);
+            ticks[0].amount1 = ticks[0].amount1.add(amount1);
+        } else if (amount0 > 0) {
+            TransferHelper.safeTransferFrom(
+                token0,
+                msg.sender,
+                address(this),
                 amount0
             );
-            ticks[uint256(_tick)].amount1 = ticks[uint256(_tick)].amount1.add(
+        } else if (amount1 > 0) {
+            TransferHelper.safeTransferFrom(
+                token1,
+                msg.sender,
+                address(this),
                 amount1
             );
-
-            // issue share based on the liquidity added
-            share = issueShare(
-                amount0,
-                amount1,
-                totalAmount0,
-                totalAmount1,
-                msg.sender
-            );
-
-            // prevent front running of strategy fee
-            require(share >= _minShare, "SC");
-
-            // price slippage check
-            require(amount0 >= _amount0Min && amount1 >= _amount1Min, "S");
-
-            // share limit
-            if (manager.limit() != 0) {
-                require(totalSupply() <= manager.limit(), "L");
-            }
-            emit Mint(msg.sender, share, amount0, amount1);
-        } else {
-            if (_amount0 > 0) {
-                TransferHelper.safeTransferFrom(
-                    token0,
-                    msg.sender,
-                    address(this),
-                    _amount0
-                );
-            }
-
-            if (_amount1 > 0) {
-                TransferHelper.safeTransferFrom(
-                    token1,
-                    msg.sender,
-                    address(this),
-                    _amount1
-                );
-            }
-
-            // issue share based on the liquidity added
-            share = issueShare(
-                _amount0,
-                _amount1,
-                totalAmount0,
-                totalAmount1,
-                msg.sender
-            );
-
-            // emit event
-            emit Mint(msg.sender, share, _amount0, _amount1);
         }
+
+        // issue share based on the liquidity added
+        share = issueShare(
+            amount0,
+            amount1,
+            totalAmount0,
+            totalAmount1,
+            msg.sender
+        );
+
+        // prevent front running of strategy fee
+        require(share >= _minShare, "SC");
+
+        // price slippage check
+        require(amount0 >= _amount0Min && amount1 >= _amount1Min, "S");
+
+        // share limit
+        if (manager.limit() != 0) {
+            require(totalSupply() <= manager.limit(), "L");
+        }
+        emit Mint(msg.sender, share, amount0, amount1);
     }
 
     /**

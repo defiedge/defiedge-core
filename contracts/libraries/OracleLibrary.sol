@@ -230,8 +230,8 @@ library OracleLibrary {
             : _isBase[1];
 
         bool usdAsBaseAmountOut = IUniswapV3Pool(_pool).token1() == _tokenOut
-            ? _isBase[0]
-            : _isBase[1];
+            ? _isBase[1]
+            : _isBase[0];
 
         // get price of token0 Uniswap and convert it to USD
         uint256 amountInUSD = _amountIn.mul(
