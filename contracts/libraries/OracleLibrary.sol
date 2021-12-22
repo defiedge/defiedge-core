@@ -129,7 +129,7 @@ library OracleLibrary {
 
         // get price of token0 Uniswap and convert it to USD
         uint256 uniswapPriceInUSD = getUniswapPrice(_pool)
-            .mul(getPriceInUSD(_registry, pool.token0(), _usdAsBase[0]))
+            .mul(getPriceInUSD(_registry, pool.token1(), _usdAsBase[1]))
             .div(BASE);
 
         // get price of token0 from Chainlink in USD
@@ -173,7 +173,7 @@ library OracleLibrary {
 
         // get price of token0 Uniswap and convert it to USD
         uint256 uniswapPriceInUSD = getUniswapPrice(_pool)
-            .mul(getPriceInUSD(_registry, pool.token0(), _usdAsBase[0]))
+            .mul(getPriceInUSD(_registry, pool.token1(), _usdAsBase[1]))
             .div(BASE);
 
         // get price of token0 from Chainlink in USD
