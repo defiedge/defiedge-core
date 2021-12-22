@@ -36,7 +36,7 @@ library OracleLibrary {
     }
 
     /**
-     * @notice Gets latest Uniswap price in the pool
+     * @notice Gets latest Uniswap price in the pool, price of token1 represented in token0
      * @notice _pool Address of the Uniswap V3 pool
      */
     function getUniswapPrice(address _pool)
@@ -129,7 +129,7 @@ library OracleLibrary {
 
         // get price of token0 Uniswap and convert it to USD
         uint256 uniswapPriceInUSD = getUniswapPrice(_pool)
-            .mul(getPriceInUSD(_registry, pool.token1(), _usdAsBase[1]))
+            .mul(getPriceInUSD(_registry, pool.token0(), _usdAsBase[0]))
             .div(BASE);
 
         // get price of token0 from Chainlink in USD
@@ -173,7 +173,7 @@ library OracleLibrary {
 
         // get price of token0 Uniswap and convert it to USD
         uint256 uniswapPriceInUSD = getUniswapPrice(_pool)
-            .mul(getPriceInUSD(_registry, pool.token1(), _usdAsBase[1]))
+            .mul(getPriceInUSD(_registry, pool.token0(), _usdAsBase[0]))
             .div(BASE);
 
         // get price of token0 from Chainlink in USD
@@ -223,9 +223,17 @@ library OracleLibrary {
         _amountIn = normalise(_tokenIn, _amountIn);
         _amountOut = normalise(_tokenOut, _amountOut);
 
+        // if price of one token is manipulated it means the price of other is automatically manipulated
+        // get price form Uniswap in USD for token0
+        // get price from Chainlink in USD for token0
+        // Check difference
+
+        // get price of token0 Uniswap and convert it to USD
         uint256 amountInUSD = _amountIn.mul(
             getPriceInUSD(factory.chainlinkRegistry(), _tokenIn, _isBase[0])
         );
+
+        // get price of token0 Uniswap and convert it to USD
         uint256 amountOutUSD = _amountOut.mul(
             getPriceInUSD(factory.chainlinkRegistry(), _tokenOut, _isBase[1])
         );

@@ -98,18 +98,21 @@ contract DefiEdgeStrategyFactory {
         IUniswapV3Pool pool = IUniswapV3Pool(params.pool);
 
         require(
-            IERC20Minimal(pool.token0()).decimals() <= 18 && 
-            IERC20Minimal(pool.token1()).decimals() <= 18,
+            IERC20Minimal(pool.token0()).decimals() <= 18 &&
+                IERC20Minimal(pool.token1()).decimals() <= 18,
             "ID"
         );
 
         address poolAddress = IUniswapV3Factory(uniswapV3Factory).getPool(
-                            pool.token0(),
-                            pool.token1(),
-                            pool.fee()
-                        );
+            pool.token0(),
+            pool.token1(),
+            pool.fee()
+        );
 
-        require(poolAddress != address(0) && poolAddress == address(pool), "IP");
+        require(
+            poolAddress != address(0) && poolAddress == address(pool),
+            "IP"
+        );
 
         address manager = address(
             new StrategyManager(
