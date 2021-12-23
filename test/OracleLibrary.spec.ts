@@ -133,7 +133,7 @@ describe("OracleLibrary", () => {
 
     chainlinkRegistry = (await (
       await ChainlinkRegistryMockFactory
-    ).deploy(pool.token0(), pool.token1())) as ChainlinkRegistryMock;
+    ).deploy(await pool.token0(), await pool.token1())) as ChainlinkRegistryMock;
 
     await chainlinkRegistry.setDecimals(8);
     await chainlinkRegistry.setAnswer(

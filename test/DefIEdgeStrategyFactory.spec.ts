@@ -133,7 +133,7 @@ describe("DefiEdgeStrategyFactory", () => {
 
     chainlinkRegistry = (await (
       await ChainlinkRegistryMockFactory
-    ).deploy(pool.token0(), pool.token1())) as ChainlinkRegistryMock;
+    ).deploy(await pool.token0(), await pool.token1())) as ChainlinkRegistryMock;
 
     await chainlinkRegistry.setDecimals(8);
     await chainlinkRegistry.setAnswer(
@@ -256,10 +256,10 @@ describe("DefiEdgeStrategyFactory", () => {
     it("should set uniswap chainlinkRegistry contract address", async () => {
       expect(await factory.chainlinkRegistry()).to.be.equal(chainlinkRegistry.address);
     });
-    it("should set uniswap chainlinkRegistry contract address", async () => {
+    it("should set uniswap allowedSlippage", async () => {
       expect(await factory.allowedSlippage()).to.be.equal("10000000000000000");
     });
-    it("should set uniswap chainlinkRegistry contract address", async () => {
+    it("should set uniswap allowedDeviation", async () => {
       expect(await factory.allowedDeviation()).to.be.equal("10000000000000000");
     });
   });
