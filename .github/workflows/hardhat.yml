@@ -23,7 +23,7 @@ jobs:
         node-version: ${{ matrix.node-version }}
     - name: Build
       run: |
-            npm install
+            yarn install
     - name: Installing hardhat
       run : | 
             npm install --save-dev @nomiclabs/hardhat-ganache
