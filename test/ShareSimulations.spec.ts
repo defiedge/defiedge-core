@@ -250,7 +250,6 @@ describe("Share Simulations", () => {
         expandTo18Decimals(100),
         0,
         0,
-        0,
         0
       );
 
@@ -272,7 +271,7 @@ describe("Share Simulations", () => {
       console.log("👨‍💻  added by user 2");
       await strategy
         .connect(signers[1])
-        .mint(expandTo18Decimals(100), expandTo18Decimals(350000), 0, 0, 0, 0);
+        .mint(expandTo18Decimals(100), expandTo18Decimals(350000), 0, 0, 0);
 
       let shares0 = (await strategy.balanceOf(signers[0].address)).toString()
       let shares1 = (await strategy.balanceOf(signers[1].address)).toString()

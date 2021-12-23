@@ -642,7 +642,7 @@ describe("UniswapV3LiquidityManager", () => {
 
     it("should not increase swap counter if deviation is less than allowed swap deviation", async () => {
 
-      await strategyManager.changeSwapDeviation("10000000000000000");
+      await strategyManager.changeSwapDeviation("9000000000000000");
       await strategyManager.changeMaxSwapLimit(2);
 
       expect(await strategyManager.swapCounter()).to.eq(0);
@@ -828,7 +828,7 @@ async function mint(signer: string | Signer | Provider) {
   await approve(strategy.address, signer);
   return await strategy
     .connect(signer)
-    .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 0);
+    .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
 }
 
 function getPositionKey(address: any, lowerTick: any, upperTick: any) {

@@ -694,7 +694,7 @@ async function mint(signer: string | Signer | Provider) {
   await approve(strategy.address, signer);
   return await strategy
     .connect(signer)
-    .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 0);
+    .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
 }
 
 function getPositionKey(address: any, lowerTick: any, upperTick: any) {

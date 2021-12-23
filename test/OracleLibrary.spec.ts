@@ -290,7 +290,7 @@ describe("OracleLibrary", () => {
 
   describe("#hasDeviation", async () => {
   
-    it("should return false if price has no daviation", async () => {
+    it("should return false if price has no deviation", async () => {
 
       expect(await oracleLibrary.hasDeviation(
         pool.address, 
@@ -301,7 +301,7 @@ describe("OracleLibrary", () => {
    
     })
 
-    it("should return true if price has daviation", async () => {
+    it("should return true if price has deviation", async () => {
 
       await chainlinkRegistry.setAnswer(
         "40000000000000000000000000000000000000000000",

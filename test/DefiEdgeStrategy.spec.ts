@@ -369,7 +369,7 @@ describe("DeFiEdgeStrategy", () => {
       expect(await strategy.onHold()).to.equal(true);
 
       await expect(
-        strategy.mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 0)
+        strategy.mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0)
       )
       .to.be.revertedWith("H")
 
@@ -396,33 +396,33 @@ describe("DeFiEdgeStrategy", () => {
       );
     });
 
-    it("should update the values in the second ticks", async () => {
+    // it("should update the values in the second ticks", async () => {
 
-      await mint(signers[0]);
+    //   await mint(signers[0]);
 
-      await strategy.rebalance([
-        {
-          amount0: expandTo18Decimals(0.001),
-          amount1: expandTo18Decimals(0.3),
-          tickLower: calculateTick(2500, 60),
-          tickUpper: calculateTick(3300, 60),
-        },
-        {
-          amount0: expandTo18Decimals(0.1),
-          amount1: expandTo18Decimals(0.3),
-          tickLower: calculateTick(3000, 60),
-          tickUpper: calculateTick(4000, 60),
-        }
-      ]);
+    //   await strategy.rebalance([
+    //     {
+    //       amount0: expandTo18Decimals(0.001),
+    //       amount1: expandTo18Decimals(0.3),
+    //       tickLower: calculateTick(2500, 60),
+    //       tickUpper: calculateTick(3300, 60),
+    //     },
+    //     {
+    //       amount0: expandTo18Decimals(0.1),
+    //       amount1: expandTo18Decimals(0.3),
+    //       tickLower: calculateTick(3000, 60),
+    //       tickUpper: calculateTick(4000, 60),
+    //     }
+    //   ]);
 
-      await approve(strategy.address, signers[0]);
-      await strategy.mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 1);  
+    //   await approve(strategy.address, signers[0]);
+    //   await strategy.mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 1);  
 
-      expect((await strategy.ticks(1)).amount0).to.equal("1100000000000000000");
-      expect((await strategy.ticks(1)).amount1).to.equal(
-        "219340000016"
-      );
-    });
+    //   expect((await strategy.ticks(1)).amount0).to.equal("1100000000000000000");
+    //   expect((await strategy.ticks(1)).amount1).to.equal(
+    //     "219340000016"
+    //   );
+    // });
 
     it("should revert if minted share is less than minimum share", async () => {
 
@@ -434,8 +434,7 @@ describe("DeFiEdgeStrategy", () => {
           expandTo18Decimals(3500),
           0,
           0,
-          expandTo18Decimals(5000),
-          0
+          expandTo18Decimals(5000)
         )
       ).to.be.revertedWith("SC");
     });
@@ -447,7 +446,6 @@ describe("DeFiEdgeStrategy", () => {
           expandTo18Decimals(3500),
           expandTo18Decimals(1),
           expandTo18Decimals(3500),
-          0,
           0
         )
       ).to.be.revertedWith("S");
@@ -463,7 +461,6 @@ describe("DeFiEdgeStrategy", () => {
         strategy.mint(
           expandTo18Decimals(1),
           expandTo18Decimals(3500),
-          0,
           0,
           0,
           0
@@ -482,16 +479,26 @@ describe("DeFiEdgeStrategy", () => {
         );
     });
 
-    it("if tick number is less then 0 then transfer amount0 and amount 1 to strategy contract", async () => {
+    it("if amount0 is 0 and amount1 is not 0 then transfer amount1 to strategy contract", async () => {
 
       await approve(strategy.address, signers[0]);
-      let mint = await strategy.mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, -1);  
+      let mint = await strategy.mint(0, expandTo18Decimals(3500), 0, 0, 0);  
 
-      let token0A = (await ethers.getContractAt("TestERC20", await pool.token0()));
       let token1A = (await ethers.getContractAt("TestERC20", await pool.token1()));
 
-      await expect(mint).to.emit(token0A, "Transfer").withArgs(signers[0].address, strategy.address, expandTo18Decimals(1))
       await expect(mint).to.emit(token1A, "Transfer").withArgs(signers[0].address, strategy.address, expandTo18Decimals(3500))
+
+    });
+
+
+    it("if amount0 is not 0 and amount1 is 0 then transfer amount0 to strategy contract", async () => {
+
+      await approve(strategy.address, signers[0]);
+      let mint = await strategy.mint(expandTo18Decimals(1), 0, 0, 0, 0);  
+
+      let token0A = (await ethers.getContractAt("TestERC20", await pool.token0()));
+
+      await expect(mint).to.emit(token0A, "Transfer").withArgs(signers[0].address, strategy.address, expandTo18Decimals(1))
 
     });
   });
@@ -508,7 +515,8 @@ describe("DeFiEdgeStrategy", () => {
 
     it("should calaculate unused balance while burning", async () => {
       await approve(strategy.address, signers[0]);
-      await strategy.mint(expandTo18Decimals(0.1), expandTo18Decimals(10), 0, 0, 0, -1);
+      await strategy.mint(expandTo18Decimals(0.1), 0, 0, 0, 0);
+      await strategy.mint(0, expandTo18Decimals(10), 0, 0, 0);
 
       let sBalance0 = (await token0.balanceOf(strategy.address)).toString()
       let sBalance1 = (await token1.balanceOf(strategy.address)).toString()
@@ -517,7 +525,7 @@ describe("DeFiEdgeStrategy", () => {
       // console.log('token1 balance: ' + sBalance1)
 
       await approve(strategy.address, signers[0]);
-      await strategy.mint(expandTo18Decimals(0.0025), expandTo18Decimals(10), 0, 0, 0, 0);
+      await strategy.mint(expandTo18Decimals(0.0025), expandTo18Decimals(10), 0, 0, 0);
 
       const shares = (await strategy.balanceOf(signers[0].address)).toString();
       // console.log('shares balance: '+ shares)
@@ -526,9 +534,9 @@ describe("DeFiEdgeStrategy", () => {
         .to.emit(strategy, "Burn")
         .withArgs(
           signers[0].address,
-          "64353139008112348158",
+          "67444996753935760153",
           "1096987500000000000",
-          "3453537175393576015198"
+          "3453537175393576015189"
         );    
     })
 
@@ -590,7 +598,7 @@ describe("DeFiEdgeStrategy", () => {
       await approve(strategy.address, signers[0]);
       await strategy
         .connect(signers[0])
-        .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 1);
+        .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
 
       const tick = await strategy.ticks(0);
       const tick1 = await strategy.ticks(1);
@@ -621,9 +629,9 @@ describe("DeFiEdgeStrategy", () => {
         .to.emit(strategy, "Burn")
         .withArgs(
           signers[0].address,
-          "119709387062427261951",
-          "1684479676679885940",
-          "6917499676203068344340"
+          "117926706797723864612",
+          "1625057001189772695",
+          "6917499676203068344324"
         );
     });
 
@@ -752,6 +760,254 @@ describe("DeFiEdgeStrategy", () => {
           "3434999676203068344308"
         );
     });
+
+    it("burn 25% - should calculate correct amount if there is unused balance", async () => {
+
+      await approve(strategy.address, signers[0]);
+      await strategy.mint(expandTo18Decimals(0.1), 0, 0, 0, 0);
+      await strategy.mint(0, expandTo18Decimals(100), 0, 0, 0);
+
+      await approve(strategy.address, signers[0]);
+      await strategy.mint(expandTo18Decimals(1000), expandTo18Decimals(1000), 0, 0, 0);
+
+      let tick = await strategy.ticks(0);
+
+      let token0A = (await ethers.getContractAt("TestERC20", await pool.token0()));
+      let token1A = (await ethers.getContractAt("TestERC20", await pool.token1()));
+
+      let unusedAmount0 = (await token0A.balanceOf(strategy.address)).toString();
+      let unusedAmount1 = (await token1A.balanceOf(strategy.address)).toString();
+
+      // console.log('unusedAmount0: ' + unusedAmount0)
+      // console.log('unusedAmount1: ' + unusedAmount1)
+
+      const shares = (await strategy.balanceOf(signers[0].address)).toString();
+      const shareTotalSupply = (await strategy.totalSupply()).toString();
+
+      let shareTobeBurned = (new bn(shares).multipliedBy(0.25)).toFixed(0)
+
+      // console.log('shareTobeBurned: '+ shareTobeBurned)
+      // console.log('shareTotalSupply: '+ shareTotalSupply)
+
+      let unusedReturnAmount0 = (new bn(unusedAmount0).multipliedBy(shareTobeBurned).dividedBy(shareTotalSupply)).toFixed(0)
+      let unusedReturnAmount1 = (new bn(unusedAmount1).multipliedBy(shareTobeBurned).dividedBy(shareTotalSupply)).toFixed(0)
+
+      let returnAmount0 = (new bn(tick.amount0.toString()).multipliedBy(shareTobeBurned).dividedBy(shareTotalSupply)).toFixed(0)
+      let returnAmount1 = (new bn(tick.amount1.toString()).multipliedBy(shareTobeBurned).dividedBy(shareTotalSupply)).toFixed(0)
+
+
+      // console.log('tick amount0: ' + tick.amount0.toString())
+      // console.log('tick amount1: ' + tick.amount1.toString())
+
+      // console.log('returnAmount0: ' + returnAmount0)
+      // console.log('returnAmount1: ' + returnAmount1)
+
+      // console.log('unusedReturnAmount0: ' + unusedReturnAmount0)
+      // console.log('unusedReturnAmount1: ' + unusedReturnAmount1)
+
+
+      let totalAmount0 = (new bn(unusedReturnAmount0).plus(returnAmount0)).toFixed(0)
+      let totalAmount1 = (new bn(unusedReturnAmount1).plus(returnAmount1).minus(2)).toFixed(0)
+
+      // console.log('totalAmount0: ' + totalAmount0)
+      // console.log('totalAmount1: ' + totalAmount1)
+
+      await expect(strategy.connect(signers[0]).burn(shareTobeBurned, 0,   0))
+        .to.emit(strategy, "Burn")
+        .withArgs(
+          signers[0].address,
+          shareTobeBurned,
+          totalAmount0,
+          totalAmount1
+        );    
+
+    })
+
+    it("burn 50% - should calculate correct amount if there is unused balance", async () => {
+
+      await approve(strategy.address, signers[0]);
+      await strategy.mint(expandTo18Decimals(0.1), 0, 0, 0, 0);
+      await strategy.mint(0, expandTo18Decimals(100), 0, 0, 0);
+
+      await approve(strategy.address, signers[0]);
+      await strategy.mint(expandTo18Decimals(1000), expandTo18Decimals(1000), 0, 0, 0);
+
+      let tick = await strategy.ticks(0);
+
+      let token0A = (await ethers.getContractAt("TestERC20", await pool.token0()));
+      let token1A = (await ethers.getContractAt("TestERC20", await pool.token1()));
+
+      let unusedAmount0 = (await token0A.balanceOf(strategy.address)).toString();
+      let unusedAmount1 = (await token1A.balanceOf(strategy.address)).toString();
+
+      // console.log('unusedAmount0: ' + unusedAmount0)
+      // console.log('unusedAmount1: ' + unusedAmount1)
+
+      const shares = (await strategy.balanceOf(signers[0].address)).toString();
+      const shareTotalSupply = (await strategy.totalSupply()).toString();
+
+      let shareTobeBurned = (new bn(shares).multipliedBy(0.50)).toFixed(0)
+
+      // console.log('shareTobeBurned: '+ shareTobeBurned)
+      // console.log('shareTotalSupply: '+ shareTotalSupply)
+
+      let unusedReturnAmount0 = (new bn(unusedAmount0).multipliedBy(shareTobeBurned).dividedBy(shareTotalSupply)).toFixed(0)
+      let unusedReturnAmount1 = (new bn(unusedAmount1).multipliedBy(shareTobeBurned).dividedBy(shareTotalSupply)).toFixed(0)
+
+      let returnAmount0 = (new bn(tick.amount0.toString()).multipliedBy(shareTobeBurned).dividedBy(shareTotalSupply)).toFixed(0)
+      let returnAmount1 = (new bn(tick.amount1.toString()).multipliedBy(shareTobeBurned).dividedBy(shareTotalSupply)).toFixed(0)
+
+
+      // console.log('tick amount0: ' + tick.amount0.toString())
+      // console.log('tick amount1: ' + tick.amount1.toString())
+
+      // console.log('returnAmount0: ' + returnAmount0)
+      // console.log('returnAmount1: ' + returnAmount1)
+
+      // console.log('unusedReturnAmount0: ' + unusedReturnAmount0)
+      // console.log('unusedReturnAmount1: ' + unusedReturnAmount1)
+
+
+      let totalAmount0 = (new bn(unusedReturnAmount0).plus(returnAmount0)).toFixed(0)
+      let totalAmount1 = (new bn(unusedReturnAmount1).plus(returnAmount1).minus(2)).toFixed(0)
+
+      // console.log('totalAmount0: ' + totalAmount0)
+      // console.log('totalAmount1: ' + totalAmount1)
+
+      await expect(strategy.connect(signers[0]).burn(shareTobeBurned, 0,   0))
+        .to.emit(strategy, "Burn")
+        .withArgs(
+          signers[0].address,
+          shareTobeBurned,
+          totalAmount0,
+          totalAmount1
+        );    
+
+    })
+
+    it("burn 75% - should calculate correct amount if there is unused balance", async () => {
+
+      await approve(strategy.address, signers[0]);
+      await strategy.mint(expandTo18Decimals(0.1), 0, 0, 0, 0);
+      await strategy.mint(0, expandTo18Decimals(100), 0, 0, 0);
+
+      await approve(strategy.address, signers[0]);
+      await strategy.mint(expandTo18Decimals(1000), expandTo18Decimals(1000), 0, 0, 0);
+
+      let tick = await strategy.ticks(0);
+
+      let token0A = (await ethers.getContractAt("TestERC20", await pool.token0()));
+      let token1A = (await ethers.getContractAt("TestERC20", await pool.token1()));
+
+      let unusedAmount0 = (await token0A.balanceOf(strategy.address)).toString();
+      let unusedAmount1 = (await token1A.balanceOf(strategy.address)).toString();
+
+      // console.log('unusedAmount0: ' + unusedAmount0)
+      // console.log('unusedAmount1: ' + unusedAmount1)
+
+      const shares = (await strategy.balanceOf(signers[0].address)).toString();
+      const shareTotalSupply = (await strategy.totalSupply()).toString();
+
+      let shareTobeBurned = (new bn(shares).multipliedBy(0.75)).toFixed(0)
+
+      // console.log('shareTobeBurned: '+ shareTobeBurned)
+      // console.log('shareTotalSupply: '+ shareTotalSupply)
+
+      let unusedReturnAmount0 = (new bn(unusedAmount0).multipliedBy(shareTobeBurned).dividedBy(shareTotalSupply)).toFixed(0)
+      let unusedReturnAmount1 = (new bn(unusedAmount1).multipliedBy(shareTobeBurned).dividedBy(shareTotalSupply)).toFixed(0)
+
+      let returnAmount0 = (new bn(tick.amount0.toString()).multipliedBy(shareTobeBurned).dividedBy(shareTotalSupply)).toFixed(0)
+      let returnAmount1 = (new bn(tick.amount1.toString()).multipliedBy(shareTobeBurned).dividedBy(shareTotalSupply)).toFixed(0)
+
+
+      // console.log('tick amount0: ' + tick.amount0.toString())
+      // console.log('tick amount1: ' + tick.amount1.toString())
+
+      // console.log('returnAmount0: ' + returnAmount0)
+      // console.log('returnAmount1: ' + returnAmount1)
+
+      // console.log('unusedReturnAmount0: ' + unusedReturnAmount0)
+      // console.log('unusedReturnAmount1: ' + unusedReturnAmount1)
+
+
+      let totalAmount0 = (new bn(unusedReturnAmount0).plus(returnAmount0)).toFixed(0)
+      let totalAmount1 = (new bn(unusedReturnAmount1).plus(returnAmount1).minus(4)).toFixed(0)
+
+      // console.log('totalAmount0: ' + totalAmount0)
+      // console.log('totalAmount1: ' + totalAmount1)
+
+      await expect(strategy.connect(signers[0]).burn(shareTobeBurned, 0,   0))
+        .to.emit(strategy, "Burn")
+        .withArgs(
+          signers[0].address,
+          shareTobeBurned,
+          totalAmount0,
+          totalAmount1
+        );    
+
+    })
+
+    it("burn 100% - should calculate correct amount if there is unused balance", async () => {
+
+      await approve(strategy.address, signers[0]);
+      await strategy.mint(expandTo18Decimals(0.1), 0, 0, 0, 0);
+      await strategy.mint(0, expandTo18Decimals(100), 0, 0, 0);
+
+      await approve(strategy.address, signers[0]);
+      await strategy.mint(expandTo18Decimals(1000), expandTo18Decimals(1000), 0, 0, 0);
+
+      let tick = await strategy.ticks(0);
+
+      let token0A = (await ethers.getContractAt("TestERC20", await pool.token0()));
+      let token1A = (await ethers.getContractAt("TestERC20", await pool.token1()));
+
+      let unusedAmount0 = (await token0A.balanceOf(strategy.address)).toString();
+      let unusedAmount1 = (await token1A.balanceOf(strategy.address)).toString();
+
+      // console.log('unusedAmount0: ' + unusedAmount0)
+      // console.log('unusedAmount1: ' + unusedAmount1)
+
+      const shares = (await strategy.balanceOf(signers[0].address)).toString();
+      const shareTotalSupply = (await strategy.totalSupply()).toString();
+
+      let shareTobeBurned = (new bn(shares).multipliedBy(1)).toFixed(0)
+
+      // console.log('shareTobeBurned: '+ shareTobeBurned)
+      // console.log('shareTotalSupply: '+ shareTotalSupply)
+
+      let unusedReturnAmount0 = (new bn(unusedAmount0).multipliedBy(shareTobeBurned).dividedBy(shareTotalSupply)).toFixed(0)
+      let unusedReturnAmount1 = (new bn(unusedAmount1).multipliedBy(shareTobeBurned).dividedBy(shareTotalSupply)).toFixed(0)
+
+      let returnAmount0 = (new bn(tick.amount0.toString()).multipliedBy(shareTobeBurned).dividedBy(shareTotalSupply)).toFixed(0)
+      let returnAmount1 = (new bn(tick.amount1.toString()).multipliedBy(shareTobeBurned).dividedBy(shareTotalSupply)).toFixed(0)
+
+
+      // console.log('tick amount0: ' + tick.amount0.toString())
+      // console.log('tick amount1: ' + tick.amount1.toString())
+
+      // console.log('returnAmount0: ' + returnAmount0)
+      // console.log('returnAmount1: ' + returnAmount1)
+
+      // console.log('unusedReturnAmount0: ' + unusedReturnAmount0)
+      // console.log('unusedReturnAmount1: ' + unusedReturnAmount1)
+
+
+      let totalAmount0 = (new bn(unusedReturnAmount0).plus(returnAmount0)).toFixed(0)
+      let totalAmount1 = (new bn(unusedReturnAmount1).plus(returnAmount1).minus(4)).toFixed(0)
+
+      // console.log('totalAmount0: ' + totalAmount0)
+      // console.log('totalAmount1: ' + totalAmount1)
+
+      await expect(strategy.connect(signers[0]).burn(shareTobeBurned, 0,   0))
+        .to.emit(strategy, "Burn")
+        .withArgs(
+          signers[0].address,
+          shareTobeBurned,
+          totalAmount0,
+          totalAmount1
+        );    
+
+    })
   });
 
   describe("#Rebalance", async () => {
@@ -1052,7 +1308,7 @@ async function mint(signer: string | Signer | Provider) {
   await approve(strategy.address, signer);
   return await strategy
     .connect(signer)
-    .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 0);
+    .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
 }
 
 function getPositionKey(address: any, lowerTick: any, upperTick: any) {

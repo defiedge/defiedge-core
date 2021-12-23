@@ -272,7 +272,6 @@ describe("StrategyBase", () => {
         expandTo18Decimals(3500),
         0,
         0,
-        0,
         0
       );
       await strategy.rebalance([
@@ -298,7 +297,6 @@ describe("StrategyBase", () => {
       await strategy.mint(
         expandTo18Decimals(1),
         expandTo18Decimals(3500),
-        0,
         0,
         0,
         0
@@ -344,7 +342,6 @@ describe("StrategyBase", () => {
       await strategy.mint(
         expandTo18Decimals(100),
         expandTo18Decimals(350000),
-        0,
         0,
         0,
         0
@@ -394,7 +391,7 @@ describe("StrategyBase", () => {
       await approve(strategy.address, signers[1]);
       await strategy
         .connect(signers[1])
-        .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 0);
+        .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
       expect(await strategy.balanceOf(signers[1].address)).to.equal(
         "64199996762030683443"
       );
@@ -409,7 +406,7 @@ describe("StrategyBase", () => {
 
       await strategy
         .connect(signers[1])
-        .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 0);
+        .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
 
       expect(await strategy.accManagementFee()).to.equal(
         "645226098110861140"
@@ -517,7 +514,6 @@ describe("StrategyBase", () => {
         expandTo18Decimals(3500),
         0,
         0,
-        0,
         0
       );
       await strategy.rebalance([
@@ -547,7 +543,7 @@ describe("StrategyBase", () => {
 
       await strategy
         .connect(signers[1])
-        .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0, 0);
+        .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
     });
 
     it("should mint accProtocolFee  & accManagementFee to feeTo address", async () => {
