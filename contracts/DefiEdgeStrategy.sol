@@ -239,6 +239,10 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         emit Rebalance(ticks);
     }
 
+    /**
+     * @notice Redeploys between ticks
+     * @param _ticks Array of the ticks with amounts
+     */
     function redeploy(Tick[] memory _ticks) internal hasDeviation {
         // set hold false
         onHold = false;
