@@ -96,20 +96,23 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             // update data in the tick
             ticks[0].amount0 = ticks[0].amount0.add(amount0);
             ticks[0].amount1 = ticks[0].amount1.add(amount1);
-        } else if (amount0 > 0) {
-            TransferHelper.safeTransferFrom(
-                token0,
-                msg.sender,
-                address(this),
-                amount0
-            );
-        } else if (amount1 > 0) {
-            TransferHelper.safeTransferFrom(
-                token1,
-                msg.sender,
-                address(this),
-                amount1
-            );
+        } else {
+            if (amount0 > 0) {
+                TransferHelper.safeTransferFrom(
+                    token0,
+                    msg.sender,
+                    address(this),
+                    amount0
+                );
+            }
+            if (amount1 > 0) {
+                TransferHelper.safeTransferFrom(
+                    token1,
+                    msg.sender,
+                    address(this),
+                    amount1
+                );
+            }
         }
 
         // issue share based on the liquidity added
@@ -127,9 +130,10 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         // price slippage check
         require(amount0 >= _amount0Min && amount1 >= _amount1Min, "S");
 
+        uint256 _shareLimit = manager.limit();
         // share limit
-        if (manager.limit() != 0) {
-            require(totalSupply() <= manager.limit(), "L");
+        if (_shareLimit != 0) {
+            require(totalSupply() <= _shareLimit, "L");
         }
         emit Mint(msg.sender, share, amount0, amount1);
     }
@@ -163,12 +167,14 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         collect0 = IERC20(token0).balanceOf(address(this));
         collect1 = IERC20(token1).balanceOf(address(this));
 
+        uint256 _totalSupply = totalSupply();
+
         if (collect0 > 0) {
-            collect0 = collect0.mul(_shares).div(totalSupply());
+            collect0 = collect0.mul(_shares).div(_totalSupply);
         }
 
         if (collect1 > 0) {
-            collect1 = collect1.mul(_shares).div(totalSupply());
+            collect1 = collect1.mul(_shares).div(_totalSupply);
         }
 
         // burn liquidity based on shares from existing ticks

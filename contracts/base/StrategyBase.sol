@@ -152,16 +152,20 @@ contract StrategyBase is ERC20 {
      */
     function claimFee() external {
         if (accManagementFee > 0) {
+
+            address _factoryFeeTo = factory.feeTo();
+            address _managerFeeTo = manager.feeTo();
+
             uint256 protocolShare = accManagementFee
                 .mul(factory.PROTOCOL_FEE())
                 .div(1e8);
 
             require(
-                manager.feeTo() != address(0) && factory.feeTo() != address(0)
+                _managerFeeTo != address(0) && _factoryFeeTo != address(0)
             );
 
-            _mint(factory.feeTo(), protocolShare);
-            _mint(manager.feeTo(), accManagementFee.sub(protocolShare));
+            _mint(_factoryFeeTo, protocolShare);
+            _mint(_managerFeeTo, accManagementFee.sub(protocolShare));
             emit ClaimFee(accManagementFee, protocolShare);
             accManagementFee = 0;
         }

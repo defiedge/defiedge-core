@@ -131,7 +131,8 @@ contract StrategyManager {
     function acceptOperator() external {
         require(msg.sender == pendingOperator);
         operator = pendingOperator;
-        emit ChangeOperator(pendingOperator);
+        pendingOperator = address(0);
+        emit ChangeOperator(operator);
     }
 
     /**
@@ -205,9 +206,13 @@ contract StrategyManager {
             currentDay == swapDay
         ) {
             // last swap happened on same day
-            require(maxAllowedSwap > swapCounter, "LR");
+            uint256 _counter = swapCounter;
+
+            require(maxAllowedSwap > _counter, "LR");
+
             lastSwapTimestamp = block.timestamp;
-            swapCounter = swapCounter.add(1);
+            swapCounter = _counter + 1;
+            
             return true;
         } else {
             // last swap happened on other day
@@ -219,9 +224,9 @@ contract StrategyManager {
 
     /**
      * @notice Change strategy maximum swap limit for a day
-     * @param _limit Number of shares the strategy can mint, 0 means unlimited
+     * @param _limit Maximum number of swap that can be performed in a day
      */
-    function changeMaxSwapLimit(uint256 _limit) external onlyOperator {
+    function changeMaxSwapLimit(uint256 _limit) external onlyGovernance {
         maxAllowedSwap = _limit;
     }
 }
