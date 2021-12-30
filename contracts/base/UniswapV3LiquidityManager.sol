@@ -2,25 +2,22 @@
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
+// contracts
 import "@openzeppelin/contracts/utils/SafeCast.sol";
-
-import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
-import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
-
-import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
-
-// import libraries
-import "../libraries/LiquidityHelper.sol";
-
 import "../base/StrategyBase.sol";
 
-contract UniswapPoolActions is
-    StrategyBase,
-    IUniswapV3MintCallback,
-    IUniswapV3SwapCallback
-{
+// interfaces
+import "../libraries/LiquidityHelper.sol";
+import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+
+// libraries
+import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
+
+contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
     using SafeMath for uint256;
     using SafeCast for uint256;
+
+    event Swap(uint256 amountIn, uint256 amountOut, bool _zeroForOne);
 
     event FeesClaimed(
         address indexed strategy,
@@ -52,7 +49,7 @@ contract UniswapPoolActions is
         uint256 _amount0,
         uint256 _amount1,
         address _payer
-    ) internal returns (uint256 amount0, uint256 amount1) {
+    ) internal hasDeviation returns (uint256 amount0, uint256 amount1) {
         uint128 liquidity = LiquidityHelper.getLiquidityForAmounts(
             address(pool),
             _tickLower,
@@ -83,6 +80,7 @@ contract UniswapPoolActions is
         uint128 _currentLiquidity
     )
         internal
+        hasDeviation
         returns (
             uint256 collect0,
             uint256 collect1,
@@ -92,18 +90,15 @@ contract UniswapPoolActions is
     {
         uint256 tokensBurned0;
         uint256 tokensBurned1;
-        uint128 currentLiquidity;
 
         if (_shares > 0) {
-            (currentLiquidity, , , , ) = pool.positions(
+            (_currentLiquidity, , , , ) = pool.positions(
                 PositionKey.compute(address(this), _tickLower, _tickUpper)
             );
-
-            if (currentLiquidity > 0) {
-                uint256 liquidity = uint256(currentLiquidity).mul(_shares).div(
-                    getTotalSupply()
+            if (_currentLiquidity > 0) {
+                uint256 liquidity = uint256(_currentLiquidity).mul(_shares).div(
+                    totalSupply()
                 );
-
                 (tokensBurned0, tokensBurned1) = pool.burn(
                     _tickLower,
                     _tickUpper,
@@ -117,7 +112,6 @@ contract UniswapPoolActions is
                 _currentLiquidity
             );
         }
-
         // collect fees
         (collect0, collect1) = pool.collect(
             address(this),
@@ -136,6 +130,28 @@ contract UniswapPoolActions is
 
         collect0 = tokensBurned0;
         collect1 = tokensBurned1;
+
+        // transfer performance fee to manager
+        uint256 performanceFee = manager.performanceFee();
+        address feeTo = manager.feeTo();
+
+        if (fee0 > 0) {
+            TransferHelper.safeTransfer(
+                token0,
+                feeTo,
+                fee0.mul(performanceFee).div(1e8)
+            );
+        }
+
+        if (fee1 > 0) {
+            TransferHelper.safeTransfer(
+                token1,
+                feeTo,
+                fee1.mul(performanceFee).div(1e8)
+            );
+        }
+
+        emit FeesClaimed(address(this), fee0, fee1);
     }
 
     /**
@@ -143,78 +159,114 @@ contract UniswapPoolActions is
      * @param _ticks Array of the ticks
      */
     function burnAllLiquidity(Tick[] memory _ticks) internal {
-        uint256 totalCollected0;
-        uint256 totalCollected1;
-
-        uint256 totalBurned0;
-        uint256 totalBurned1;
-
         for (uint256 i = 0; i < _ticks.length; i++) {
-            Tick memory tick = _ticks[i];
-
             (uint128 currentLiquidity, , , , ) = pool.positions(
                 PositionKey.compute(
                     address(this),
-                    tick.tickLower,
-                    tick.tickUpper
+                    _ticks[i].tickLower,
+                    _ticks[i].tickUpper
                 )
             );
-
-            uint256 tokensBurned0;
-            uint256 tokensBurned1;
-            uint256 collect0;
-            uint256 collect1;
-
-            (tokensBurned0, tokensBurned0, collect0, collect1) = burnLiquidity(
-                tick.tickLower,
-                tick.tickUpper,
-                0,
-                currentLiquidity
-            );
-
-            totalBurned0 = totalBurned0.add(tokensBurned0);
-            totalBurned1 = totalBurned1.add(tokensBurned1);
-
-            totalCollected0 = totalCollected0.add(collect0);
-            totalCollected1 = totalCollected1.add(collect1);
+            if (currentLiquidity > 0) {
+                burnLiquidity(
+                    _ticks[i].tickLower,
+                    _ticks[i].tickUpper,
+                    0,
+                    currentLiquidity
+                );
+            }
         }
-
-        emit FeesClaimed(
-            msg.sender,
-            totalCollected0 > totalBurned0
-                ? uint256(totalCollected0).sub(totalBurned0)
-                : 0,
-            totalCollected1 > totalBurned1
-                ? uint256(totalCollected1).sub(totalBurned1)
-                : 0
-        );
     }
 
     /**
-     * @dev Callback for Uniswap V3 pool.
+     * @notice Swaps through the path calculated by Uniswap auto-router
      */
-    function uniswapV3SwapCallback(
-        int256 amount0,
-        int256 amount1,
-        bytes calldata data
-    ) external override {
-        SwapCallbackData memory decoded = abi.decode(data, (SwapCallbackData));
-        // check if the callback is received from Uniswap V3 Pool
-        require(msg.sender == address(pool));
+    function swap(
+        bool _usePath,
+        bool _zeroForOne,
+        bytes memory _path,
+        uint256 _deadline,
+        uint256 _amountIn,
+        uint256 _amountOutMinimum,
+        uint160 _sqrtPriceLimitX96
+    ) external onlyOperator hasDeviation {
+        if (ticks.length > 0) {
+            onHold = true;
+            // burn all liquidity
+            burnAllLiquidity(ticks);
+            // delete ticks
+            delete ticks;
+        }
 
-        if (decoded.zeroToOne) {
-            TransferHelper.safeTransfer(
-                pool.token0(),
-                msg.sender,
-                uint256(amount0)
+        // check if swap exceed allowed deviation and revert if maximum swap limits reached
+        if (
+            OracleLibrary.isSwapExceedDeviation(
+                address(pool),
+                chainlinkRegistry,
+                usdAsBase,
+                address(manager)
+            )
+        ) {
+            require(manager.increamentSwapCounter(), "LR");
+        }
+
+        address tokenIn;
+        address tokenOut;
+        bool[2] memory isBase; // is direct USD feed is available for the token?
+
+        if (_zeroForOne) {
+            tokenIn = token0;
+            tokenOut = token1;
+            isBase = [usdAsBase[0], usdAsBase[1]];
+        } else {
+            tokenIn = token1;
+            tokenOut = token0;
+            isBase = [usdAsBase[1], usdAsBase[0]];
+        }
+
+        IERC20(tokenIn).approve(address(swapRouter), _amountIn);
+
+        uint256 amountOut;
+
+        if (_usePath) {
+            amountOut = swapRouter.exactInput(
+                ISwapRouter.ExactInputParams({
+                    path: _path,
+                    recipient: address(this),
+                    deadline: _deadline,
+                    amountIn: _amountIn,
+                    amountOutMinimum: _amountOutMinimum
+                })
             );
         } else {
-            TransferHelper.safeTransfer(
-                pool.token1(),
-                msg.sender,
-                uint256(amount1)
+            amountOut = swapRouter.exactInputSingle(
+                ISwapRouter.ExactInputSingleParams({
+                    tokenIn: tokenIn,
+                    tokenOut: tokenOut,
+                    fee: pool.fee(),
+                    recipient: address(this),
+                    deadline: _deadline,
+                    amountIn: _amountIn,
+                    amountOutMinimum: _amountOutMinimum,
+                    sqrtPriceLimitX96: _sqrtPriceLimitX96
+                })
             );
         }
+
+        require(
+            OracleLibrary.allowSwap(
+                address(pool),
+                address(factory),
+                _amountIn,
+                amountOut,
+                tokenIn,
+                tokenOut,
+                isBase
+            ),
+            "S"
+        );
+
+        emit Swap(_amountIn, amountOut, _zeroForOne);
     }
 
     /**
@@ -226,10 +278,8 @@ contract UniswapPoolActions is
         bytes calldata data
     ) external override {
         MintCallbackData memory decoded = abi.decode(data, (MintCallbackData));
-
         // check if the callback is received from Uniswap V3 Pool
         require(msg.sender == address(pool));
-
         if (decoded.payer == address(this)) {
             // transfer tokens already in the contract
             if (amount0 > 0) {
@@ -271,20 +321,22 @@ contract UniswapPoolActions is
             uint256 totalFee1
         )
     {
+        // get unused amounts
         amount0 = IERC20(pool.token0()).balanceOf(address(this));
         amount1 = IERC20(pool.token1()).balanceOf(address(this));
+
         // get fees accumulated in each tick
         for (uint256 i = 0; i < ticks.length; i++) {
             Tick memory tick = ticks[i];
 
-            bytes32 positionKey = PositionKey.compute(
-                address(this),
-                tick.tickLower,
-                tick.tickUpper
+            // get current liquidity from the pool
+            (uint128 currentLiquidity, , , , ) = pool.positions(
+                PositionKey.compute(
+                    address(this),
+                    tick.tickLower,
+                    tick.tickUpper
+                )
             );
-
-            // get current liquidity
-            (uint128 currentLiquidity, , , , ) = pool.positions(positionKey);
 
             if (currentLiquidity > 0) {
                 // calculate current positions in the pool from currentLiquidity
@@ -300,17 +352,16 @@ contract UniswapPoolActions is
                 // Uniswap recalculates the fees and updates the variables when amount is passed as 0
                 pool.burn(tick.tickLower, tick.tickUpper, 0);
 
+                // fees are credited as tokensOwed in Uniswap when burn is called with 0
+                // https://github.com/Uniswap/v3-core/blob/main/contracts/interfaces/pool/IUniswapV3PoolActions.sol#L43
                 (, , , uint256 tokensOwed0, uint256 tokensOwed1) = pool
-                    .positions(positionKey);
-
-                // collect fees
-                pool.collect(
-                    address(this),
-                    tick.tickLower,
-                    tick.tickUpper,
-                    type(uint128).max,
-                    type(uint128).max
-                );
+                    .positions(
+                        PositionKey.compute(
+                            address(this),
+                            tick.tickLower,
+                            tick.tickUpper
+                        )
+                    );
 
                 totalFee0 = totalFee0.add(tokensOwed0);
                 totalFee1 = totalFee1.add(tokensOwed1);

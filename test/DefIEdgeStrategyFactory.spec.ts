@@ -4,21 +4,29 @@ import chai from "chai";
 
 const TestERC20Factory = ethers.getContractFactory("TestERC20");
 const UniswapV3FactoryFactory = ethers.getContractFactory("UniswapV3Factory");
+const WETH9Factory = ethers.getContractFactory("WETH9");
 
 const UniswapV3OracleTestFactory = ethers.getContractFactory(
   "UniswapV3OracleTest"
 );
-const ShareHelperLibrary = ethers.getContractFactory("ShareHelper");
+
 const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper");
 const OracleLibraryLibrary = ethers.getContractFactory("OracleLibrary");
 const ChainlinkRegistryMockFactory = ethers.getContractFactory(
   "ChainlinkRegistryMock"
 )
+const SwapRouterContract = ethers.getContractFactory(
+  "SwapRouter"
+);
+
 
 import { TestERC20 } from "../typechain/TestERC20";
+import { WETH9 } from "../typechain/WETH9";
 import { UniswapV3Factory } from "../typechain/UniswapV3Factory";
 import { UniswapV3Pool } from "../typechain/UniswapV3Pool";
 import { DefiEdgeStrategy } from "../typechain/DefiEdgeStrategy";
+import { StrategyManager } from "../typechain/StrategyManager";
+import { DefiEdgeStrategyDeployer } from "../typechain/DefiEdgeStrategyDeployer";
 import { DefiEdgeStrategyFactory } from "../typechain/DefiEdgeStrategyFactory";
 import { Periphery } from "../typechain/Periphery";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
@@ -26,6 +34,7 @@ import { ShareHelper } from "../typechain/ShareHelper";
 import { LiquidityHelper } from "../typechain/LiquidityHelper";
 import { OracleLibrary } from "../typechain/OracleLibrary";
 import { ChainlinkRegistryMock } from "../typechain/ChainlinkRegistryMock";
+import { SwapRouter } from "../typechain/SwapRouter";
 
 import {
   calculateTick,
@@ -45,12 +54,17 @@ let pool: UniswapV3Pool;
 let signers: SignerWithAddress[];
 let factory: DefiEdgeStrategyFactory;
 let strategy: DefiEdgeStrategy;
+let strategyManager: StrategyManager;
+let strategyDeplopyer: DefiEdgeStrategyDeployer;
 let periphery: Periphery;
 let oracle: UniswapV3OracleTest;
 let shareHelper: ShareHelper;
 let liquidityHelper: LiquidityHelper;
 let oracleLibrary: OracleLibrary;
 let chainlinkRegistry: ChainlinkRegistryMock;
+let router: SwapRouter;
+let weth9: WETH9;
+let uniswapV3Factory: UniswapV3Factory;
 
 describe("DefiEdgeStrategyFactory", () => {
   beforeEach(async () => {
@@ -59,11 +73,16 @@ describe("DefiEdgeStrategyFactory", () => {
     // deploy tokens
     token0 = (await (await TestERC20Factory).deploy(18)) as TestERC20;
     token1 = (await (await TestERC20Factory).deploy(18)) as TestERC20;
+    weth9 = (await (await WETH9Factory).deploy()) as WETH9;
 
     // deploy uniswap factory
-    const uniswapV3Factory = (await (
+    uniswapV3Factory = (await (
       await UniswapV3FactoryFactory
     ).deploy()) as UniswapV3Factory;
+
+    router = (await (
+      await SwapRouterContract
+    ).deploy(uniswapV3Factory.address, weth9.address)) as SwapRouter;
 
     await uniswapV3Factory.createPool(token0.address, token1.address, "3000");
     // get uniswap pool instance
@@ -81,51 +100,72 @@ describe("DefiEdgeStrategyFactory", () => {
     );
 
     // deploy sharehelper library
+    oracleLibrary = (await (
+      await OracleLibraryLibrary
+    ).deploy()) as OracleLibrary;
+
+    const ShareHelperLibrary = ethers.getContractFactory("ShareHelper", {
+      libraries: {
+        OracleLibrary: oracleLibrary.address
+      }
+    });
+    
+    // deploy sharehelper library
     shareHelper = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
 
     liquidityHelper = (await (
       await LiquidityHelperLibrary
     ).deploy()) as LiquidityHelper;
 
-    // deploy oracleLibrary library
-    oracleLibrary = (await (
-      await OracleLibraryLibrary
-    ).deploy()) as OracleLibrary;
+    const DefiEdgeStrategyDeployerContract = ethers.getContractFactory("DefiEdgeStrategyDeployer",
+     {
+        libraries: {
+          ShareHelper: shareHelper.address,
+          OracleLibrary: oracleLibrary.address,
+          LiquidityHelper: liquidityHelper.address
+        }
+      }
+    );
+
+    strategyDeplopyer = (await (
+      await DefiEdgeStrategyDeployerContract
+    ).deploy()) as DefiEdgeStrategyDeployer;
 
     chainlinkRegistry = (await (
       await ChainlinkRegistryMockFactory
-    ).deploy(pool.token0(), pool.token1())) as ChainlinkRegistryMock;
+    ).deploy(await pool.token0(), await pool.token1())) as ChainlinkRegistryMock;
 
     await chainlinkRegistry.setDecimals(8);
     await chainlinkRegistry.setAnswer(
-      expandTo18Decimals(3000),
-      expandTo18Decimals(1)
-    );
+      "300000000000",
+      "100000000"
+    ); 
 
     const DefiEdgeStrategyFactoryF = await ethers.getContractFactory(
-      "DefiEdgeStrategyFactory",
-      {
-        libraries: {
-          OracleLibrary: oracleLibrary.address,
-          ShareHelper: shareHelper.address,
-          LiquidityHelper: liquidityHelper.address,
-        },
-      }
+      "DefiEdgeStrategyFactory"
     );
+
 
     // deploy strategy factory
     factory = (await DefiEdgeStrategyFactoryF.deploy(
       signers[0].address,
+      strategyDeplopyer.address,
       chainlinkRegistry.address,
-      uniswapV3Factory.address
+      uniswapV3Factory.address,
+      router.address,
+      "10000000000000000",
+      "10000000000000000"
     )) as DefiEdgeStrategyFactory;
 
-    // create strategy
-    await factory.createStrategy(
-      pool.address,
-      signers[0].address,
-      [true, true],
-      [
+    let params = {
+      operator: signers[0].address,
+      feeTo: signers[1].address,
+      managementFee: "500000", // 0.5%
+      performanceFee: "500000", // 0.5%
+      limit: 0,
+      pool: pool.address,
+      usdAsBase: [true, true],
+      ticks: [
         {
           amount0: 0,
           amount1: 0,
@@ -133,7 +173,10 @@ describe("DefiEdgeStrategyFactory", () => {
           tickUpper: calculateTick(3500, 60),
         },
       ]
-    );
+    }
+
+    // create strategy
+    await factory.createStrategy(params);
 
     // get strategy
     strategy = (await ethers.getContractAt(
@@ -144,8 +187,13 @@ describe("DefiEdgeStrategyFactory", () => {
     // // initialize strategy
     // await strategy.initialize();
 
+    strategyManager = (await ethers.getContractAt(
+      "StrategyManager",
+      await strategy.manager()
+      )) as StrategyManager;
+        
     // set deviation in strategy
-    await strategy.changeAllowedDeviation("10000000000000000"); // 1%
+    await strategyManager.changeAllowedDeviation("10000000000000000"); // 1%
 
     const PeripheryFactory = ethers.getContractFactory("Periphery", {
       libraries: { LiquidityHelper: liquidityHelper.address },
@@ -196,11 +244,376 @@ describe("DefiEdgeStrategyFactory", () => {
     it("should set the governance address", async () => {
       expect(await factory.governance()).to.equal(signers[0].address);
     });
+    it("should set uniswap swap router contract address", async () => {
+      expect(await factory.swapRouter()).to.be.equal(router.address);
+    });
+    it("should set uniswap deployerProxy contract address", async () => {
+      expect(await factory.deployerProxy()).to.be.equal(strategyDeplopyer.address);
+    });
+    it("should set uniswap uniswapV3Factory contract address", async () => {
+      expect(await factory.uniswapV3Factory()).to.be.equal(await router.factory());
+    });
+    it("should set uniswap chainlinkRegistry contract address", async () => {
+      expect(await factory.chainlinkRegistry()).to.be.equal(chainlinkRegistry.address);
+    });
+    it("should set uniswap allowedSlippage", async () => {
+      expect(await factory.allowedSlippage()).to.be.equal("10000000000000000");
+    });
+    it("should set uniswap allowedDeviation", async () => {
+      expect(await factory.allowedDeviation()).to.be.equal("10000000000000000");
+    });
+  });
+
+  describe("#createStrategy", async () => {
+
+    it("should revert if token0 of pool have is more than 18 decimal", async () => {
+
+      // deploy tokens
+      let token00 = (await (await TestERC20Factory).deploy(22)) as TestERC20;
+      let token01 = (await (await TestERC20Factory).deploy(18)) as TestERC20;
+
+      await uniswapV3Factory.createPool(token00.address, token01.address, "3000");
+      
+      let poolAddress = await uniswapV3Factory.getPool(token00.address, token01.address, "3000")
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: poolAddress,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      await expect(factory.createStrategy(params)).to.be.revertedWith("ID");
+
+    })
+
+    it("should revert if token1 of pool have is more than 18 decimal", async () => {
+
+      // deploy tokens
+      let token00 = (await (await TestERC20Factory).deploy(18)) as TestERC20;
+      let token01 = (await (await TestERC20Factory).deploy(22)) as TestERC20;
+
+      await uniswapV3Factory.createPool(token00.address, token01.address, "3000");
+      
+      let poolAddress = await uniswapV3Factory.getPool(token00.address, token01.address, "3000")
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: poolAddress,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      await expect(factory.createStrategy(params)).to.be.revertedWith("ID");
+
+    })
+
+    it("should revert if pool address is invalid", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: strategyManager.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      await expect(factory.createStrategy(params)).to.be.reverted;
+
+    })
+
+    it("should revert if pool address is zero address(pool is not available)", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: constants.AddressZero,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      await expect(factory.createStrategy(params)).to.be.reverted;
+
+    })
+
+    it("should create strategy manager contract", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      await factory.createStrategy(params);
+
+      let strategyContract = (await ethers.getContractAt(
+        "DefiEdgeStrategy",
+        await factory.strategyByIndex(await factory.totalIndex())
+      ))
+
+      let managerContract = await ethers.getContractAt("StrategyManager", await strategyContract.manager());
+
+      expect(await managerContract.factory()).to.eq(factory.address)
+
+    })
+
+    it("should create strategy contract", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      await factory.createStrategy(params);
+
+      let strategyContract = (await ethers.getContractAt(
+        "DefiEdgeStrategy",
+        await factory.strategyByIndex(await factory.totalIndex())
+      ))
+
+      expect(await strategyContract.factory()).to.eq(factory.address)
+
+    })
+
+    it("should retrieve address by manager address", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      await factory.createStrategy(params);
+
+      let strategyContract = (await ethers.getContractAt(
+        "DefiEdgeStrategy",
+        await factory.strategyByIndex(await factory.totalIndex())
+      ))
+
+      let managerContract = await strategyContract.manager()
+
+      expect(await factory.strategyByManager(managerContract)).to.eq(strategyContract.address)
+
+    })
+
+    it("should retrieve strategy address by index", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      let index = (await factory.totalIndex()).toString()
+
+      await factory.createStrategy(params);
+
+      let strategy = await factory.strategyByIndex(await factory.totalIndex())
+
+      expect(await factory.strategyByIndex(Number(index) + 1)).to.eq(strategy)
+
+    })
+
+    it("should increase total index", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      let oldIndex = (await factory.totalIndex()).toString()
+
+      await factory.createStrategy(params);
+
+      expect(await factory.totalIndex()).to.eq(Number(oldIndex) + 1)
+
+    })
+
+    it("should make strategy valid", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      await factory.createStrategy(params);
+
+      let strategy = await factory.strategyByIndex(await factory.totalIndex())
+
+      expect(await factory.isValid(strategy)).to.eq(true)
+
+    })
+
+    it("should emit new strategy event", async () => {
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: [true, true],
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ]
+      }
+
+      let create = await factory.createStrategy(params);
+
+      let strategy = await factory.strategyByIndex(await factory.totalIndex())
+
+      expect(create).to.emit(factory, "NewStrategy").withArgs(strategy, signers[0].address)
+
+    })
+
+  })
+
+  describe("#changeDefaultAllowedDeviation", async () => {
+    it("should be called by governance only", async () => {
+      await expect(factory.connect(signers[1]).changeDefaultAllowedDeviation(10000000)).to.be.revertedWith("NO");
+    });
+    it("should change deviation", async () => {
+      await factory.changeDefaultAllowedDeviation(1000000);
+      expect(await factory.allowedDeviation()).to.equal(1000000);
+    });
+  });
+
+  describe("#changeAllowedSlippage", async () => {
+    it("should be called by governance only", async () => {
+      await expect(factory.connect(signers[1]).changeAllowedSlippage(10000000)).to.be.revertedWith("NO");
+    });
+    it("should change slippage", async () => {
+      await factory.changeAllowedSlippage(1000000);
+      expect(await factory.allowedSlippage()).to.equal(1000000);
+    });
   });
 
   describe("#changeFee", async () => {
     it("should be called by governance only", async () => {
-      expect(factory.connect(signers[1]).changeFee(10000000)).to.be.reverted;
+      await expect(factory.connect(signers[1]).changeFee(10000000)).to.be.revertedWith("NO");
     });
     it("should change the protocol fee", async () => {
       await factory.changeFee(1000000);
@@ -210,8 +623,8 @@ describe("DefiEdgeStrategyFactory", () => {
 
   describe("#changeFeeTo", async () => {
     it("should revert if not called by governance", async () => {
-      expect(factory.connect(signers[1]).changeFeeTo(signers[0].address)).to.be
-        .reverted;
+      await expect(factory.connect(signers[1]).changeFeeTo(signers[0].address)).to.be
+        .revertedWith("NO");
     });
     it("should change feeTo address", async () => {
       await factory.changeFeeTo(signers[1].address);
@@ -222,6 +635,9 @@ describe("DefiEdgeStrategyFactory", () => {
   describe("#changeGovernance", async () => {
     it("should revert if new governance address is zero", async () => {
       expect(factory.changeGovernance(constants.AddressZero)).to.be.reverted;
+    });
+    it("should be called by governance only", async () => {
+      await expect(factory.connect(signers[1]).changeGovernance(signers[2].address)).to.be.revertedWith("NO");
     });
     it("should set pending governance as new governance address", async () => {
       await factory.changeGovernance(signers[1].address);
@@ -246,6 +662,12 @@ describe("DefiEdgeStrategyFactory", () => {
     it("should set boolean to true in denied mapping", async () => {
       await factory.deny(strategy.address);
       expect(await factory.denied(strategy.address)).to.equal(true);
+    });
+    it("should set boolean to false in denied mapping", async () => {
+      await factory.deny(strategy.address);
+      expect(await factory.denied(strategy.address)).to.equal(true);
+      await factory.deny(strategy.address);
+      expect(await factory.denied(strategy.address)).to.equal(false);
     });
   });
 

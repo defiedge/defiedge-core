@@ -4,7 +4,20 @@ pragma solidity =0.7.6;
 pragma abicoder v2;
 
 import "./DefiEdgeStrategy.sol";
+import "./base/StrategyManager.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+
+interface IDefiEdgeStrategyDeployer {
+    function createStrategy(
+        address _factory,
+        address _pool,
+        address _swapRouter,
+        address _chainlinkRegistry,
+        address _manager,
+        bool[] memory _usdAsBase,
+        DefiEdgeStrategy.Tick[] memory _ticks
+    ) external returns (address);
+}
 
 contract DefiEdgeStrategyFactory {
     using SafeMath for uint256;
@@ -14,8 +27,14 @@ contract DefiEdgeStrategyFactory {
     mapping(uint256 => address) public strategyByIndex; // map strategies by index
     mapping(address => bool) public isValid; // make strategy valid when deployed
 
+    mapping(address => address) public strategyByManager; // strategy manager contracts linked with strategies
+
     // total number of strategies
     uint256 public totalIndex;
+
+    uint256 public PROTOCOL_FEE; // 1e8 means 100%
+    uint256 public allowedDeviation; // 1e18 means 1%
+    uint256 public allowedSlippage; // 1e18 means 1%
 
     // governance address
     address public governance;
@@ -24,14 +43,26 @@ contract DefiEdgeStrategyFactory {
     address public pendingGovernance;
 
     // protocol fee
-    uint256 public PROTOCOL_FEE; // 1e8 means 100%
     address public feeTo; // receive protocol fees here
 
+    address public deployerProxy;
     address public uniswapV3Factory; // Uniswap V3 pool factory
     address public chainlinkRegistry; // Chainlink registry
+    address public swapRouter; // Uniswap V3 Swap Router
 
     // mapping of blacklisted strategies
     mapping(address => bool) public denied;
+
+    struct CreateStrategyParams {
+        address operator;
+        address feeTo;
+        uint256 managementFee;
+        uint256 performanceFee;
+        uint256 limit;
+        address pool;
+        bool[] usdAsBase;
+        DefiEdgeStrategy.Tick[] ticks;
+    }
 
     // Modifiers
     modifier onlyGovernance() {
@@ -41,39 +72,93 @@ contract DefiEdgeStrategyFactory {
 
     constructor(
         address _governance,
+        address _deployerProxy,
         address _chainlinkRegistry,
-        address _uniswapV3factory
+        address _uniswapV3factory,
+        address _swapRouter,
+        uint256 _allowedSlippage,
+        uint256 _allowedDeviation
     ) {
         governance = _governance;
+        deployerProxy = _deployerProxy;
         uniswapV3Factory = _uniswapV3factory;
         chainlinkRegistry = _chainlinkRegistry;
+        swapRouter = _swapRouter;
+        allowedSlippage = _allowedSlippage;
+        allowedDeviation = _allowedDeviation;
     }
 
-    /**
-     * @notice Launches strategy contract
-     * @param _pool Address of the pool
-     * @param _operator Address of the operator
-     * @param _ticks Array of the ticks
-     */
-    function createStrategy(
-        address _pool,
-        address _operator,
-        bool[] memory _usdAsBase,
-        DefiEdgeStrategy.Tick[] memory _ticks
-    ) external returns (address strategy) {
-        strategy = address(
-            new DefiEdgeStrategy(
+    // /**
+    //  * @notice Launches strategy contract
+    //  * @param _pool Address of the pool
+    //  * @param _operator Address of the operator
+    //  * @param _ticks Array of the ticks
+    //  */
+    function createStrategy(CreateStrategyParams calldata params) external {
+        IUniswapV3Pool pool = IUniswapV3Pool(params.pool);
+
+        require(
+            IERC20Minimal(pool.token0()).decimals() <= 18 &&
+                IERC20Minimal(pool.token1()).decimals() <= 18,
+            "ID"
+        );
+
+        address poolAddress = IUniswapV3Factory(uniswapV3Factory).getPool(
+            pool.token0(),
+            pool.token1(),
+            pool.fee()
+        );
+
+        require(
+            poolAddress != address(0) && poolAddress == address(pool),
+            "IP"
+        );
+
+        address manager = address(
+            new StrategyManager(
                 address(this),
-                _pool,
-                _operator,
-                _ticks,
-                _usdAsBase
+                params.operator,
+                params.feeTo,
+                params.managementFee,
+                params.performanceFee,
+                params.limit,
+                allowedDeviation
             )
         );
-        strategyByIndex[totalIndex.add(1)] = strategy;
+
+        address strategy = IDefiEdgeStrategyDeployer(deployerProxy)
+            .createStrategy(
+                address(this),
+                params.pool,
+                swapRouter,
+                chainlinkRegistry,
+                manager,
+                params.usdAsBase,
+                params.ticks
+            );
+
+        strategyByManager[manager] = strategy;
+
         totalIndex = totalIndex.add(1);
+
+        strategyByIndex[totalIndex] = strategy;
+
         isValid[strategy] = true;
         emit NewStrategy(strategy, msg.sender);
+    }
+
+    function changeDefaultAllowedDeviation(uint256 _allowedDeviation)
+        external
+        onlyGovernance
+    {
+        allowedDeviation = _allowedDeviation;
+    }
+
+    function changeAllowedSlippage(uint256 _allowedSlippage)
+        external
+        onlyGovernance
+    {
+        allowedSlippage = _allowedSlippage;
     }
 
     /**

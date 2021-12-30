@@ -3,54 +3,49 @@
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+// contracts
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "./base/UniswapV3LiquidityManager.sol";
 
-import "./base/UniswapPoolActions.sol";
-import "./base/StrategyBase.sol";
-
+// libraries
 import "./libraries/LiquidityHelper.sol";
 
-contract DefiEdgeStrategy is UniswapPoolActions {
+contract DefiEdgeStrategy is UniswapV3LiquidityManager {
     using SafeMath for uint256;
-
-    bool public onHold;
 
     // events
     event Mint(address user, uint256 share, uint256 amount0, uint256 amount1);
     event Burn(address user, uint256 share, uint256 amount0, uint256 amount1);
-    event Swap(uint256 amountIn, uint256 amountOut, bool zeroToOne);
     event Hold();
     event Rebalance(Tick[] ticks);
 
     /**
-     * @param _factory Strategy factory address
+     * @param _factory Address of the strategy factory
      * @param _pool Address of the pool
-     * @param _operator Address of the strategy operator
-     * @param _ticks Array of the ticks
+     * @param _swapRouter Address of the Uniswap V3 periphery swap router
+     * @param _chainlinkRegistry Chainlink registry address
+     * @param _manager Address of the manager
      * @param _usdAsBase If the Chainlink feed is pegged with USD
+     * @param _ticks Array of the ticks
      */
     constructor(
         address _factory,
         address _pool,
-        address _operator,
-        Tick[] memory _ticks,
-        bool[] memory _usdAsBase
+        address _swapRouter,
+        address _chainlinkRegistry,
+        address _manager,
+        bool[] memory _usdAsBase,
+        Tick[] memory _ticks
     ) validTicks(_ticks) {
+        manager = IStrategyManager(_manager);
         factory = IStrategyFactory(_factory);
+        swapRouter = ISwapRouter(_swapRouter);
+        chainlinkRegistry = _chainlinkRegistry;
         pool = IUniswapV3Pool(_pool);
-        allowedDeviation = 5 * 1e18;
+        token0 = pool.token0();
+        token1 = pool.token1();
         usdAsBase = _usdAsBase;
-        require(
-            IUniswapV3Factory(factory.uniswapV3Factory()).getPool(
-                pool.token0(),
-                pool.token1(),
-                pool.fee()
-            ) == address(pool),
-            "IP"
-        );
-        operator = _operator;
         for (uint256 i = 0; i < _ticks.length; i++) {
             ticks.push(Tick(0, 0, _ticks[i].tickLower, _ticks[i].tickUpper));
         }
@@ -85,14 +80,40 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         (uint256 totalAmount0, uint256 totalAmount1, , ) = this
             .getAUMWithFees();
 
-        // index 0 will always be an primary tick
-        (amount0, amount1) = mintLiquidity(
-            ticks[0].tickLower,
-            ticks[0].tickUpper,
-            _amount0,
-            _amount1,
-            msg.sender
-        );
+        amount0 = _amount0;
+        amount1 = _amount1;
+
+        if (amount0 > 0 && amount1 > 0 && ticks.length > 0) {
+            // index 0 will always be an primary tick
+            (amount0, amount1) = mintLiquidity(
+                ticks[0].tickLower,
+                ticks[0].tickUpper,
+                _amount0,
+                _amount1,
+                msg.sender
+            );
+
+            // update data in the tick
+            ticks[0].amount0 = ticks[0].amount0.add(amount0);
+            ticks[0].amount1 = ticks[0].amount1.add(amount1);
+        } else {
+            if (amount0 > 0) {
+                TransferHelper.safeTransferFrom(
+                    token0,
+                    msg.sender,
+                    address(this),
+                    amount0
+                );
+            }
+            if (amount1 > 0) {
+                TransferHelper.safeTransferFrom(
+                    token1,
+                    msg.sender,
+                    address(this),
+                    amount1
+                );
+            }
+        }
 
         // issue share based on the liquidity added
         share = issueShare(
@@ -103,22 +124,17 @@ contract DefiEdgeStrategy is UniswapPoolActions {
             msg.sender
         );
 
-        // update data in the tick
-        ticks[0].amount0 = ticks[0].amount0.add(amount0);
-        ticks[0].amount1 = ticks[0].amount1.add(amount1);
-
         // prevent front running of strategy fee
         require(share >= _minShare, "SC");
 
         // price slippage check
         require(amount0 >= _amount0Min && amount1 >= _amount1Min, "S");
 
+        uint256 _shareLimit = manager.limit();
         // share limit
-        if (limit != 0) {
-            require(getTotalSupply() <= limit, "L");
+        if (_shareLimit != 0) {
+            require(totalSupply() <= _shareLimit, "L");
         }
-
-        // emit event
         emit Mint(msg.sender, share, amount0, amount1);
     }
 
@@ -142,17 +158,24 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         )
     {
         // check if the user has sufficient shares
-        require(balanceOf(msg.sender) >= _shares, "INS");
+        require(balanceOf(msg.sender) >= _shares && _shares != 0, "INS");
 
         uint256 collect0;
         uint256 collect1;
 
-        uint256 unused0;
-        uint256 unused1;
-
         // give from unused amounts
-        unused0 = IERC20(pool.token0()).balanceOf(address(this));
-        unused1 = IERC20(pool.token1()).balanceOf(address(this));
+        collect0 = IERC20(token0).balanceOf(address(this));
+        collect1 = IERC20(token1).balanceOf(address(this));
+
+        uint256 _totalSupply = totalSupply();
+
+        if (collect0 > 0) {
+            collect0 = collect0.mul(_shares).div(_totalSupply);
+        }
+
+        if (collect1 > 0) {
+            collect1 = collect1.mul(_shares).div(_totalSupply);
+        }
 
         // burn liquidity based on shares from existing ticks
         if (ticks.length != 0) {
@@ -178,24 +201,9 @@ contract DefiEdgeStrategy is UniswapPoolActions {
                     ? tick.amount1.sub(amount1)
                     : tick.amount1;
 
-                unused0 = unused0.add(fee0);
-                unused1 = unused1.add(fee1);
-
                 emit FeesClaimed(msg.sender, fee0, fee1);
             }
         }
-
-        if (unused0 > 0) {
-            unused0 = unused0.mul(_shares).div(getTotalSupply());
-        }
-
-        if (unused1 > 0) {
-            unused1 = unused1.mul(_shares).div(getTotalSupply());
-        }
-
-        // add to total amounts
-        amount0 = collect0.add(unused0);
-        amount1 = collect1.add(unused1);
 
         // check slippage
         require(_amount0Min <= amount0 && _amount1Min <= amount1, "S");
@@ -204,14 +212,14 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         _burn(msg.sender, _shares);
 
         // transfer tokens
-        if (amount0 > 0) {
-            TransferHelper.safeTransfer(pool.token0(), msg.sender, amount0);
+        if (collect0 > 0) {
+            TransferHelper.safeTransfer(token0, msg.sender, collect0);
         }
-        if (amount1 > 0) {
-            TransferHelper.safeTransfer(pool.token1(), msg.sender, amount1);
+        if (collect1 > 0) {
+            TransferHelper.safeTransfer(token1, msg.sender, collect1);
         }
 
-        emit Burn(msg.sender, _shares, amount0, amount1);
+        emit Burn(msg.sender, _shares, collect0, collect1);
     }
 
     /**
@@ -237,6 +245,10 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         emit Rebalance(ticks);
     }
 
+    /**
+     * @notice Redeploys between ticks
+     * @param _ticks Array of the ticks with amounts
+     */
     function redeploy(Tick[] memory _ticks) internal hasDeviation {
         // set hold false
         onHold = false;
@@ -261,46 +273,6 @@ contract DefiEdgeStrategy is UniswapPoolActions {
     }
 
     /**
-     * @notice Rebalances between the ticks
-     * @param _zeroForOne The direction of the swap
-     * @param _amount Amount to Swap
-     * @param _sqrtPriceLimitX96 Price Slippage
-     */
-    function swap(
-        bool _zeroForOne,
-        int256 _amount,
-        uint160 _sqrtPriceLimitX96
-    )
-        external
-        onlyOperator
-        isValidStrategy
-        hasDeviation
-        returns (uint256 amountOut)
-    {
-        if (ticks.length > 0) {
-            onHold = true;
-            // burn all liquidity
-            burnAllLiquidity(ticks);
-            // delete ticks
-            delete ticks;
-        }
-
-        (int256 amount0, int256 amount1) = pool.swap(
-            address(this),
-            _zeroForOne,
-            _amount,
-            _sqrtPriceLimitX96,
-            abi.encode(
-                SwapCallbackData({pool: address(pool), zeroToOne: _zeroForOne})
-            )
-        );
-
-        amountOut = uint256(-(_zeroForOne ? amount1 : amount0));
-
-        emit Swap(uint256(_amount), amountOut, _zeroForOne);
-    }
-
-    /**
      * @notice Holds the funds
      */
     function hold() external onlyOperator hasDeviation {
@@ -310,42 +282,35 @@ contract DefiEdgeStrategy is UniswapPoolActions {
         emit Hold();
     }
 
-    /**
-     * @notice Gets current ticks and it's amounts
-     */
-    function getTicks() public view returns (Tick[] memory) {
-        return ticks;
-    }
-
     // TODO: Make this function work correctly
     function emergencyWithdraw(
-        int24 tickLower,
-        int24 tickUpper,
-        uint128 liquidity
-    ) external onlyGovernance {
-        require(!freezeEmergency, "L");
-        if (liquidity > 0) {
-            pool.burn(tickLower, tickUpper, liquidity);
-            (, , , uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(
-                PositionKey.compute(address(this), tickLower, tickUpper)
-            );
-            pool.collect(
-                address(this),
-                tickLower,
-                tickUpper,
-                uint128(tokensOwed0),
-                uint128(tokensOwed1)
-            );
-        }
-        TransferHelper.safeTransfer(
-            pool.token0(),
-            msg.sender,
-            IERC20(pool.token0()).balanceOf(address(this))
+        address _token,
+        address _to,
+        uint256 _amount
+    ) external {
+        require(
+            msg.sender == factory.governance() && !manager.freezeEmergency()
         );
-        TransferHelper.safeTransfer(
-            pool.token1(),
-            msg.sender,
-            IERC20(pool.token1()).balanceOf(address(this))
-        );
+        TransferHelper.safeTransfer(_token, _to, _amount);
     }
+
+    // // TODO: Make this function work correctly
+    // function emergencyBurn(
+    //     int24 _tickLower,
+    //     int24 _tickUpper,
+    //     uint128 _liquidity,
+    //     address _to
+    // ) external onlyGovernance {
+    //     pool.burn(_tickLower, _tickUpper, _liquidity);
+    //     (, , , uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(
+    //         PositionKey.compute(address(this), _tickLower, _tickUpper)
+    //     );
+    //     pool.collect(
+    //         _to,
+    //         _tickLower,
+    //         _tickUpper,
+    //         uint128(tokensOwed0),
+    //         uint128(tokensOwed1)
+    //     );
+    // }
 }
