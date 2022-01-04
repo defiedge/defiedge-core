@@ -148,20 +148,12 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         uint256 _shares,
         uint256 _amount0Min,
         uint256 _amount1Min
-    )
-        external
-        returns (
-            uint256 amount0,
-            uint256 amount1,
-            uint256 fee0,
-            uint256 fee1
-        )
-    {
+    ) external returns (uint256 collect0, uint256 collect1) {
         // check if the user has sufficient shares
         require(balanceOf(msg.sender) >= _shares && _shares != 0, "INS");
 
-        uint256 collect0;
-        uint256 collect1;
+        uint256 amount0;
+        uint256 amount1;
 
         // give from unused amounts
         collect0 = IERC20(token0).balanceOf(address(this));
@@ -182,6 +174,8 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             for (uint256 i = 0; i < ticks.length; i++) {
                 Tick storage tick = ticks[i];
 
+                uint256 fee0;
+                uint256 fee1;
                 // burn liquidity and collect fees
                 (amount0, amount1, fee0, fee1) = burnLiquidity(
                     tick.tickLower,
