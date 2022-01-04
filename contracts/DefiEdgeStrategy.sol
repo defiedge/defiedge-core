@@ -188,10 +188,10 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                 collect0 = collect0.add(amount0);
                 collect1 = collect1.add(amount1);
 
-                tick.amount0 = amount0 != 0
+                tick.amount0 = tick.amount0 >= amount0
                     ? tick.amount0.sub(amount0)
                     : tick.amount0;
-                tick.amount1 = amount1 != 0
+                tick.amount1 = tick.amount1 >= amount1
                     ? tick.amount1.sub(amount1)
                     : tick.amount1;
 
