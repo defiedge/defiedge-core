@@ -74,7 +74,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             uint256 share
         )
     {
-        require(!onHold, "H");
+        // require(!onHold, "H");
 
         // get total amounts with fees
         (uint256 totalAmount0, uint256 totalAmount1, , ) = this
