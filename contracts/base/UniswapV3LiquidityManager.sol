@@ -133,23 +133,20 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
         // transfer performance fee to manager
         uint256 performanceFee = manager.performanceFee();
-        address feeTo = manager.feeTo();
+        // address feeTo = manager.feeTo();
 
-        if (fee0 > 0) {
-            TransferHelper.safeTransfer(
-                token0,
-                feeTo,
-                fee0.mul(performanceFee).div(1e8)
-            );
-        }
-
-        if (fee1 > 0) {
-            TransferHelper.safeTransfer(
-                token1,
-                feeTo,
-                fee1.mul(performanceFee).div(1e8)
-            );
-        }
+        accPerformanceFee = accPerformanceFee.add(
+            ShareHelper.calculateShares(
+                chainlinkRegistry,
+                address(pool),
+                usdAsBase,
+                fee0.mul(performanceFee).div(1e8),
+                fee1.mul(performanceFee).div(1e8),
+                collect0,
+                collect1,
+                totalSupply()
+            )
+        );
 
         emit FeesClaimed(address(this), fee0, fee1);
     }
