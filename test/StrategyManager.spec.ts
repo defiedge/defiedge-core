@@ -469,7 +469,7 @@ describe("StrategyManager", () => {
   })
 
   describe("#performanceFee", async () => {
-    it("should transfer performanceFee to feeTo address while burnLiquidity", async () => {
+    it("should increase accPerformanceFee while burnLiquidity", async () => {
       
       await mint(signers[0])
 
@@ -484,16 +484,15 @@ describe("StrategyManager", () => {
         expandToString(sqrtPriceLimitX96)
       );
 
+      expect(await strategy.accPerformanceFee()).to.equal(0);
+
       const shares = "64199996762030683443";
 
       let burn = await strategy.burn(shares, 0, 0)
 
-      let token1A = (await ethers.getContractAt("TestERC20", await pool.token1()));
-
+      expect(await strategy.accPerformanceFee()).to.equal("53888");
 
       expect(burn).to.emit(strategy, "FeesClaimed").withArgs(signers[0].address, "0", "1072391033");
-
-      expect(burn).to.emit(token1A, "Transfer").withArgs(strategy.address, signers[1].address, "5361955");
     });
   })
 });
