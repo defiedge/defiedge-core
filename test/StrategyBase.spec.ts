@@ -608,7 +608,7 @@ describe("StrategyBase", () => {
         "645226098110861140"
       );
       expect(await strategy.accPerformanceFee()).to.equal(
-        "54161"
+        "53619"
       );
 
       await strategy.claimFee();

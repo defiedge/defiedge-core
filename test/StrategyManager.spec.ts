@@ -490,7 +490,7 @@ describe("StrategyManager", () => {
 
       let burn = await strategy.burn(shares, 0, 0)
 
-      expect(await strategy.accPerformanceFee()).to.equal("53888");
+      expect(await strategy.accPerformanceFee()).to.equal("53619");
 
       expect(burn).to.emit(strategy, "FeesClaimed").withArgs(signers[0].address, "0", "1072391033");
     });
