@@ -33,6 +33,7 @@ contract StrategyBase is ERC20 {
     Tick[] public ticks;
 
     uint256 public accManagementFee;
+    uint256 public accPerformanceFee;
 
     IStrategyFactory public factory; // instance of the strategy factory
     IUniswapV3Pool public pool; // instance of the Uniswap V3 pool
@@ -152,22 +153,40 @@ contract StrategyBase is ERC20 {
      */
     function claimFee() external {
         if (accManagementFee > 0) {
-
             address _factoryFeeTo = factory.feeTo();
             address _managerFeeTo = manager.feeTo();
 
-            uint256 protocolShare = accManagementFee
-                .mul(factory.PROTOCOL_FEE())
-                .div(1e8);
+            uint256 protocolShare;
 
-            require(
-                _managerFeeTo != address(0) && _factoryFeeTo != address(0)
+            if (factory.PROTOCOL_FEE() > 0) {
+                uint256 protocolManagementShare = accManagementFee
+                    .mul(factory.PROTOCOL_FEE())
+                    .div(1e8);
+
+                uint256 protocolPerformanceShare = accPerformanceFee
+                    .mul(factory.PROTOCOL_FEE())
+                    .div(1e8);
+
+                protocolShare = protocolManagementShare.add(
+                    protocolPerformanceShare
+                );
+
+                _mint(_factoryFeeTo, protocolShare);
+            }
+
+            // require(_managerFeeTo != address(0) && _factoryFeeTo != address(0));
+
+            _mint(
+                _managerFeeTo,
+                (accManagementFee.add(accPerformanceFee)).sub(protocolShare)
             );
-
-            _mint(_factoryFeeTo, protocolShare);
-            _mint(_managerFeeTo, accManagementFee.sub(protocolShare));
-            emit ClaimFee(accManagementFee, protocolShare);
+            emit ClaimFee(
+                accManagementFee.add(accPerformanceFee),
+                protocolShare
+            );
+            
             accManagementFee = 0;
+            accPerformanceFee = 0;
         }
     }
 

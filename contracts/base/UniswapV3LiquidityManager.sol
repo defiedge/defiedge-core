@@ -131,27 +131,36 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         collect0 = tokensBurned0;
         collect1 = tokensBurned1;
 
+        // mint performance fees
+        addPerformanceFees(fee0, fee1);
+
+    }
+
+    function addPerformanceFees(uint256 _fee0, uint256 _fee1) internal {
+
         // transfer performance fee to manager
         uint256 performanceFee = manager.performanceFee();
-        address feeTo = manager.feeTo();
+        // address feeTo = manager.feeTo();
 
-        if (fee0 > 0) {
-            TransferHelper.safeTransfer(
-                token0,
-                feeTo,
-                fee0.mul(performanceFee).div(1e8)
-            );
-        }
+        // get total amounts with fees
+        (uint256 totalAmount0, uint256 totalAmount1, , ) = this
+            .getAUMWithFees();
 
-        if (fee1 > 0) {
-            TransferHelper.safeTransfer(
-                token1,
-                feeTo,
-                fee1.mul(performanceFee).div(1e8)
-            );
-        }
+        accPerformanceFee = accPerformanceFee.add(
+            ShareHelper.calculateShares(
+                chainlinkRegistry,
+                address(pool),
+                usdAsBase,
+                _fee0.mul(performanceFee).div(1e8),
+                _fee1.mul(performanceFee).div(1e8),
+                totalAmount0,
+                totalAmount1,
+                totalSupply()
+            )
+        );
 
-        emit FeesClaimed(address(this), fee0, fee1);
+        emit FeesClaimed(address(this), _fee0, _fee1);
+
     }
 
     /**

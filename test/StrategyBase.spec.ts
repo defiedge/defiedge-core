@@ -586,15 +586,35 @@ describe("StrategyBase", () => {
     });
 
     it("should set accProtocolFee  & accManagementFee to zero after claiming fee", async () => {
+
+      // swap tokens
+      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
+
+      const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9;
+      await periphery.swap(
+        pool.address,
+        false,
+        "10000000000000000000",
+        expandToString(sqrtPriceLimitX96)
+      );
+
+      expect(await strategy.accPerformanceFee()).to.equal(0);
+
+      const shares = (await strategy.balanceOf(signers[1].address)).toString();
+
+      await strategy.connect(signers[1]).burn(shares, 0, 0)
+
       expect(await strategy.accManagementFee()).to.equal(
         "645226098110861140"
       );
-      // expect(await strategy.accProtocolFee()).to.equal("34522609811086114013");
+      expect(await strategy.accPerformanceFee()).to.equal(
+        "53619"
+      );
 
       await strategy.claimFee();
 
       expect(await strategy.accManagementFee()).to.equal("0");
-      // expect(await strategy.accProtocolFee()).to.equal("0");
+      expect(await strategy.accPerformanceFee()).to.equal("0");
     });
   });
 });

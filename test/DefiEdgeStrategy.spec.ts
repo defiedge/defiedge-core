@@ -358,22 +358,22 @@ describe("DeFiEdgeStrategy", () => {
   });
 
   describe("#Mint", async () => {
-    it("should revert if strategy is onHold", async () => {
+    // it("should revert if strategy is onHold", async () => {
 
-      await mint(signers[0])
+    //   await mint(signers[0])
 
-      expect(await strategy.onHold()).to.equal(false);
+    //   expect(await strategy.onHold()).to.equal(false);
 
-      await strategy.hold();
+    //   await strategy.hold();
 
-      expect(await strategy.onHold()).to.equal(true);
+    //   expect(await strategy.onHold()).to.equal(true);
 
-      await expect(
-        strategy.mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0)
-      )
-      .to.be.revertedWith("H")
+    //   await expect(
+    //     strategy.mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0)
+    //   )
+    //   .to.be.revertedWith("H")
 
-    });
+    // });
     it("should mint to the primary ticks", async () => {
       await expect(await mint(signers[1]))
         .to.emit(pool, "Mint")
