@@ -133,11 +133,9 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
         // mint performance fees
         addPerformanceFees(fee0, fee1);
-
     }
 
     function addPerformanceFees(uint256 _fee0, uint256 _fee1) internal {
-
         // transfer performance fee to manager
         uint256 performanceFee = manager.performanceFee();
         // address feeTo = manager.feeTo();
@@ -160,7 +158,6 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         );
 
         emit FeesClaimed(address(this), _fee0, _fee1);
-
     }
 
     /**
@@ -169,21 +166,16 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
      */
     function burnAllLiquidity(Tick[] memory _ticks) internal {
         for (uint256 i = 0; i < _ticks.length; i++) {
-            (uint128 currentLiquidity, , , , ) = pool.positions(
-                PositionKey.compute(
-                    address(this),
-                    _ticks[i].tickLower,
-                    _ticks[i].tickUpper
-                )
-            );
-            if (currentLiquidity > 0) {
-                burnLiquidity(
-                    _ticks[i].tickLower,
-                    _ticks[i].tickUpper,
-                    0,
-                    currentLiquidity
-                );
-            }
+            burnLiquiditySingle(_ticks[i].tickLower, _ticks[i].tickUpper);
+        }
+    }
+
+    function burnLiquiditySingle(int24 _tickLower, int24 _tickUpper) internal {
+        (uint128 currentLiquidity, , , , ) = pool.positions(
+            PositionKey.compute(address(this), _tickLower, _tickUpper)
+        );
+        if (currentLiquidity > 0) {
+            burnLiquidity(_tickLower, _tickUpper, 0, currentLiquidity);
         }
     }
 

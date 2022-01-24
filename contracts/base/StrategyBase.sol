@@ -58,9 +58,11 @@ contract StrategyBase is ERC20 {
      * @dev Replaces old ticks with new ticks
      * @param _ticks New ticks
      */
-    modifier validTicks(Tick[] memory _ticks) {
-        // checks for valid ticks length
-        require(_ticks.length <= 5, "ITL");
+    function isInvalidTicks(Tick[] memory _ticks)
+        internal
+        view
+        returns (bool invalid)
+    {
         for (uint256 i = 0; i < _ticks.length; i++) {
             int24 tickLower = _ticks[i].tickLower;
             int24 tickUpper = _ticks[i].tickUpper;
@@ -69,11 +71,13 @@ contract StrategyBase is ERC20 {
             for (uint256 j = 0; j < i; j++) {
                 if (i != j) {
                     if (tickLower == _ticks[j].tickLower) {
-                        require(tickUpper != _ticks[j].tickUpper, "TS");
+                        if (tickUpper == _ticks[j].tickUpper) {
+                            invalid = true;
+                        }
+                        // require(tickUpper != _ticks[j].tickUpper, "TS");
                     }
                 }
             }
-            _;
         }
     }
 
@@ -184,7 +188,7 @@ contract StrategyBase is ERC20 {
                 accManagementFee.add(accPerformanceFee),
                 protocolShare
             );
-            
+
             accManagementFee = 0;
             accPerformanceFee = 0;
         }

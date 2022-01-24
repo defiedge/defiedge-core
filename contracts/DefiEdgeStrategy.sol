@@ -20,6 +20,13 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
     event Hold();
     event Rebalance(Tick[] ticks);
 
+    struct PartialTick {
+        uint256 index;
+        bool burn;
+        uint256 amount0;
+        uint256 amount1;
+    }
+
     /**
      * @param _factory Address of the strategy factory
      * @param _pool Address of the pool
@@ -37,7 +44,10 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         address _manager,
         bool[] memory _usdAsBase,
         Tick[] memory _ticks
-    ) validTicks(_ticks) {
+    ) {
+        require(!isInvalidTicks(_ticks), "IT");
+        // checks for valid ticks length
+        require(_ticks.length <= 5, "ITL");
         manager = IStrategyManager(_manager);
         factory = IStrategyFactory(_factory);
         swapRouter = ISwapRouter(_swapRouter);
@@ -216,23 +226,50 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         emit Burn(msg.sender, _shares, collect0, collect1);
     }
 
+    function partialRebalance(PartialTick[] memory _ticks) external {
+        for (uint256 i = 0; i < _ticks.length; i++) {
+            Tick memory tick = ticks[_ticks[i].index];
+
+            if (_ticks[i].burn) {
+                burnLiquiditySingle(tick.tickLower, tick.tickUpper);
+            }
+
+            // mint liquidity
+            (uint256 amount0, uint256 amount1) = mintLiquidity(
+                tick.tickLower,
+                tick.tickUpper,
+                _ticks[i].amount0,
+                _ticks[i].amount1,
+                address(this)
+            );
+        }
+
+        require(!isInvalidTicks(ticks), "IT");
+    }
+
     /**
      * @notice Rebalances between the ticks
      * @param _ticks Ticks in which amounts to be deploy
      */
-    function rebalance(Tick[] memory _ticks)
+    function rebalance(Tick[] memory _ticks, bool _burnAll)
         external
         onlyOperator
         isValidStrategy
-        validTicks(_ticks)
     {
         if (onHold) {
+            // delete ticks
+            delete ticks;
             // deploy between ticks
             redeploy(_ticks);
-        } else {
+        } else if (_burnAll) {
+            // delete ticks
+            delete ticks;
             // burn all liquidity
             burnAllLiquidity(ticks);
             // redeploy to the amounts specified
+            redeploy(_ticks);
+        } else {
+            // redeploy ticks
             redeploy(_ticks);
         }
 
@@ -244,10 +281,10 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
      * @param _ticks Array of the ticks with amounts
      */
     function redeploy(Tick[] memory _ticks) internal hasDeviation {
+        require(!isInvalidTicks(_ticks), "IT");
+
         // set hold false
         onHold = false;
-        // delete ticks
-        delete ticks;
         // redeploy the liquidity
         for (uint256 i = 0; i < _ticks.length; i++) {
             Tick memory tick = _ticks[i];
@@ -264,6 +301,9 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             // push to ticks array
             ticks.push(Tick(amount0, amount1, tick.tickLower, tick.tickUpper));
         }
+
+        // checks for valid ticks length
+        require(ticks.length <= 5, "ITL");
     }
 
     /**
