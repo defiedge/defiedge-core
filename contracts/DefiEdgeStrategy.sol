@@ -205,7 +205,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                     ? tick.amount1.sub(amount1)
                     : tick.amount1;
 
-                emit FeesClaimed(msg.sender, fee0, fee1);
+                // emit FeesClaimed(msg.sender, fee0, fee1);
             }
         }
 

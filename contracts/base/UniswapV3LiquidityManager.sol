@@ -284,16 +284,16 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         if (decoded.payer == address(this)) {
             // transfer tokens already in the contract
             if (amount0 > 0) {
-                TransferHelper.safeTransfer(pool.token0(), msg.sender, amount0);
+                TransferHelper.safeTransfer(token0, msg.sender, amount0);
             }
             if (amount1 > 0) {
-                TransferHelper.safeTransfer(pool.token1(), msg.sender, amount1);
+                TransferHelper.safeTransfer(token1, msg.sender, amount1);
             }
         } else {
             // take and transfer tokens to Uniswap V3 pool from the user
             if (amount0 > 0) {
                 TransferHelper.safeTransferFrom(
-                    pool.token0(),
+                    token0,
                     decoded.payer,
                     msg.sender,
                     amount0
@@ -301,7 +301,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             }
             if (amount1 > 0) {
                 TransferHelper.safeTransferFrom(
-                    pool.token1(),
+                    token1,
                     decoded.payer,
                     msg.sender,
                     amount1
@@ -323,8 +323,8 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         )
     {
         // get unused amounts
-        amount0 = IERC20(pool.token0()).balanceOf(address(this));
-        amount1 = IERC20(pool.token1()).balanceOf(address(this));
+        amount0 = IERC20(token0).balanceOf(address(this));
+        amount1 = IERC20(token1).balanceOf(address(this));
 
         // get fees accumulated in each tick
         for (uint256 i = 0; i < ticks.length; i++) {

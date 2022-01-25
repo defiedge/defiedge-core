@@ -60,7 +60,7 @@ contract StrategyBase is ERC20 {
      */
     function isInvalidTicks(Tick[] memory _ticks)
         internal
-        view
+        pure
         returns (bool invalid)
     {
         for (uint256 i = 0; i < _ticks.length; i++) {
@@ -138,7 +138,7 @@ contract StrategyBase is ERC20 {
         uint256 managerShare;
         uint256 managementFee = manager.managementFee();
         // strategy owner fees
-        if (manager.feeTo() != address(0) && managementFee > 0) {
+        if (managementFee > 0) {
             managerShare = share.mul(managementFee).div(1e8);
             accManagementFee = accManagementFee.add(managerShare);
         }
@@ -157,18 +157,21 @@ contract StrategyBase is ERC20 {
      */
     function claimFee() external {
         if (accManagementFee > 0) {
+            uint256 _factoryProtocolFee = factory.PROTOCOL_FEE();
             address _factoryFeeTo = factory.feeTo();
             address _managerFeeTo = manager.feeTo();
 
+            require(_managerFeeTo != address(0) && _factoryFeeTo != address(0));
+
             uint256 protocolShare;
 
-            if (factory.PROTOCOL_FEE() > 0) {
+            if (_factoryProtocolFee > 0) {
                 uint256 protocolManagementShare = accManagementFee
-                    .mul(factory.PROTOCOL_FEE())
+                    .mul(_factoryProtocolFee)
                     .div(1e8);
 
                 uint256 protocolPerformanceShare = accPerformanceFee
-                    .mul(factory.PROTOCOL_FEE())
+                    .mul(_factoryProtocolFee)
                     .div(1e8);
 
                 protocolShare = protocolManagementShare.add(
@@ -177,8 +180,6 @@ contract StrategyBase is ERC20 {
 
                 _mint(_factoryFeeTo, protocolShare);
             }
-
-            // require(_managerFeeTo != address(0) && _factoryFeeTo != address(0));
 
             _mint(
                 _managerFeeTo,
