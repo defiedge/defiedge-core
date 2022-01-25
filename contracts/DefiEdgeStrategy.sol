@@ -228,7 +228,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
 
     function partialRebalance(PartialTick[] memory _ticks) external {
         for (uint256 i = 0; i < _ticks.length; i++) {
-            Tick memory tick = ticks[_ticks[i].index];
+            Tick storage tick = ticks[_ticks[i].index];
 
             if (_ticks[i].burn) {
                 burnLiquiditySingle(tick.tickLower, tick.tickUpper);
@@ -242,6 +242,10 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                 _ticks[i].amount1,
                 address(this)
             );
+
+            // update data in the tick
+            tick.amount0 = tick.amount0.add(amount0);
+            tick.amount1 = tick.amount1.add(amount1);
         }
 
         require(!isInvalidTicks(ticks), "IT");
