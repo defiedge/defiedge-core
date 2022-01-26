@@ -266,10 +266,10 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             // deploy between ticks
             redeploy(_ticks);
         } else if (_burnAll) {
-            // delete ticks
-            delete ticks;
             // burn all liquidity
             burnAllLiquidity(ticks);
+            // delete ticks
+            delete ticks;
             // redeploy to the amounts specified
             redeploy(_ticks);
         } else {
