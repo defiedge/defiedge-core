@@ -30,11 +30,6 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         address pool;
     }
 
-    struct SwapCallbackData {
-        address pool;
-        bool zeroToOne;
-    }
-
     /**
      * @notice Mints liquidity from V3 Pool
      * @param _tickLower Lower tick
@@ -180,37 +175,15 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
     }
 
     /**
-     * @notice Swaps through the path calculated by Uniswap auto-router
+     * @notice Swap the fudns to 1Inch
      */
     function swap(
-        bool _usePath,
         bool _zeroForOne,
-        bytes memory _path,
-        uint256 _deadline,
         uint256 _amountIn,
         uint256 _amountOutMinimum,
-        uint160 _sqrtPriceLimitX96
+        uint256[] memory _distribution,
+        uint256 _flags
     ) external onlyOperator hasDeviation {
-        if (ticks.length > 0) {
-            onHold = true;
-            // burn all liquidity
-            burnAllLiquidity(ticks);
-            // delete ticks
-            delete ticks;
-        }
-
-        // check if swap exceed allowed deviation and revert if maximum swap limits reached
-        if (
-            OracleLibrary.isSwapExceedDeviation(
-                address(pool),
-                chainlinkRegistry,
-                usdAsBase,
-                address(manager)
-            )
-        ) {
-            require(manager.increamentSwapCounter(), "LR");
-        }
-
         address tokenIn;
         address tokenOut;
         bool[2] memory isBase; // is direct USD feed is available for the token?
@@ -225,50 +198,108 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             isBase = [usdAsBase[1], usdAsBase[0]];
         }
 
-        IERC20(tokenIn).approve(address(swapRouter), _amountIn);
-
-        uint256 amountOut;
-
-        if (_usePath) {
-            amountOut = swapRouter.exactInput(
-                ISwapRouter.ExactInputParams({
-                    path: _path,
-                    recipient: address(this),
-                    deadline: _deadline,
-                    amountIn: _amountIn,
-                    amountOutMinimum: _amountOutMinimum
-                })
-            );
-        } else {
-            amountOut = swapRouter.exactInputSingle(
-                ISwapRouter.ExactInputSingleParams({
-                    tokenIn: tokenIn,
-                    tokenOut: tokenOut,
-                    fee: pool.fee(),
-                    recipient: address(this),
-                    deadline: _deadline,
-                    amountIn: _amountIn,
-                    amountOutMinimum: _amountOutMinimum,
-                    sqrtPriceLimitX96: _sqrtPriceLimitX96
-                })
-            );
-        }
-
-        require(
-            OracleLibrary.allowSwap(
-                address(pool),
-                address(factory),
-                _amountIn,
-                amountOut,
-                tokenIn,
-                tokenOut,
-                isBase
-            ),
-            "S"
+        uint256 amountOut = oneInchRouter.swap(
+            IERC20(tokenIn),
+            IERC20(tokenOut),
+            _amountIn,
+            _amountOutMinimum,
+            _distribution,
+            _flags
         );
 
         emit Swap(_amountIn, amountOut, _zeroForOne);
     }
+
+    // /**
+    //  * @notice Swaps through the path calculated by Uniswap auto-router
+    //  */
+    // function swap(
+    //     bool _usePath,
+    //     bool _zeroForOne,
+    //     bytes memory _path,
+    //     uint256 _deadline,
+    //     uint256 _amountIn,
+    //     uint256 _amountOutMinimum,
+    //     uint160 _sqrtPriceLimitX96
+    // ) external onlyOperator hasDeviation {
+    //     if (ticks.length > 0) {
+    //         onHold = true;
+    //         // burn all liquidity
+    //         burnAllLiquidity(ticks);
+    //         // delete ticks
+    //         delete ticks;
+    //     }
+
+    //     // check if swap exceed allowed deviation and revert if maximum swap limits reached
+    //     if (
+    //         OracleLibrary.isSwapExceedDeviation(
+    //             address(pool),
+    //             chainlinkRegistry,
+    //             usdAsBase,
+    //             address(manager)
+    //         )
+    //     ) {
+    //         require(manager.increamentSwapCounter(), "LR");
+    //     }
+
+    //     address tokenIn;
+    //     address tokenOut;
+    //     bool[2] memory isBase; // is direct USD feed is available for the token?
+
+    //     if (_zeroForOne) {
+    //         tokenIn = token0;
+    //         tokenOut = token1;
+    //         isBase = [usdAsBase[0], usdAsBase[1]];
+    //     } else {
+    //         tokenIn = token1;
+    //         tokenOut = token0;
+    //         isBase = [usdAsBase[1], usdAsBase[0]];
+    //     }
+
+    //     IERC20(tokenIn).approve(address(swapRouter), _amountIn);
+
+    //     uint256 amountOut;
+
+    //     if (_usePath) {
+    //         amountOut = swapRouter.exactInput(
+    //             ISwapRouter.ExactInputParams({
+    //                 path: _path,
+    //                 recipient: address(this),
+    //                 deadline: _deadline,
+    //                 amountIn: _amountIn,
+    //                 amountOutMinimum: _amountOutMinimum
+    //             })
+    //         );
+    //     } else {
+    //         amountOut = swapRouter.exactInputSingle(
+    //             ISwapRouter.ExactInputSingleParams({
+    //                 tokenIn: tokenIn,
+    //                 tokenOut: tokenOut,
+    //                 fee: pool.fee(),
+    //                 recipient: address(this),
+    //                 deadline: _deadline,
+    //                 amountIn: _amountIn,
+    //                 amountOutMinimum: _amountOutMinimum,
+    //                 sqrtPriceLimitX96: _sqrtPriceLimitX96
+    //             })
+    //         );
+    //     }
+
+    //     require(
+    //         OracleLibrary.allowSwap(
+    //             address(pool),
+    //             address(factory),
+    //             _amountIn,
+    //             amountOut,
+    //             tokenIn,
+    //             tokenOut,
+    //             isBase
+    //         ),
+    //         "S"
+    //     );
+
+    //     emit Swap(_amountIn, amountOut, _zeroForOne);
+    // }
 
     /**
      * @dev Callback for Uniswap V3 pool.

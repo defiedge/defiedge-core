@@ -12,8 +12,19 @@ import "../libraries/OracleLibrary.sol";
 // interfaces
 import "../interfaces/IStrategyManager.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+// import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+interface IOneInchRouter {
+    function swap(
+        IERC20 fromToken,
+        IERC20 destToken,
+        uint256 amount,
+        uint256 minReturn,
+        uint256[] memory distribution,
+        uint256 flags
+    ) external returns (uint256 returnAmount);
+}
 
 contract StrategyBase is ERC20 {
     using SafeMath for uint256;
@@ -41,7 +52,7 @@ contract StrategyBase is ERC20 {
     address internal token0;
     address internal token1;
 
-    ISwapRouter public swapRouter; // instance of the Uniswap V3 Periphery Swap Router
+    IOneInchRouter public oneInchRouter; // instance of the Uniswap V3 Periphery Swap Router
     address internal chainlinkRegistry;
 
     IStrategyManager public manager; // instance of manager contract
