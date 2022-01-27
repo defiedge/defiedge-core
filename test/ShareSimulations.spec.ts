@@ -264,7 +264,7 @@ describe("Share Simulations", () => {
           tickLower: calculateTick(1 / 3600, 60),
           tickUpper: calculateTick(1 / 2500, 60),
         },
-      ]);
+      ], true);
       console.log('rebalance done')
       await approve(strategy.address, signers[1]);
 

@@ -492,7 +492,7 @@ describe("StrategyManager", () => {
 
       expect(await strategy.accPerformanceFee()).to.equal("53619");
 
-      expect(burn).to.emit(strategy, "FeesClaimed").withArgs(signers[0].address, "0", "1072391033");
+      await expect(burn).to.emit(strategy, "FeesClaimed").withArgs(strategy.address, "0", "1072391033");
     });
   })
 });

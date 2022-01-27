@@ -293,9 +293,9 @@ describe("UniswapV3LiquidityManager", () => {
 
     it("should emit fees claimed event with correct values - strategy contract", async () => {
       const shares = "64199996762030683443";
-      expect(await strategy.connect(signers[0]).burn(shares, 0, 0))
+      await expect(strategy.connect(signers[0]).burn(shares, 0, 0))
         .to.emit(strategy, "FeesClaimed")
-        .withArgs(signers[0].address, "0", "0");
+        .withArgs(strategy.address, "0", "0");
     });
 
     it("should emit burn event with correct values - uniswap pool contract", async () => {

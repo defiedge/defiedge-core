@@ -291,42 +291,42 @@ describe("DeFiEdgeStrategy", () => {
             amount0: "1",
             amount1: "1",
             tickLower: "60",
-            tickUpper: "60",
+            tickUpper: "61",
           },
           {
             amount0: "2",
             amount1: "2",
-            tickLower: "60",
-            tickUpper: "60",
+            tickLower: "62",
+            tickUpper: "63",
           },
           {
             amount0: "3",
             amount1: "3",
-            tickLower: "60",
-            tickUpper: "60",
+            tickLower: "64",
+            tickUpper: "65",
           },
           {
             amount0: "4",
             amount1: "4",
-            tickLower: "60",
-            tickUpper: "60",
+            tickLower: "66",
+            tickUpper: "67",
           },
           {
             amount0: "5",
             amount1: "5",
-            tickLower: "60",
-            tickUpper: "60",
+            tickLower: "68",
+            tickUpper: "69",
           },
           {
             amount0: "6",
             amount1: "6",
-            tickLower: "60",
-            tickUpper: "60",
+            tickLower: "70",
+            tickUpper: "71",
           }
         ]
       }
     
-      expect(factory.createStrategy(params)).to.be.revertedWith('ITL');
+      await expect(factory.createStrategy(params)).to.be.revertedWith('ITL');
     });
     it("validTicks - should revert if two ticks are the same", async () => {
       let params = {
@@ -353,7 +353,7 @@ describe("DeFiEdgeStrategy", () => {
         ]
       }
     
-      expect(factory.createStrategy(params)).to.be.revertedWith('TS');
+      await expect(factory.createStrategy(params)).to.be.revertedWith('IT');
     });
   });
 
@@ -593,7 +593,7 @@ describe("DeFiEdgeStrategy", () => {
           tickLower: calculateTick(2200, 60),
           tickUpper: calculateTick(3600, 60),
         }
-      ]);
+      ], true);
 
       await approve(strategy.address, signers[0]);
       await strategy
@@ -629,9 +629,9 @@ describe("DeFiEdgeStrategy", () => {
         .to.emit(strategy, "Burn")
         .withArgs(
           signers[0].address,
-          "117926706797723864612",
-          "1625057001189772695",
-          "6917499676203068344324"
+          "117926706797723864562",
+          "1625057001189772697",
+          "6917499676203068344311"
         );
     });
 
@@ -1020,7 +1020,7 @@ describe("DeFiEdgeStrategy", () => {
         expandTo18Decimals(3000),
         expandTo18Decimals(0.01)
       );
-      expect(
+      await expect(
         strategy.rebalance([
           {
             amount0: expandTo18Decimals(0.001),
@@ -1028,12 +1028,12 @@ describe("DeFiEdgeStrategy", () => {
             tickLower: "60",
             tickUpper: "60",
           },
-        ])
+        ], true)
       ).to.be.revertedWith('D');
     });
 
     it("should revert if caller is not operator", async () => {
-      expect(
+      await expect(
         strategy.connect(signers[1]).rebalance([
           {
             amount0: expandTo18Decimals(0.001),
@@ -1041,7 +1041,7 @@ describe("DeFiEdgeStrategy", () => {
             tickLower: "60",
             tickUpper: "60",
           },
-        ])
+        ], true)
       ).to.be.revertedWith("N");
     });
 
@@ -1055,7 +1055,7 @@ describe("DeFiEdgeStrategy", () => {
           tickLower: calculateTick(2500, 60),
           tickUpper: calculateTick(3300, 60),
         },
-      ]);
+      ], true);
 
       const tick = await strategy.ticks(0);
 
@@ -1087,13 +1087,13 @@ describe("DeFiEdgeStrategy", () => {
           tickLower: calculateTick(2500, 60),
           tickUpper: calculateTick(3300, 60),
         },
-      ]);
+      ], true);
       const position = await pool.positions(positionKey);
       expect(position.liquidity).to.equal(0);
     });
 
     it("should emit rebalance event with ticks", async () => {
-      expect(
+      await expect(
         strategy.rebalance([
           {
             amount0: expandTo18Decimals(0.001),
@@ -1101,7 +1101,7 @@ describe("DeFiEdgeStrategy", () => {
             tickLower: calculateTick(2500, 60),
             tickUpper: calculateTick(3300, 60),
           },
-        ])
+        ], true)
       ).to.emit(strategy, "Rebalance");
     });
   });
@@ -1117,14 +1117,14 @@ describe("DeFiEdgeStrategy", () => {
     beforeEach("Rebalance the ticks", async () => {
       await mint(signers[1]);
       oldTicks = [await strategy.ticks(0)];
-      strategy.rebalance([
+      await strategy.rebalance([
         {
           amount0: expandTo18Decimals(0.001),
           amount1: expandTo18Decimals(0.3),
           tickLower: calculateTick(2500, 60),
           tickUpper: calculateTick(3300, 60),
         },
-      ]);
+      ], true);
     });
 
     it("should set onHold to false", async () => {
@@ -1266,7 +1266,7 @@ describe("DeFiEdgeStrategy", () => {
           tickLower: calculateTick(2000, 60),
           tickUpper: calculateTick(4000, 60),
         },
-      ]);
+      ], true);
     });
 
     it("should set on hold to true", async () => {

@@ -281,7 +281,7 @@ describe("StrategyBase", () => {
           tickLower,
           tickUpper,
         },
-      ]);
+      ], true);
       expect((await strategy.ticks(0)).tickLower).to.equal(tickLower);
       expect((await strategy.ticks(0)).tickUpper).to.equal(tickUpper);
     });
@@ -314,7 +314,7 @@ describe("StrategyBase", () => {
         };
         ticks.push(tick);
       }
-      expect(strategy.rebalance(ticks)).to.be.revertedWith("ITL");
+      await expect(strategy.rebalance(ticks, true)).to.be.revertedWith("ITL");
     });
 
     it("should revert if two tick upper and tick lower are same", async () => {
@@ -332,7 +332,7 @@ describe("StrategyBase", () => {
           tickUpper: calculateTick(4000, 60),
         },
       ];
-      expect(strategy.rebalance(ticks)).to.be.revertedWith("TS");
+      await expect(strategy.rebalance(ticks, true)).to.be.revertedWith("IT");
     });
   });
 
@@ -360,7 +360,7 @@ describe("StrategyBase", () => {
             tickLower: calculateTick(2500, 60),
             tickUpper: calculateTick(3600, 60),
           },
-        ])
+        ], true)
       ).to.be.revertedWith("D");
     });
 
@@ -523,7 +523,7 @@ describe("StrategyBase", () => {
           tickLower: calculateTick(2000, 60),
           tickUpper: calculateTick(4000, 60),
         },
-      ]);
+      ], true);
 
       await expect(strategy.ticks(1)).to.be.reverted; // hence strategy have only one tick
 
