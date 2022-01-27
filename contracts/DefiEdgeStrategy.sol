@@ -30,7 +30,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
     /**
      * @param _factory Address of the strategy factory
      * @param _pool Address of the pool
-     * @param _swapRouter Address of the Uniswap V3 periphery swap router
+     * @param _oneInchRouter Address of the Uniswap V3 periphery swap router
      * @param _chainlinkRegistry Chainlink registry address
      * @param _manager Address of the manager
      * @param _usdAsBase If the Chainlink feed is pegged with USD
@@ -39,7 +39,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
     constructor(
         address _factory,
         address _pool,
-        address _swapRouter,
+        address _oneInchRouter,
         address _chainlinkRegistry,
         address _manager,
         bool[] memory _usdAsBase,
@@ -50,7 +50,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         require(_ticks.length <= 5, "ITL");
         manager = IStrategyManager(_manager);
         factory = IStrategyFactory(_factory);
-        swapRouter = ISwapRouter(_swapRouter);
+        oneInchRouter = IOneInchRouter(_oneInchRouter);
         chainlinkRegistry = _chainlinkRegistry;
         pool = IUniswapV3Pool(_pool);
         token0 = pool.token0();

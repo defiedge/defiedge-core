@@ -48,7 +48,8 @@ contract DefiEdgeStrategyFactory {
     address public deployerProxy;
     address public uniswapV3Factory; // Uniswap V3 pool factory
     address public chainlinkRegistry; // Chainlink registry
-    address public swapRouter; // Uniswap V3 Swap Router
+    // address public swapRouter; // Uniswap V3 Swap Router
+    address public oneInchRouter;
 
     // mapping of blacklisted strategies
     mapping(address => bool) public denied;
@@ -75,7 +76,7 @@ contract DefiEdgeStrategyFactory {
         address _deployerProxy,
         address _chainlinkRegistry,
         address _uniswapV3factory,
-        address _swapRouter,
+        address _oneInchRouter,
         uint256 _allowedSlippage,
         uint256 _allowedDeviation
     ) {
@@ -83,9 +84,10 @@ contract DefiEdgeStrategyFactory {
         deployerProxy = _deployerProxy;
         uniswapV3Factory = _uniswapV3factory;
         chainlinkRegistry = _chainlinkRegistry;
-        swapRouter = _swapRouter;
+        // swapRouter = _swapRouter;
         allowedSlippage = _allowedSlippage;
         allowedDeviation = _allowedDeviation;
+        oneInchRouter = _oneInchRouter;
     }
 
     // /**
@@ -130,7 +132,7 @@ contract DefiEdgeStrategyFactory {
             .createStrategy(
                 address(this),
                 params.pool,
-                swapRouter,
+                oneInchRouter,
                 chainlinkRegistry,
                 manager,
                 params.usdAsBase,
