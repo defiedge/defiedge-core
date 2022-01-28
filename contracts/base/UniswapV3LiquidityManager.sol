@@ -9,6 +9,7 @@ import "../base/StrategyBase.sol";
 // interfaces
 import "../libraries/LiquidityHelper.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+import "../interfaces/IOneInch.sol";
 
 // libraries
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
@@ -178,36 +179,68 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
      * @notice Swap the fudns to 1Inch
      */
     function swap(
-        bool _zeroForOne,
-        uint256 _amountIn,
-        uint256 _amountOutMinimum,
-        uint256[] memory _distribution,
-        uint256 _flags
+        bytes calldata data
     ) external onlyOperator hasDeviation {
         address tokenIn;
         address tokenOut;
-        bool[2] memory isBase; // is direct USD feed is available for the token?
 
-        if (_zeroForOne) {
-            tokenIn = token0;
-            tokenOut = token1;
-            isBase = [usdAsBase[0], usdAsBase[1]];
-        } else {
-            tokenIn = token1;
-            tokenOut = token0;
-            isBase = [usdAsBase[1], usdAsBase[0]];
+        IOneInch.SwapDescription memory description;
+        if(data[0] == 0x7c) {
+            // swap() method
+            (, description, ) = abi.decode(data[4:], (address, IOneInch.SwapDescription, bytes));
+
+            require(description.srcToken == token0 || description.srcToken == token1, "IT");
+            require(description.dstToken == token0 || description.dstToken == token1, "IT");
+
+        } else if(data[0] == 0x2e){
+            // unoswap() method
+            (address srcToken, uint256 amount, uint256 minReturn, bytes32[] memory pathData) = abi.decode(
+                data[4:],
+                (address, uint256, uint256, bytes32[])
+            );
+
+            description.srcToken = srcToken;
+            description.amount = amount;
+            description.minReturnAmount = minReturn;
+            description.dstToken = srcToken == token0 ? token1 : token0;
+
+            require(srcToken == token0 || srcToken == token1, "IT");
+
+        } else if(data[0] == 0xe4){
+            // uniswapV3Swap() method
+            (uint256 amount, uint256 minReturn, uint256[] memory pools) = abi.decode(
+                data[4:],
+                (uint256, uint256, uint256[])
+            );
+
+            description.amount = amount;
+            description.minReturnAmount = minReturn;
+
+            // TODO - find srcToken and destToken from pools and validate (UniswapV3Pool - address(pools[0]))
+
         }
 
-        uint256 amountOut = oneInchRouter.swap(
-            IERC20(tokenIn),
-            IERC20(tokenOut),
-            _amountIn,
-            _amountOutMinimum,
-            _distribution,
-            _flags
-        );
+        IERC20(description.srcToken).approve(address(oneInchRouter), description.amount);
 
-        emit Swap(_amountIn, amountOut, _zeroForOne);
+        // Interact with 1inch through contract call with data
+        (bool success, bytes memory returnData) = address(oneInchRouter).call{value: 0}(data);
+
+       // Verify return status and data
+        if (success) {
+            uint256 returnAmount = abi.decode(returnData, (uint256));
+        } else {
+            if (returnData.length < 68) {
+                // If the returnData length is less than 68, then the transaction failed silently.
+                revert("swap");
+            } else {
+                // Look for revert reason and bubble it up if present
+                assembly {
+                    returnData := add(returnData, 0x04)
+                }
+                revert(abi.decode(returnData, (string)));
+            }
+        }
+
     }
 
     // /**
