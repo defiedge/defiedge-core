@@ -181,44 +181,50 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
     function swap(
         bytes calldata data
     ) external onlyOperator hasDeviation {
-        address tokenIn;
-        address tokenOut;
 
         IOneInch.SwapDescription memory description;
         if(data[0] == 0x7c) {
-            // swap() method
+            // call swap() method
             (, description, ) = abi.decode(data[4:], (address, IOneInch.SwapDescription, bytes));
 
             require(description.srcToken == token0 || description.srcToken == token1, "IT");
             require(description.dstToken == token0 || description.dstToken == token1, "IT");
 
         } else if(data[0] == 0x2e){
-            // unoswap() method
-            (address srcToken, uint256 amount, uint256 minReturn, bytes32[] memory pathData) = abi.decode(
+            // call unoswap() method
+            (address srcToken, , ,) = abi.decode(
                 data[4:],
                 (address, uint256, uint256, bytes32[])
             );
 
             description.srcToken = srcToken;
-            description.amount = amount;
-            description.minReturnAmount = minReturn;
             description.dstToken = srcToken == token0 ? token1 : token0;
 
             require(srcToken == token0 || srcToken == token1, "IT");
 
         } else if(data[0] == 0xe4){
-            // uniswapV3Swap() method
-            (uint256 amount, uint256 minReturn, uint256[] memory pools) = abi.decode(
+            // call uniswapV3Swap() method
+            (, , uint256[] memory pools) = abi.decode(
                 data[4:],
                 (uint256, uint256, uint256[])
             );
 
-            description.amount = amount;
-            description.minReturnAmount = minReturn;
+            bool zeroForOne = pools[0] & 1 << 255 == 0;
 
-            // TODO - find srcToken and destToken from pools and validate (UniswapV3Pool - address(pools[0]))
+            description.srcToken = zeroForOne ? IUniswapV3Pool(pools[0]).token0() : IUniswapV3Pool(pools[0]).token1();
+            description.dstToken = description.srcToken == token0 ? token1 : token0;
 
+            require(description.srcToken == token0 || description.srcToken == token1, "IT");
+
+        } else {
+            revert("IM");
         }
+
+        address tokenIn = description.srcToken == token0 ? token0 : token1;
+        address tokenOut = description.dstToken == token0 ? token0 : token1;
+
+        uint256 tokenInBalBefore = IERC20(tokenIn).balanceOf(address(this));
+        uint256 tokenOutBalBefore = IERC20(tokenOut).balanceOf(address(this));
 
         IERC20(description.srcToken).approve(address(oneInchRouter), description.amount);
 
@@ -226,9 +232,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         (bool success, bytes memory returnData) = address(oneInchRouter).call{value: 0}(data);
 
        // Verify return status and data
-        if (success) {
-            uint256 returnAmount = abi.decode(returnData, (uint256));
-        } else {
+        if (!success) {
             if (returnData.length < 68) {
                 // If the returnData length is less than 68, then the transaction failed silently.
                 revert("swap");
@@ -240,6 +244,25 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
                 revert(abi.decode(returnData, (string)));
             }
         }
+
+        uint256 tokenInBalAfter = IERC20(tokenIn).balanceOf(address(this));
+        uint256 tokenOutBalAfter = IERC20(tokenOut).balanceOf(address(this));
+
+        uint256 amountIn = tokenInBalBefore.sub(tokenInBalAfter);
+        uint256 amountOut = tokenOutBalAfter.sub(tokenOutBalBefore);
+
+        require(
+            OracleLibrary.allowSwap(
+                address(pool),
+                address(factory),
+                amountIn,
+                amountOut,
+                tokenIn,
+                tokenOut,
+                [usdAsBase[0], usdAsBase[1]]
+            ),
+            "S"
+        );
 
     }
 
