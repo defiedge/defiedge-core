@@ -8,9 +8,7 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 library OneInchHelper {
 
     /**
-     * @dev Calculate year/month/day from the number of days since 1970/01/01 using
-     *      the date conversion algorithm from http://aa.usno.navy.mil/faq/docs/JD_Formula.php
-     *      and adding the offset 2440588 so that 1970/01/01 is day 0
+     * @dev Function decodeds srcToken, dstToken and source swap amount from the given data
      * @param token0 token0 address of strategy
      * @param token1 token1 address of strategy
      * @param data bytes data to decode
