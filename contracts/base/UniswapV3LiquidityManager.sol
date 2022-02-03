@@ -8,6 +8,7 @@ import "../base/StrategyBase.sol";
 
 // interfaces
 import "../libraries/LiquidityHelper.sol";
+import "../libraries/OneInchHelper.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "../interfaces/IOneInch.sol";
 
@@ -182,51 +183,18 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         bytes calldata data
     ) external onlyOperator hasDeviation {
 
-        IOneInch.SwapDescription memory description;
-        if(data[0] == 0x7c) {
-            // call swap() method
-            (, description, ) = abi.decode(data[4:], (address, IOneInch.SwapDescription, bytes));
+        (address srcToken, address dstToken, uint256 amount) = OneInchHelper.decodeData(token0, token1, data);
 
-            require(description.srcToken == token0 || description.srcToken == token1, "IT");
-            require(description.dstToken == token0 || description.dstToken == token1, "IT");
+        require(srcToken == token0 || srcToken == token1, "IT");
+        require(dstToken == token0 || dstToken == token1, "IT");
 
-        } else if(data[0] == 0x2e){
-            // call unoswap() method
-            (address srcToken, , ,) = abi.decode(
-                data[4:],
-                (address, uint256, uint256, bytes32[])
-            );
-
-            description.srcToken = srcToken;
-            description.dstToken = srcToken == token0 ? token1 : token0;
-
-            require(srcToken == token0 || srcToken == token1, "IT");
-
-        } else if(data[0] == 0xe4){
-            // call uniswapV3Swap() method
-            (, , uint256[] memory pools) = abi.decode(
-                data[4:],
-                (uint256, uint256, uint256[])
-            );
-
-            bool zeroForOne = pools[0] & 1 << 255 == 0;
-
-            description.srcToken = zeroForOne ? IUniswapV3Pool(pools[0]).token0() : IUniswapV3Pool(pools[0]).token1();
-            description.dstToken = description.srcToken == token0 ? token1 : token0;
-
-            require(description.srcToken == token0 || description.srcToken == token1, "IT");
-
-        } else {
-            revert("IM");
-        }
-
-        address tokenIn = description.srcToken == token0 ? token0 : token1;
-        address tokenOut = description.dstToken == token0 ? token0 : token1;
+        address tokenIn = srcToken == token0 ? token0 : token1;
+        address tokenOut = dstToken == token0 ? token0 : token1;
 
         uint256 tokenInBalBefore = IERC20(tokenIn).balanceOf(address(this));
         uint256 tokenOutBalBefore = IERC20(tokenOut).balanceOf(address(this));
 
-        IERC20(description.srcToken).approve(address(oneInchRouter), description.amount);
+        IERC20(srcToken).approve(address(oneInchRouter), amount);
 
         // Interact with 1inch through contract call with data
         (bool success, bytes memory returnData) = address(oneInchRouter).call{value: 0}(data);
