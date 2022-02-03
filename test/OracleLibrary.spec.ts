@@ -11,6 +11,7 @@ const UniswapV3OracleTestFactory = ethers.getContractFactory(
   "UniswapV3OracleTest"
 );
 const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper");
+const OneInchHelperLibrary = ethers.getContractFactory("OneInchHelper");
 const OracleLibraryLibrary = ethers.getContractFactory("OracleLibrary");
 const ChainlinkRegistryMockFactory = ethers.getContractFactory(
   "ChainlinkRegistryMock"
@@ -32,6 +33,7 @@ import { ShareHelperTest } from "../typechain/ShareHelperTest";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
 import { ShareHelper } from "../typechain/ShareHelper";
 import { LiquidityHelper } from "../typechain/LiquidityHelper";
+import { OneInchHelper } from "../typechain/OneInchHelper";
 import { OracleLibrary } from "../typechain/OracleLibrary";
 import { ChainlinkRegistryMock } from "../typechain/ChainlinkRegistryMock";
 import { SwapRouter } from "../typechain/SwapRouter";
@@ -61,6 +63,7 @@ let shareHelper: ShareHelperTest;
 let oracle: UniswapV3OracleTest;
 let shareHelperL: ShareHelper;
 let liquidityHelper: LiquidityHelper;
+let oneInchHelper: OneInchHelper;
 let oracleLibrary: OracleLibrary;
 let chainlinkRegistry: ChainlinkRegistryMock;
 let router: SwapRouter;
@@ -117,12 +120,15 @@ describe("OracleLibrary", () => {
       await LiquidityHelperLibrary
     ).deploy()) as LiquidityHelper;
 
+    oneInchHelper = (await (await OneInchHelperLibrary).deploy()) as OneInchHelper;
+
     const DefiEdgeStrategyDeployerContract = ethers.getContractFactory("DefiEdgeStrategyDeployer",
      {
         libraries: {
           ShareHelper: shareHelperL.address,
           OracleLibrary: oracleLibrary.address,
-          LiquidityHelper: liquidityHelper.address
+          LiquidityHelper: liquidityHelper.address,
+          OneInchHelper: oneInchHelper.address
         }
       }
     );

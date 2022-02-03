@@ -11,6 +11,7 @@ const UniswapV3OracleTestFactory = ethers.getContractFactory(
   "UniswapV3OracleTest"
 );
 const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper");
+const OneInchHelperLibrary = ethers.getContractFactory("OneInchHelper");
 const OracleLibraryLibrary = ethers.getContractFactory("OracleLibrary");
 const ChainlinkRegistryMockFactory = ethers.getContractFactory(
   "ChainlinkRegistryMock"
@@ -32,6 +33,7 @@ import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
 import { LiquidityHelperTest } from "../typechain/LiquidityHelperTest";
 import { ShareHelper } from "../typechain/ShareHelper";
 import { LiquidityHelper } from "../typechain/LiquidityHelper";
+import { OneInchHelper } from "../typechain/OneInchHelper";
 import { OracleLibrary } from "../typechain/OracleLibrary";
 import { ChainlinkRegistryMock } from "../typechain/ChainlinkRegistryMock";
 import { SwapRouter } from "../typechain/SwapRouter";
@@ -62,6 +64,7 @@ let oracle: UniswapV3OracleTest;
 // let liquidityHelper: LiquidityHelperTest;
 let shareHelper: ShareHelper;
 let liquidityHelper: LiquidityHelper;
+let oneInchHelper: OneInchHelper;
 let oracleLibrary: OracleLibrary;
 let chainlinkRegistry: ChainlinkRegistryMock;
 let router: SwapRouter;
@@ -127,12 +130,15 @@ describe("UniswapV3LiquidityManager", () => {
       await LiquidityHelperLibrary
     ).deploy()) as LiquidityHelper;
 
+    oneInchHelper = (await (await OneInchHelperLibrary).deploy()) as OneInchHelper;
+
     const DefiEdgeStrategyDeployerContract = ethers.getContractFactory("DefiEdgeStrategyDeployer",
     {
        libraries: {
          ShareHelper: shareHelper.address,
          OracleLibrary: oracleLibrary.address,
-         LiquidityHelper: liquidityHelper.address
+         LiquidityHelper: liquidityHelper.address,
+         OneInchHelper: oneInchHelper.address,
        }
      }
     );
@@ -455,367 +461,367 @@ describe("UniswapV3LiquidityManager", () => {
   //   });
   // });
 
-  describe("#swap", async () => {
-    beforeEach("add some liquidity", async () => {
-      await mint(signers[0]);
-      await strategy.hold();
-    });
+  // describe("#swap", async () => {
+  //   beforeEach("add some liquidity", async () => {
+  //     await mint(signers[0]);
+  //     await strategy.hold();
+  //   });
 
-    it("should revert if caller is not operator", async () => {
+  //   it("should revert if caller is not operator", async () => {
 
-      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
-      const sqrtPriceLimitX96 =
-        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.9)).toFixed(0);
+  //     const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+  //     const sqrtPriceLimitX96 =
+  //       (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.9)).toFixed(0);
 
-      await expect(
-        strategy
-          .connect(signers[1])
-          .swap(
-            false,
-            false,
-            encodePath([token0.address, token1.address], [3000]),
-            constants.MaxUint256,
-            expandTo18Decimals(0.0001),
-            0,
-            sqrtPriceLimitX96
-          )
-      ).to.be.revertedWith('N');
+  //     await expect(
+  //       strategy
+  //         .connect(signers[1])
+  //         .swap(
+  //           false,
+  //           false,
+  //           encodePath([token0.address, token1.address], [3000]),
+  //           constants.MaxUint256,
+  //           expandTo18Decimals(0.0001),
+  //           0,
+  //           sqrtPriceLimitX96
+  //         )
+  //     ).to.be.revertedWith('N');
 
-    });
+  //   });
 
-    it("swapExactInput - should swap the amount", async () => {
+  //   it("swapExactInput - should swap the amount", async () => {
 
-      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
-      const sqrtPriceLimitX96 =
-        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.1)).toFixed(0);
+  //     const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+  //     const sqrtPriceLimitX96 =
+  //       (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.1)).toFixed(0);
 
-      let swap = await strategy.swap(
-        false,
-        true,
-        encodePath([token0.address, token1.address], [3000]),
-        constants.MaxUint256,
-        expandTo18Decimals(0.0001),
-        0,
-        sqrtPriceLimitX96
-      );
-
-
-      expect(swap)
-        .to.emit(pool, "Swap")
-        .withArgs(
-          router.address,
-          strategy.address,
-          "100000000000000",
-          "-300068242774103142",
-          BigInt("4346523400549810817866004402175"),
-          80100
-        );
-    });
+  //     let swap = await strategy.swap(
+  //       false,
+  //       true,
+  //       encodePath([token0.address, token1.address], [3000]),
+  //       constants.MaxUint256,
+  //       expandTo18Decimals(0.0001),
+  //       0,
+  //       sqrtPriceLimitX96
+  //     );
 
 
-    it("swapExactInput - should transfer tokens", async () => {
+  //     expect(swap)
+  //       .to.emit(pool, "Swap")
+  //       .withArgs(
+  //         router.address,
+  //         strategy.address,
+  //         "100000000000000",
+  //         "-300068242774103142",
+  //         BigInt("4346523400549810817866004402175"),
+  //         80100
+  //       );
+  //   });
 
-      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
-      const sqrtPriceLimitX96 =
-        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.1)).toFixed(0);
 
-      let token0A = (await ethers.getContractAt("TestERC20", await pool.token0()));
-      let token1A = (await ethers.getContractAt("TestERC20", await pool.token1()));
+  //   it("swapExactInput - should transfer tokens", async () => {
 
-      let swap = await strategy.swap(
-        false,
-        true,
-        encodePath([token0.address, token1.address], [3000]),
-        constants.MaxUint256,
-        expandTo18Decimals(0.0001),
-        0,
-        sqrtPriceLimitX96);
+  //     const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+  //     const sqrtPriceLimitX96 =
+  //       (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.1)).toFixed(0);
 
-      expect(swap).to.emit(token0A, "Transfer").withArgs(strategy.address, pool.address, expandTo18Decimals(0.0001));
-      expect(swap).to.emit(token1A, "Transfer").withArgs(pool.address, strategy.address, '300068242774103142');
+  //     let token0A = (await ethers.getContractAt("TestERC20", await pool.token0()));
+  //     let token1A = (await ethers.getContractAt("TestERC20", await pool.token1()));
+
+  //     let swap = await strategy.swap(
+  //       false,
+  //       true,
+  //       encodePath([token0.address, token1.address], [3000]),
+  //       constants.MaxUint256,
+  //       expandTo18Decimals(0.0001),
+  //       0,
+  //       sqrtPriceLimitX96);
+
+  //     expect(swap).to.emit(token0A, "Transfer").withArgs(strategy.address, pool.address, expandTo18Decimals(0.0001));
+  //     expect(swap).to.emit(token1A, "Transfer").withArgs(pool.address, strategy.address, '300068242774103142');
         
-    });
+  //   });
 
 
-    it("swapExactInputSingle - should swap the amount", async () => {
-      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
-      const sqrtPriceLimitX96 =
-        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.01)).toFixed(0);
+  //   it("swapExactInputSingle - should swap the amount", async () => {
+  //     const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+  //     const sqrtPriceLimitX96 =
+  //       (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.01)).toFixed(0);
      
-      const params = {
-        zeroForOne: false,
-        fee: 0,
-        recipient: strategy.address,
-        deadline: constants.MaxUint256,
-        amountIn: expandTo18Decimals(0.0001),
-        amountOutMinimum: 0,
-        sqrtPriceLimitX96: sqrtPriceLimitX96
-      } 
+  //     const params = {
+  //       zeroForOne: false,
+  //       fee: 0,
+  //       recipient: strategy.address,
+  //       deadline: constants.MaxUint256,
+  //       amountIn: expandTo18Decimals(0.0001),
+  //       amountOutMinimum: 0,
+  //       sqrtPriceLimitX96: sqrtPriceLimitX96
+  //     } 
 
-      await expect(
-        await strategy.swap(
-          false,
-          true,
-          encodePath([token0.address, token1.address], [3000]),
-          constants.MaxUint256,
-          expandTo18Decimals(0.0001),
-          0,
-          sqrtPriceLimitX96
-        )
-      )
-        .to.emit(pool, "Swap")
-        .withArgs(
-          router.address,
-          strategy.address,
-          "100000000000000",
-          "-300068242774103142",
-          BigInt("4346523400549810817866004402175"),
-          80100
-        );
-    });
+  //     await expect(
+  //       await strategy.swap(
+  //         false,
+  //         true,
+  //         encodePath([token0.address, token1.address], [3000]),
+  //         constants.MaxUint256,
+  //         expandTo18Decimals(0.0001),
+  //         0,
+  //         sqrtPriceLimitX96
+  //       )
+  //     )
+  //       .to.emit(pool, "Swap")
+  //       .withArgs(
+  //         router.address,
+  //         strategy.address,
+  //         "100000000000000",
+  //         "-300068242774103142",
+  //         BigInt("4346523400549810817866004402175"),
+  //         80100
+  //       );
+  //   });
 
 
-    it("swapExactInputSingle - should transfer tokens", async () => {
-      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
-      const sqrtPriceLimitX96 =
-        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
+  //   it("swapExactInputSingle - should transfer tokens", async () => {
+  //     const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+  //     const sqrtPriceLimitX96 =
+  //       (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
      
-      let token0A = (await ethers.getContractAt("TestERC20", await pool.token0()));
-      let token1A = (await ethers.getContractAt("TestERC20", await pool.token1()));
+  //     let token0A = (await ethers.getContractAt("TestERC20", await pool.token0()));
+  //     let token1A = (await ethers.getContractAt("TestERC20", await pool.token1()));
 
-      const params = {
-        zeroForOne: false,
-        fee: 0,
-        recipient: strategy.address,
-        deadline: constants.MaxUint256,
-        amountIn: expandTo18Decimals(0.0001),
-        amountOutMinimum: 0,
-        sqrtPriceLimitX96: sqrtPriceLimitX96
-      } 
+  //     const params = {
+  //       zeroForOne: false,
+  //       fee: 0,
+  //       recipient: strategy.address,
+  //       deadline: constants.MaxUint256,
+  //       amountIn: expandTo18Decimals(0.0001),
+  //       amountOutMinimum: 0,
+  //       sqrtPriceLimitX96: sqrtPriceLimitX96
+  //     } 
 
-      let swap = await strategy.swap(
-                  false,
-                  false,
-                  encodePath([token1.address, token0.address], [3000]),
-                  constants.MaxUint256,
-                  expandTo18Decimals(0.0001),
-                  0,
-                  sqrtPriceLimitX96
-                )
+  //     let swap = await strategy.swap(
+  //                 false,
+  //                 false,
+  //                 encodePath([token1.address, token0.address], [3000]),
+  //                 constants.MaxUint256,
+  //                 expandTo18Decimals(0.0001),
+  //                 0,
+  //                 sqrtPriceLimitX96
+  //               )
 
 
 
-      expect(swap).to.emit(token1A, "Transfer").withArgs(strategy.address, pool.address, expandTo18Decimals(0.0001));
-      expect(swap).to.emit(token0A, "Transfer").withArgs(pool.address, strategy.address, '33126097943');
+  //     expect(swap).to.emit(token1A, "Transfer").withArgs(strategy.address, pool.address, expandTo18Decimals(0.0001));
+  //     expect(swap).to.emit(token0A, "Transfer").withArgs(pool.address, strategy.address, '33126097943');
         
-    });
+  //   });
 
-    it("should increase swap counter and store timestamp", async () => {
+  //   it("should increase swap counter and store timestamp", async () => {
 
-      await strategyManager.changeSwapDeviation("2500000000000000");
-      await strategyManager.changeMaxSwapLimit(2);
+  //     await strategyManager.changeSwapDeviation("2500000000000000");
+  //     await strategyManager.changeMaxSwapLimit(2);
 
-      expect(await strategyManager.swapCounter()).to.eq(0);
-      expect(await strategyManager.lastSwapTimestamp()).to.eq(0);
+  //     expect(await strategyManager.swapCounter()).to.eq(0);
+  //     expect(await strategyManager.lastSwapTimestamp()).to.eq(0);
 
-      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
-      const sqrtPriceLimitX96 =
-        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
+  //     const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+  //     const sqrtPriceLimitX96 =
+  //       (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
      
-      let swap = await strategy.swap(
-          false,
-          false,
-          encodePath([token1.address, token0.address], [3000]),
-          constants.MaxUint256,
-          expandTo18Decimals(0.0001),
-          0,
-          sqrtPriceLimitX96
-        )
+  //     let swap = await strategy.swap(
+  //         false,
+  //         false,
+  //         encodePath([token1.address, token0.address], [3000]),
+  //         constants.MaxUint256,
+  //         expandTo18Decimals(0.0001),
+  //         0,
+  //         sqrtPriceLimitX96
+  //       )
 
-      let result = await swap.wait();
+  //     let result = await swap.wait();
 
-      let timestamp = (await ethers.provider.getBlock(result.blockNumber)).timestamp     
+  //     let timestamp = (await ethers.provider.getBlock(result.blockNumber)).timestamp     
 
-      expect(await strategyManager.swapCounter()).to.eq(1);
-      expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp);
-    })
+  //     expect(await strategyManager.swapCounter()).to.eq(1);
+  //     expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp);
+  //   })
 
-    it("should not increase swap counter if deviation is less than allowed swap deviation", async () => {
+  //   it("should not increase swap counter if deviation is less than allowed swap deviation", async () => {
 
-      await strategyManager.changeSwapDeviation("9000000000000000");
-      await strategyManager.changeMaxSwapLimit(2);
+  //     await strategyManager.changeSwapDeviation("9000000000000000");
+  //     await strategyManager.changeMaxSwapLimit(2);
 
-      expect(await strategyManager.swapCounter()).to.eq(0);
-      expect(await strategyManager.lastSwapTimestamp()).to.eq(0);
+  //     expect(await strategyManager.swapCounter()).to.eq(0);
+  //     expect(await strategyManager.lastSwapTimestamp()).to.eq(0);
 
-      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
-      const sqrtPriceLimitX96 =
-        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
+  //     const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+  //     const sqrtPriceLimitX96 =
+  //       (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
      
-      await strategy.swap(
-          false,
-          false,
-          encodePath([token1.address, token0.address], [3000]),
-          constants.MaxUint256,
-          expandTo18Decimals(0.0001),
-          0,
-          sqrtPriceLimitX96
-        )
+  //     await strategy.swap(
+  //         false,
+  //         false,
+  //         encodePath([token1.address, token0.address], [3000]),
+  //         constants.MaxUint256,
+  //         expandTo18Decimals(0.0001),
+  //         0,
+  //         sqrtPriceLimitX96
+  //       )
 
 
-      expect(await strategyManager.swapCounter()).to.eq(0);
-      expect(await strategyManager.lastSwapTimestamp()).to.eq(0);
-    })
+  //     expect(await strategyManager.swapCounter()).to.eq(0);
+  //     expect(await strategyManager.lastSwapTimestamp()).to.eq(0);
+  //   })
 
-    it("should revert if max swap limit crossed for the day", async () => {
+  //   it("should revert if max swap limit crossed for the day", async () => {
 
-      await strategyManager.changeSwapDeviation("2500000000000000");
-      await strategyManager.changeMaxSwapLimit(2);
+  //     await strategyManager.changeSwapDeviation("2500000000000000");
+  //     await strategyManager.changeMaxSwapLimit(2);
 
-      expect(await strategyManager.swapCounter()).to.eq(0);
-      expect(await strategyManager.lastSwapTimestamp()).to.eq(0);
+  //     expect(await strategyManager.swapCounter()).to.eq(0);
+  //     expect(await strategyManager.lastSwapTimestamp()).to.eq(0);
 
-      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
-      const sqrtPriceLimitX96 =
-        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
+  //     const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+  //     const sqrtPriceLimitX96 =
+  //       (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
      
-      let swap1 = await strategy.swap(
-          false,
-          false,
-          encodePath([token1.address, token0.address], [3000]),
-          constants.MaxUint256,
-          expandTo18Decimals(0.0001),
-          0,
-          sqrtPriceLimitX96
-        )
+  //     let swap1 = await strategy.swap(
+  //         false,
+  //         false,
+  //         encodePath([token1.address, token0.address], [3000]),
+  //         constants.MaxUint256,
+  //         expandTo18Decimals(0.0001),
+  //         0,
+  //         sqrtPriceLimitX96
+  //       )
 
-      let result1 = await swap1.wait();
+  //     let result1 = await swap1.wait();
 
-      let timestamp1 = (await ethers.provider.getBlock(result1.blockNumber)).timestamp     
+  //     let timestamp1 = (await ethers.provider.getBlock(result1.blockNumber)).timestamp     
 
-      expect(await strategyManager.swapCounter()).to.eq(1);
-      expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp1);
+  //     expect(await strategyManager.swapCounter()).to.eq(1);
+  //     expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp1);
 
-      const sqrtRatioX962 = ((await pool.slot0()).sqrtPriceX96).toString();
-      const sqrtPriceLimitX962=
-        (new bn(sqrtRatioX962).plus(sqrtRatioX962).multipliedBy(0.6)).toFixed(0);
+  //     const sqrtRatioX962 = ((await pool.slot0()).sqrtPriceX96).toString();
+  //     const sqrtPriceLimitX962=
+  //       (new bn(sqrtRatioX962).plus(sqrtRatioX962).multipliedBy(0.6)).toFixed(0);
      
-      let swap2 = await strategy.swap(
-          false,
-          false,
-          encodePath([token1.address, token0.address], [3000]),
-          constants.MaxUint256,
-          expandTo18Decimals(0.0001),
-          0,
-          sqrtPriceLimitX962
-        )
+  //     let swap2 = await strategy.swap(
+  //         false,
+  //         false,
+  //         encodePath([token1.address, token0.address], [3000]),
+  //         constants.MaxUint256,
+  //         expandTo18Decimals(0.0001),
+  //         0,
+  //         sqrtPriceLimitX962
+  //       )
 
-      let result2 = await swap2.wait();
+  //     let result2 = await swap2.wait();
 
-      let timestamp2 = (await ethers.provider.getBlock(result2.blockNumber)).timestamp  
+  //     let timestamp2 = (await ethers.provider.getBlock(result2.blockNumber)).timestamp  
       
-      expect(await strategyManager.swapCounter()).to.eq(2);
-      expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp2);
+  //     expect(await strategyManager.swapCounter()).to.eq(2);
+  //     expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp2);
 
-      const sqrtRatioX963 = ((await pool.slot0()).sqrtPriceX96).toString();
-      const sqrtPriceLimitX963=
-        (new bn(sqrtRatioX963).plus(sqrtRatioX963).multipliedBy(0.6)).toFixed(0);
+  //     const sqrtRatioX963 = ((await pool.slot0()).sqrtPriceX96).toString();
+  //     const sqrtPriceLimitX963=
+  //       (new bn(sqrtRatioX963).plus(sqrtRatioX963).multipliedBy(0.6)).toFixed(0);
      
-      await expect(strategy.swap(
-          false,
-          false,
-          encodePath([token1.address, token0.address], [3000]),
-          constants.MaxUint256,
-          expandTo18Decimals(0.0001),
-          0,
-          sqrtPriceLimitX963
-      )).to.be.revertedWith("LR")
-    })
+  //     await expect(strategy.swap(
+  //         false,
+  //         false,
+  //         encodePath([token1.address, token0.address], [3000]),
+  //         constants.MaxUint256,
+  //         expandTo18Decimals(0.0001),
+  //         0,
+  //         sqrtPriceLimitX963
+  //     )).to.be.revertedWith("LR")
+  //   })
 
-    it("should revert if max swap limit crossed for day & allow swap on next day", async () => {
+  //   it("should revert if max swap limit crossed for day & allow swap on next day", async () => {
 
-      await strategyManager.changeSwapDeviation("2500000000000000");
-      await strategyManager.changeMaxSwapLimit(2);
+  //     await strategyManager.changeSwapDeviation("2500000000000000");
+  //     await strategyManager.changeMaxSwapLimit(2);
 
-      expect(await strategyManager.swapCounter()).to.eq(0);
-      expect(await strategyManager.lastSwapTimestamp()).to.eq(0);
+  //     expect(await strategyManager.swapCounter()).to.eq(0);
+  //     expect(await strategyManager.lastSwapTimestamp()).to.eq(0);
 
-      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
-      const sqrtPriceLimitX96 =
-        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
+  //     const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+  //     const sqrtPriceLimitX96 =
+  //       (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
      
-      let swap1 = await strategy.swap(
-          false,
-          false,
-          encodePath([token1.address, token0.address], [3000]),
-          constants.MaxUint256,
-          expandTo18Decimals(0.0001),
-          0,
-          sqrtPriceLimitX96
-        )
+  //     let swap1 = await strategy.swap(
+  //         false,
+  //         false,
+  //         encodePath([token1.address, token0.address], [3000]),
+  //         constants.MaxUint256,
+  //         expandTo18Decimals(0.0001),
+  //         0,
+  //         sqrtPriceLimitX96
+  //       )
 
-      let result1 = await swap1.wait();
+  //     let result1 = await swap1.wait();
 
-      let timestamp1 = (await ethers.provider.getBlock(result1.blockNumber)).timestamp     
+  //     let timestamp1 = (await ethers.provider.getBlock(result1.blockNumber)).timestamp     
 
-      expect(await strategyManager.swapCounter()).to.eq(1);
-      expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp1);
+  //     expect(await strategyManager.swapCounter()).to.eq(1);
+  //     expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp1);
 
-      const sqrtRatioX962 = ((await pool.slot0()).sqrtPriceX96).toString();
-      const sqrtPriceLimitX962=
-        (new bn(sqrtRatioX962).plus(sqrtRatioX962).multipliedBy(0.6)).toFixed(0);
+  //     const sqrtRatioX962 = ((await pool.slot0()).sqrtPriceX96).toString();
+  //     const sqrtPriceLimitX962=
+  //       (new bn(sqrtRatioX962).plus(sqrtRatioX962).multipliedBy(0.6)).toFixed(0);
      
-      let swap2 = await strategy.swap(
-          false,
-          false,
-          encodePath([token1.address, token0.address], [3000]),
-          constants.MaxUint256,
-          expandTo18Decimals(0.0001),
-          0,
-          sqrtPriceLimitX962
-        )
+  //     let swap2 = await strategy.swap(
+  //         false,
+  //         false,
+  //         encodePath([token1.address, token0.address], [3000]),
+  //         constants.MaxUint256,
+  //         expandTo18Decimals(0.0001),
+  //         0,
+  //         sqrtPriceLimitX962
+  //       )
 
-      let result2 = await swap2.wait();
+  //     let result2 = await swap2.wait();
 
-      let timestamp2 = (await ethers.provider.getBlock(result2.blockNumber)).timestamp  
+  //     let timestamp2 = (await ethers.provider.getBlock(result2.blockNumber)).timestamp  
       
-      expect(await strategyManager.swapCounter()).to.eq(2);
-      expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp2);
+  //     expect(await strategyManager.swapCounter()).to.eq(2);
+  //     expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp2);
 
-      const sqrtRatioX963 = ((await pool.slot0()).sqrtPriceX96).toString();
-      const sqrtPriceLimitX963=
-        (new bn(sqrtRatioX963).plus(sqrtRatioX963).multipliedBy(0.6)).toFixed(0);
+  //     const sqrtRatioX963 = ((await pool.slot0()).sqrtPriceX96).toString();
+  //     const sqrtPriceLimitX963=
+  //       (new bn(sqrtRatioX963).plus(sqrtRatioX963).multipliedBy(0.6)).toFixed(0);
      
-      await expect(strategy.swap(
-          false,
-          false,
-          encodePath([token1.address, token0.address], [3000]),
-          constants.MaxUint256,
-          expandTo18Decimals(0.0001),
-          0,
-          sqrtPriceLimitX963
-      )).to.be.revertedWith("LR")
+  //     await expect(strategy.swap(
+  //         false,
+  //         false,
+  //         encodePath([token1.address, token0.address], [3000]),
+  //         constants.MaxUint256,
+  //         expandTo18Decimals(0.0001),
+  //         0,
+  //         sqrtPriceLimitX963
+  //     )).to.be.revertedWith("LR")
 
-      await ethers.provider.send("evm_increaseTime", [84600]); // time travel 1 day
+  //     await ethers.provider.send("evm_increaseTime", [84600]); // time travel 1 day
 
-      let swap3 = await strategy.swap(
-        false,
-        false,
-        encodePath([token1.address, token0.address], [3000]),
-        constants.MaxUint256,
-        expandTo18Decimals(0.0001),
-        0,
-        sqrtPriceLimitX963
-      )
+  //     let swap3 = await strategy.swap(
+  //       false,
+  //       false,
+  //       encodePath([token1.address, token0.address], [3000]),
+  //       constants.MaxUint256,
+  //       expandTo18Decimals(0.0001),
+  //       0,
+  //       sqrtPriceLimitX963
+  //     )
 
-      let result3 = await swap3.wait();
+  //     let result3 = await swap3.wait();
 
-      let timestamp3 = (await ethers.provider.getBlock(result3.blockNumber)).timestamp  
+  //     let timestamp3 = (await ethers.provider.getBlock(result3.blockNumber)).timestamp  
       
-      expect(await strategyManager.swapCounter()).to.eq(1);
-      expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp3);
-    })
-  })
+  //     expect(await strategyManager.swapCounter()).to.eq(1);
+  //     expect(await strategyManager.lastSwapTimestamp()).to.eq(timestamp3);
+  //   })
+  // })
 });
 
 async function approve(address: string, from: string | Signer | Provider) {
