@@ -163,11 +163,15 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
      */
     function burnAllLiquidity(Tick[] memory _ticks) internal {
         for (uint256 i = 0; i < _ticks.length; i++) {
-            burnLiquiditySingle(_ticks[i].tickLower, _ticks[i].tickUpper);
+            this.burnLiquiditySingle(_ticks[i].tickLower, _ticks[i].tickUpper);
         }
     }
 
-    function burnLiquiditySingle(int24 _tickLower, int24 _tickUpper) internal {
+    function burnLiquiditySingle(int24 _tickLower, int24 _tickUpper)
+        external
+        hasDeviation
+        onlyOperator
+    {
         (uint128 currentLiquidity, , , , ) = pool.positions(
             PositionKey.compute(address(this), _tickLower, _tickUpper)
         );

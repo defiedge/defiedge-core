@@ -240,7 +240,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                 Tick storage tick = ticks[_existingTicks[i].index];
 
                 if (_existingTicks[i].burn) {
-                    burnLiquiditySingle(tick.tickLower, tick.tickUpper);
+                    this.burnLiquiditySingle(tick.tickLower, tick.tickUpper);
                 }
 
                 // mint liquidity
@@ -282,39 +282,17 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             emit Rebalance(ticks);
         }
 
+        if (_existingTicks.length == 0 && _newTicks.length == 0 && _burnAll) {
+            onHold = true;
+            burnAllLiquidity(ticks);
+            delete ticks;
+            emit Hold();
+        }
+
         require(!isInvalidTicks(ticks), "IT");
         // checks for valid ticks length
         require(ticks.length <= 5, "ITL");
     }
-
-    // /**
-    //  * @notice Rebalances between the ticks
-    //  * @param _ticks Ticks in which amounts to be deploy
-    //  */
-    // function rebalance(Tick[] memory _ticks, bool _burnAll)
-    //     external
-    //     onlyOperator
-    //     isValidStrategy
-    // {
-    //     if (onHold) {
-    //         // delete ticks
-    //         delete ticks;
-    //         // deploy between ticks
-    //         redeploy(_ticks);
-    //     } else if (_burnAll) {
-    //         // burn all liquidity
-    //         burnAllLiquidity(ticks);
-    //         // delete ticks
-    //         delete ticks;
-    //         // redeploy to the amounts specified
-    //         redeploy(_ticks);
-    //     } else {
-    //         // redeploy ticks
-    //         redeploy(_ticks);
-    //     }
-
-    //     emit Rebalance(ticks);
-    // }
 
     /**
      * @notice Redeploys between ticks
@@ -339,16 +317,6 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             // push to ticks array
             ticks.push(Tick(amount0, amount1, tick.tickLower, tick.tickUpper));
         }
-    }
-
-    /**
-     * @notice Holds the funds
-     */
-    function hold() external onlyOperator hasDeviation {
-        onHold = true;
-        burnAllLiquidity(ticks);
-        delete ticks;
-        emit Hold();
     }
 
     // TODO: Make this function work correctly
