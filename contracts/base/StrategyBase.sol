@@ -61,9 +61,19 @@ contract StrategyBase is ERC20 {
 
     // Modifiers
     modifier onlyOperator() {
-        require(msg.sender == manager.operator(), "N");
+        require(manager.isAllowedToManage(msg.sender), "N");
         _;
     }
+
+    // modifier onlyOperatorAndBurner() {
+    //     require(
+    //         manager.hasRole(manager.ADMIN_ROLE(), msg.sender) ||
+    //             manager.hasRole(manager.MANAGER_ROLE(), msg.sender) ||
+    //             manager.hasRole(manager.BURNER_ROLE(), msg.sender),
+    //         "N"
+    //     );
+    //     _;
+    // }
 
     /**
      * @dev Replaces old ticks with new ticks

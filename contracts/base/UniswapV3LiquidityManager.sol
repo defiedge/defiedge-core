@@ -170,8 +170,8 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
     function burnLiquiditySingle(int24 _tickLower, int24 _tickUpper)
         external
         hasDeviation
-        onlyOperator
     {
+        require(manager.isAllowedToBurn(msg.sender), "N");
         (uint128 currentLiquidity, , , , ) = pool.positions(
             PositionKey.compute(address(this), _tickLower, _tickUpper)
         );

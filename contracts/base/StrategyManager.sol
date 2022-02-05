@@ -10,7 +10,9 @@ import "../libraries/DateTimeLibrary.sol";
 import "../interfaces/IStrategyFactory.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-contract StrategyManager {
+import "@openzeppelin/contracts/access/AccessControl.sol";
+
+contract StrategyManager is AccessControl {
     using SafeMath for uint256;
 
     event ChangeFee(uint256 tier);
@@ -55,6 +57,10 @@ contract StrategyManager {
     // tracks timestamp of the last swap happened
     uint256 public lastSwapTimestamp;
 
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE"); // can only rebalance and swap
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE"); // can control everything
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE"); /// only can burn the liquidity
+
     constructor(
         address _factory,
         address _operator,
@@ -74,11 +80,15 @@ contract StrategyManager {
 
         allowedDeviation = _allowedDeviation;
         allowedSwapDeviation = _allowedDeviation.div(2);
+
+        _setupRole(ADMIN_ROLE, _operator);
+        _setRoleAdmin(MANAGER_ROLE, ADMIN_ROLE);
+        _setRoleAdmin(BURNER_ROLE, ADMIN_ROLE);
     }
 
     // Modifiers
     modifier onlyOperator() {
-        require(msg.sender == operator, "N");
+        require(hasRole(ADMIN_ROLE, msg.sender), "N");
         _;
     }
 
@@ -91,6 +101,26 @@ contract StrategyManager {
     modifier onlyStrategy() {
         require(msg.sender == strategy(), "N");
         _;
+    }
+
+    function isAllowedToManage(address _account) public view returns (bool) {
+        if (hasRole(ADMIN_ROLE, _account) || hasRole(MANAGER_ROLE, _account)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function isAllowedToBurn(address _account) public view returns (bool) {
+        if (
+            hasRole(ADMIN_ROLE, _account) ||
+            hasRole(MANAGER_ROLE, _account) ||
+            hasRole(BURNER_ROLE, _account)
+        ) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     function strategy() public view returns (address) {
@@ -212,7 +242,7 @@ contract StrategyManager {
 
             lastSwapTimestamp = block.timestamp;
             swapCounter = _counter + 1;
-            
+
             return true;
         } else {
             // last swap happened on other day
