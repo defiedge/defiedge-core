@@ -226,7 +226,11 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         emit Burn(msg.sender, _shares, collect0, collect1);
     }
 
-    function partialRebalance(PartialTick[] memory _ticks) external {
+    function partialRebalance(PartialTick[] memory _ticks)
+        external
+        onlyOperator
+        isValidStrategy
+    {
         for (uint256 i = 0; i < _ticks.length; i++) {
             Tick storage tick = ticks[_ticks[i].index];
 
