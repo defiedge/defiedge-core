@@ -19,6 +19,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
     event Burn(address user, uint256 share, uint256 amount0, uint256 amount1);
     event Hold();
     event Rebalance(Tick[] ticks);
+    event PartialRebalance(PartialTick[] ticks);
 
     struct PartialTick {
         uint256 index;
@@ -84,8 +85,6 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             uint256 share
         )
     {
-        // require(!onHold, "H");
-
         // get total amounts with fees
         (uint256 totalAmount0, uint256 totalAmount1, , ) = this
             .getAUMWithFees();
@@ -204,8 +203,6 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                 tick.amount1 = tick.amount1 >= amount1
                     ? tick.amount1.sub(amount1)
                     : tick.amount1;
-
-                // emit FeesClaimed(msg.sender, fee0, fee1);
             }
         }
 
@@ -226,71 +223,104 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         emit Burn(msg.sender, _shares, collect0, collect1);
     }
 
-    function partialRebalance(PartialTick[] memory _ticks)
-        external
-        onlyOperator
-        isValidStrategy
-    {
-        for (uint256 i = 0; i < _ticks.length; i++) {
-            Tick storage tick = ticks[_ticks[i].index];
+    /**
+     * @notice Rebalances the strategy
+     * @param _existingTicks Array of existing ticks to rebalance
+     * @param _newTicks New ticks in case there are any
+     * @param _burnAll When burning into new ticks, should we burn all liquidity?
+     */
+    function rebalance(
+        PartialTick[] memory _existingTicks,
+        Tick[] memory _newTicks,
+        bool _burnAll
+    ) external onlyOperator isValidStrategy {
+        // redeploy the partial ticks
+        if (_existingTicks.length > 0) {
+            for (uint256 i = 0; i < _existingTicks.length; i++) {
+                Tick storage tick = ticks[_existingTicks[i].index];
 
-            if (_ticks[i].burn) {
-                burnLiquiditySingle(tick.tickLower, tick.tickUpper);
+                if (_existingTicks[i].burn) {
+                    burnLiquiditySingle(tick.tickLower, tick.tickUpper);
+                }
+
+                // mint liquidity
+                (uint256 amount0, uint256 amount1) = mintLiquidity(
+                    tick.tickLower,
+                    tick.tickUpper,
+                    _existingTicks[i].amount0,
+                    _existingTicks[i].amount1,
+                    address(this)
+                );
+
+                // update data in the tick
+                tick.amount0 = tick.amount0.add(amount0);
+                tick.amount1 = tick.amount1.add(amount1);
             }
 
-            // mint liquidity
-            (uint256 amount0, uint256 amount1) = mintLiquidity(
-                tick.tickLower,
-                tick.tickUpper,
-                _ticks[i].amount0,
-                _ticks[i].amount1,
-                address(this)
-            );
+            emit PartialRebalance(_existingTicks);
+        }
 
-            // update data in the tick
-            tick.amount0 = tick.amount0.add(amount0);
-            tick.amount1 = tick.amount1.add(amount1);
+        // deploy liquidity into new ticks
+        if (_newTicks.length > 0) {
+            if (onHold) {
+                // delete ticks
+                delete ticks;
+                // deploy between ticks
+                redeploy(_newTicks);
+            } else if (_burnAll) {
+                // burn all liquidity
+                burnAllLiquidity(ticks);
+                // delete ticks
+                delete ticks;
+                // redeploy to the amounts specified
+                redeploy(_newTicks);
+            } else {
+                // redeploy ticks
+                redeploy(_newTicks);
+            }
+
+            emit Rebalance(ticks);
         }
 
         require(!isInvalidTicks(ticks), "IT");
+        // checks for valid ticks length
+        require(ticks.length <= 5, "ITL");
     }
 
-    /**
-     * @notice Rebalances between the ticks
-     * @param _ticks Ticks in which amounts to be deploy
-     */
-    function rebalance(Tick[] memory _ticks, bool _burnAll)
-        external
-        onlyOperator
-        isValidStrategy
-    {
-        if (onHold) {
-            // delete ticks
-            delete ticks;
-            // deploy between ticks
-            redeploy(_ticks);
-        } else if (_burnAll) {
-            // burn all liquidity
-            burnAllLiquidity(ticks);
-            // delete ticks
-            delete ticks;
-            // redeploy to the amounts specified
-            redeploy(_ticks);
-        } else {
-            // redeploy ticks
-            redeploy(_ticks);
-        }
+    // /**
+    //  * @notice Rebalances between the ticks
+    //  * @param _ticks Ticks in which amounts to be deploy
+    //  */
+    // function rebalance(Tick[] memory _ticks, bool _burnAll)
+    //     external
+    //     onlyOperator
+    //     isValidStrategy
+    // {
+    //     if (onHold) {
+    //         // delete ticks
+    //         delete ticks;
+    //         // deploy between ticks
+    //         redeploy(_ticks);
+    //     } else if (_burnAll) {
+    //         // burn all liquidity
+    //         burnAllLiquidity(ticks);
+    //         // delete ticks
+    //         delete ticks;
+    //         // redeploy to the amounts specified
+    //         redeploy(_ticks);
+    //     } else {
+    //         // redeploy ticks
+    //         redeploy(_ticks);
+    //     }
 
-        emit Rebalance(ticks);
-    }
+    //     emit Rebalance(ticks);
+    // }
 
     /**
      * @notice Redeploys between ticks
      * @param _ticks Array of the ticks with amounts
      */
     function redeploy(Tick[] memory _ticks) internal hasDeviation {
-        require(!isInvalidTicks(_ticks), "IT");
-
         // set hold false
         onHold = false;
         // redeploy the liquidity
@@ -309,9 +339,6 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             // push to ticks array
             ticks.push(Tick(amount0, amount1, tick.tickLower, tick.tickUpper));
         }
-
-        // checks for valid ticks length
-        require(ticks.length <= 5, "ITL");
     }
 
     /**
