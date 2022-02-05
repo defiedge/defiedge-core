@@ -179,11 +179,9 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
     /**
      * @notice Swap the fudns to 1Inch
      */
-    function swap(
-        bytes calldata data
-    ) external onlyOperator hasDeviation {
-
-        (address srcToken, address dstToken, uint256 amount) = OneInchHelper.decodeData(token0, token1, data);
+    function swap(bytes calldata data) external onlyOperator hasDeviation {
+        (address srcToken, address dstToken, uint256 amount) = OneInchHelper
+            .decodeData(token0, token1, data);
 
         require(srcToken == token0 || srcToken == token1, "IT");
         require(dstToken == token0 || dstToken == token1, "IT");
@@ -197,9 +195,11 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         IERC20(srcToken).approve(address(oneInchRouter), amount);
 
         // Interact with 1inch through contract call with data
-        (bool success, bytes memory returnData) = address(oneInchRouter).call{value: 0}(data);
+        (bool success, bytes memory returnData) = address(oneInchRouter).call{
+            value: 0
+        }(data);
 
-       // Verify return status and data
+        // Verify return status and data
         if (!success) {
             if (returnData.length < 68) {
                 // If the returnData length is less than 68, then the transaction failed silently.
@@ -231,7 +231,6 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             ),
             "S"
         );
-
     }
 
     // /**

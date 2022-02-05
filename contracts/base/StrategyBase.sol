@@ -167,43 +167,31 @@ contract StrategyBase is ERC20 {
      * Protocol receives X percentage from manager fee
      */
     function claimFee() external {
-        if (accManagementFee > 0) {
-            uint256 _factoryProtocolFee = factory.PROTOCOL_FEE();
-            address _factoryFeeTo = factory.feeTo();
-            address _managerFeeTo = manager.feeTo();
-
-            require(_managerFeeTo != address(0) && _factoryFeeTo != address(0));
-
-            uint256 protocolShare;
-
-            if (_factoryProtocolFee > 0) {
-                uint256 protocolManagementShare = accManagementFee
-                    .mul(_factoryProtocolFee)
-                    .div(1e8);
-
-                uint256 protocolPerformanceShare = accPerformanceFee
-                    .mul(_factoryProtocolFee)
-                    .div(1e8);
-
-                protocolShare = protocolManagementShare.add(
-                    protocolPerformanceShare
-                );
-
-                _mint(_factoryFeeTo, protocolShare);
-            }
-
-            _mint(
-                _managerFeeTo,
-                (accManagementFee.add(accPerformanceFee)).sub(protocolShare)
-            );
-            emit ClaimFee(
-                accManagementFee.add(accPerformanceFee),
-                protocolShare
+        (
+            address managerFeeTo,
+            address protocolFeeTo,
+            uint256 managerShare,
+            uint256 protocolShare
+        ) = ShareHelper.calculateFeeShares(
+                address(factory),
+                address(manager),
+                accManagementFee,
+                accPerformanceFee
             );
 
-            accManagementFee = 0;
-            accPerformanceFee = 0;
+        if (managerShare > 0) {
+            _mint(managerFeeTo, managerShare);
         }
+
+        if (protocolShare > 0) {
+            _mint(protocolFeeTo, protocolShare);
+        }
+
+        // set the variables to 0
+        accManagementFee = 0;
+        accPerformanceFee = 0;
+
+        emit ClaimFee(managerShare, protocolShare);
     }
 
     /**
