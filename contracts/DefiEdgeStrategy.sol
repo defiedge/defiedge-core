@@ -240,7 +240,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                 Tick storage tick = ticks[_existingTicks[i].index];
 
                 if (_existingTicks[i].burn) {
-                    burnLiquiditySingle(tick.tickLower, tick.tickUpper);
+                    burnLiquiditySingle(_existingTicks[i].index);
                 }
 
                 // mint liquidity
@@ -269,7 +269,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                 redeploy(_newTicks);
             } else if (_burnAll) {
                 // burn all liquidity
-                burnAllLiquidity(ticks);
+                burnAllLiquidity();
                 // delete ticks
                 delete ticks;
                 // redeploy to the amounts specified
@@ -284,7 +284,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
 
         if (_existingTicks.length == 0 && _newTicks.length == 0 && _burnAll) {
             onHold = true;
-            burnAllLiquidity(ticks);
+            burnAllLiquidity();
             delete ticks;
             emit Hold();
         }

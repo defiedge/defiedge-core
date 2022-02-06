@@ -159,24 +159,50 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
     /**
      * @notice Burns all the liquidity and collects fees
-     * @param _ticks Array of the ticks
      */
-    function burnAllLiquidity(Tick[] memory _ticks) internal {
-        for (uint256 i = 0; i < _ticks.length; i++) {
-            burnLiquiditySingle(_ticks[i].tickLower, _ticks[i].tickUpper);
+    function burnAllLiquidity() internal {
+        for (uint256 i = 0; i < ticks.length; i++) {
+            burnLiquiditySingle(i);
         }
     }
 
-    function burnLiquiditySingle(int24 _tickLower, int24 _tickUpper)
+    /**
+     * @notice Burn liquidity from specific tick
+     * @param _tickIndex Index of tick which needs to be burned
+     */
+    function burnLiquiditySingle(uint256 _tickIndex)
         public
         hasDeviation
+        returns (
+            uint256 amount0,
+            uint256 amount1,
+            uint256 fee0,
+            uint256 fee1
+        )
     {
         require(manager.isAllowedToBurn(msg.sender), "N");
+
+        Tick storage tick = ticks[_tickIndex];
+
         (uint128 currentLiquidity, , , , ) = pool.positions(
-            PositionKey.compute(address(this), _tickLower, _tickUpper)
+            PositionKey.compute(address(this), tick.tickLower, tick.tickUpper)
         );
+
         if (currentLiquidity > 0) {
-            burnLiquidity(_tickLower, _tickUpper, 0, currentLiquidity);
+            (amount0, amount1, fee0, fee1) = burnLiquidity(
+                tick.tickLower,
+                tick.tickUpper,
+                0,
+                currentLiquidity
+            );
+
+            // update data in ticks
+            tick.amount0 = tick.amount0 >= amount0
+                    ? tick.amount0.sub(amount0)
+                    : tick.amount0;
+            tick.amount1 = tick.amount1 >= amount1
+                ? tick.amount1.sub(amount1)
+                : tick.amount1;
         }
     }
 
