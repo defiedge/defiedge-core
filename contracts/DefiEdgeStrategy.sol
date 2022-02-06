@@ -240,7 +240,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                 Tick storage tick = ticks[_existingTicks[i].index];
 
                 if (_existingTicks[i].burn) {
-                    this.burnLiquiditySingle(tick.tickLower, tick.tickUpper);
+                    burnLiquiditySingle(tick.tickLower, tick.tickUpper);
                 }
 
                 // mint liquidity

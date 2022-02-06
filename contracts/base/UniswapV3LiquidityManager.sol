@@ -163,12 +163,12 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
      */
     function burnAllLiquidity(Tick[] memory _ticks) internal {
         for (uint256 i = 0; i < _ticks.length; i++) {
-            this.burnLiquiditySingle(_ticks[i].tickLower, _ticks[i].tickUpper);
+            burnLiquiditySingle(_ticks[i].tickLower, _ticks[i].tickUpper);
         }
     }
 
     function burnLiquiditySingle(int24 _tickLower, int24 _tickUpper)
-        external
+        public
         hasDeviation
     {
         require(manager.isAllowedToBurn(msg.sender), "N");
