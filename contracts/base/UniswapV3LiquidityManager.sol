@@ -249,6 +249,22 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         uint256 amountIn = tokenInBalBefore.sub(tokenInBalAfter);
         uint256 amountOut = tokenOutBalAfter.sub(tokenOutBalBefore);
 
+        // check if swap exceed allowed deviation and revert if maximum swap limits reached
+        if (
+            OracleLibrary.isSwapExceedDeviation(
+                address(pool),
+                chainlinkRegistry,
+                amountIn,
+                amountOut,
+                tokenIn,
+                tokenOut,
+                [usdAsBase[0], usdAsBase[1]],
+                address(manager)
+            )
+        ) {
+            require(manager.increamentSwapCounter(), "LR");
+        }
+
         require(
             OracleLibrary.allowSwap(
                 address(pool),
