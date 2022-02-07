@@ -237,6 +237,13 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         bool _burnAll
     ) external onlyOperator isValidStrategy {
 
+        if (_existingTicks.length == 0 && _newTicks.length == 0 && _burnAll) {
+            onHold = true;
+            burnAllLiquidity();
+            delete ticks;
+            emit Hold();
+        }
+
         //swap from 1inch if needed
         if(_swapData.length > 0) {
             swap(_swapData);
@@ -288,13 +295,6 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             }
 
             emit Rebalance(ticks);
-        }
-
-        if (_existingTicks.length == 0 && _newTicks.length == 0 && _burnAll) {
-            onHold = true;
-            burnAllLiquidity();
-            delete ticks;
-            emit Hold();
         }
 
         require(!isInvalidTicks(ticks), "IT");
