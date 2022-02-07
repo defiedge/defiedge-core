@@ -19,11 +19,19 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
     event Burn(address user, uint256 share, uint256 amount0, uint256 amount1);
     event Hold();
     event Rebalance(Tick[] ticks);
+    event PartialRebalance(PartialTick[] ticks);
+
+    struct PartialTick {
+        uint256 index;
+        bool burn;
+        uint256 amount0;
+        uint256 amount1;
+    }
 
     /**
      * @param _factory Address of the strategy factory
      * @param _pool Address of the pool
-     * @param _swapRouter Address of the Uniswap V3 periphery swap router
+     * @param _oneInchRouter Address of the Uniswap V3 periphery swap router
      * @param _chainlinkRegistry Chainlink registry address
      * @param _manager Address of the manager
      * @param _usdAsBase If the Chainlink feed is pegged with USD
@@ -32,15 +40,18 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
     constructor(
         address _factory,
         address _pool,
-        address _swapRouter,
+        address _oneInchRouter,
         address _chainlinkRegistry,
         address _manager,
         bool[] memory _usdAsBase,
         Tick[] memory _ticks
-    ) validTicks(_ticks) {
+    ) {
+        require(!isInvalidTicks(_ticks), "IT");
+        // checks for valid ticks length
+        require(_ticks.length <= 5, "ITL");
         manager = IStrategyManager(_manager);
         factory = IStrategyFactory(_factory);
-        swapRouter = ISwapRouter(_swapRouter);
+        oneInchRouter = IOneInchRouter(_oneInchRouter);
         chainlinkRegistry = _chainlinkRegistry;
         pool = IUniswapV3Pool(_pool);
         token0 = pool.token0();
@@ -74,8 +85,6 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             uint256 share
         )
     {
-        // require(!onHold, "H");
-
         // get total amounts with fees
         (uint256 totalAmount0, uint256 totalAmount1, , ) = this
             .getAUMWithFees();
@@ -194,8 +203,6 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                 tick.amount1 = tick.amount1 >= amount1
                     ? tick.amount1.sub(amount1)
                     : tick.amount1;
-
-                emit FeesClaimed(msg.sender, fee0, fee1);
             }
         }
 
@@ -217,26 +224,65 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
     }
 
     /**
-     * @notice Rebalances between the ticks
-     * @param _ticks Ticks in which amounts to be deploy
+     * @notice Rebalances the strategy
+     * @param _swapData Swap data to perform exchange from 1inch
+     * @param _existingTicks Array of existing ticks to rebalance
+     * @param _newTicks New ticks in case there are any
+     * @param _burnAll When burning into new ticks, should we burn all liquidity?
      */
-    function rebalance(Tick[] memory _ticks)
-        external
-        onlyOperator
-        isValidStrategy
-        validTicks(_ticks)
-    {
-        if (onHold) {
-            // deploy between ticks
-            redeploy(_ticks);
-        } else {
-            // burn all liquidity
-            burnAllLiquidity(ticks);
-            // redeploy to the amounts specified
-            redeploy(_ticks);
+    function rebalance(
+        bytes calldata _swapData,
+        PartialTick[] memory _existingTicks,
+        Tick[] memory _newTicks,
+        bool _burnAll
+    ) external onlyOperator isValidStrategy {
+        if (_burnAll) {
+            onHold = true;
+            burnAllLiquidity();
+            delete ticks;
+            emit Hold();
         }
 
-        emit Rebalance(ticks);
+        //swap from 1inch if needed
+        if (_swapData.length > 0) {
+            swap(_swapData);
+        }
+
+        // redeploy the partial ticks
+        if (_existingTicks.length > 0) {
+            for (uint256 i = 0; i < _existingTicks.length; i++) {
+                Tick storage tick = ticks[_existingTicks[i].index];
+
+                if (_existingTicks[i].burn) {
+                    burnLiquiditySingle(_existingTicks[i].index);
+                }
+
+                // mint liquidity
+                (uint256 amount0, uint256 amount1) = mintLiquidity(
+                    tick.tickLower,
+                    tick.tickUpper,
+                    _existingTicks[i].amount0,
+                    _existingTicks[i].amount1,
+                    address(this)
+                );
+
+                // update data in the tick
+                tick.amount0 = tick.amount0.add(amount0);
+                tick.amount1 = tick.amount1.add(amount1);
+            }
+
+            emit PartialRebalance(_existingTicks);
+        }
+
+        // deploy liquidity into new ticks
+        if (_newTicks.length > 0) {
+            redeploy(_newTicks);
+            emit Rebalance(ticks);
+        }
+
+        require(!isInvalidTicks(ticks), "IT");
+        // checks for valid ticks length
+        require(ticks.length <= 5, "ITL");
     }
 
     /**
@@ -246,8 +292,6 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
     function redeploy(Tick[] memory _ticks) internal hasDeviation {
         // set hold false
         onHold = false;
-        // delete ticks
-        delete ticks;
         // redeploy the liquidity
         for (uint256 i = 0; i < _ticks.length; i++) {
             Tick memory tick = _ticks[i];
@@ -264,16 +308,6 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             // push to ticks array
             ticks.push(Tick(amount0, amount1, tick.tickLower, tick.tickUpper));
         }
-    }
-
-    /**
-     * @notice Holds the funds
-     */
-    function hold() external onlyOperator hasDeviation {
-        onHold = true;
-        burnAllLiquidity(ticks);
-        delete ticks;
-        emit Hold();
     }
 
     // TODO: Make this function work correctly

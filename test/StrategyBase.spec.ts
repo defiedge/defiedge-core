@@ -12,6 +12,7 @@ const UniswapV3OracleTestFactory = ethers.getContractFactory(
 );
 
 const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper");
+const OneInchHelperLibrary = ethers.getContractFactory("OneInchHelper");
 const OracleLibraryLibrary = ethers.getContractFactory("OracleLibrary");
 const ChainlinkRegistryMockFactory = ethers.getContractFactory(
   "ChainlinkRegistryMock"
@@ -32,6 +33,7 @@ import { Periphery } from "../typechain/Periphery";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
 import { ShareHelper } from "../typechain/ShareHelper";
 import { LiquidityHelper } from "../typechain/LiquidityHelper";
+import { OneInchHelper } from "../typechain/OneInchHelper";
 import { OracleLibrary } from "../typechain/OracleLibrary";
 import { ChainlinkRegistryMock } from "../typechain/ChainlinkRegistryMock";
 import { SwapRouter } from "../typechain/SwapRouter";
@@ -61,6 +63,7 @@ let periphery: Periphery;
 let oracle: UniswapV3OracleTest;
 let shareHelper: ShareHelper;
 let liquidityHelper: LiquidityHelper;
+let oneInchHelper: OneInchHelper;
 let oracleLibrary: OracleLibrary;
 let chainlinkRegistry: ChainlinkRegistryMock;
 let router: SwapRouter;
@@ -117,12 +120,15 @@ describe("StrategyBase", () => {
       await LiquidityHelperLibrary
     ).deploy()) as LiquidityHelper;
 
+    oneInchHelper = (await (await OneInchHelperLibrary).deploy()) as OneInchHelper;
+
     const DefiEdgeStrategyDeployerContract = ethers.getContractFactory("DefiEdgeStrategyDeployer",
      {
         libraries: {
           ShareHelper: shareHelper.address,
           OracleLibrary: oracleLibrary.address,
-          LiquidityHelper: liquidityHelper.address
+          LiquidityHelper: liquidityHelper.address,
+          OneInchHelper: oneInchHelper.address,
         }
       }
     );
@@ -274,14 +280,14 @@ describe("StrategyBase", () => {
         0,
         0
       );
-      await strategy.rebalance([
+      await strategy.rebalance("0x", [], [
         {
           amount0: expandTo18Decimals(1),
           amount1: expandTo18Decimals(1),
           tickLower,
           tickUpper,
         },
-      ]);
+      ], true);
       expect((await strategy.ticks(0)).tickLower).to.equal(tickLower);
       expect((await strategy.ticks(0)).tickUpper).to.equal(tickUpper);
     });
@@ -314,7 +320,7 @@ describe("StrategyBase", () => {
         };
         ticks.push(tick);
       }
-      expect(strategy.rebalance(ticks)).to.be.revertedWith("ITL");
+      await expect(strategy.rebalance("0x", [], ticks, true)).to.be.revertedWith("ITL");
     });
 
     it("should revert if two tick upper and tick lower are same", async () => {
@@ -332,7 +338,7 @@ describe("StrategyBase", () => {
           tickUpper: calculateTick(4000, 60),
         },
       ];
-      expect(strategy.rebalance(ticks)).to.be.revertedWith("TS");
+      await expect(strategy.rebalance("0x", [], ticks, true)).to.be.revertedWith("IT");
     });
   });
 
@@ -353,37 +359,37 @@ describe("StrategyBase", () => {
 
     it("should revert while redeploying", async () => {
       await expect(
-        strategy.rebalance([
+        strategy.rebalance("0x", [], [
           {
             amount0: expandTo18Decimals(1),
             amount1: expandTo18Decimals(1),
             tickLower: calculateTick(2500, 60),
             tickUpper: calculateTick(3600, 60),
           },
-        ])
+        ], true)
       ).to.be.revertedWith("D");
     });
 
-    it("should revert while swap", async () => {
-      const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
-      const sqrtPriceLimitX96 =
-        (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
+    // it("should revert while swap", async () => {
+    //   const sqrtRatioX96 = ((await pool.slot0()).sqrtPriceX96).toString();
+    //   const sqrtPriceLimitX96 =
+    //     (new bn(sqrtRatioX96).plus(sqrtRatioX96).multipliedBy(0.6)).toFixed(0);
 
-      await expect(
-        strategy.swap(
-          false,
-          true,
-          encodePath([token0.address, token1.address], [3000]),
-          constants.MaxUint256,
-          expandTo18Decimals(0.0001),
-          0,
-          sqrtPriceLimitX96
-        )
-      ).to.be.revertedWith("D");
-    });
+    //   await expect(
+    //     strategy.swap(
+    //       false,
+    //       true,
+    //       encodePath([token0.address, token1.address], [3000]),
+    //       constants.MaxUint256,
+    //       expandTo18Decimals(0.0001),
+    //       0,
+    //       sqrtPriceLimitX96
+    //     )
+    //   ).to.be.revertedWith("D");
+    // });
 
     it("should revert while hold", async () => {
-      await expect(strategy.hold()).to.be.revertedWith("D");
+      await expect(strategy.rebalance("0x", [], [], true)).to.be.revertedWith("D");
     });
   });
   describe("#issueShare", async () => {
@@ -516,14 +522,14 @@ describe("StrategyBase", () => {
         0,
         0
       );
-      await strategy.rebalance([
+      await strategy.rebalance("0x", [], [
         {
           amount0: expandTo18Decimals(0.00001),
           amount1: expandTo18Decimals(0.00001),
           tickLower: calculateTick(2000, 60),
           tickUpper: calculateTick(4000, 60),
         },
-      ]);
+      ], true);
 
       await expect(strategy.ticks(1)).to.be.reverted; // hence strategy have only one tick
 

@@ -156,36 +156,106 @@ library OracleLibrary {
         return false;
     }
 
+    // /**
+    //  * @notice Checks the if swap exceed allowed swap deviation or not
+    //  * @param _pool Address of the pool
+    //  * @param _registry Chainlink registry
+    //  * @param _usdAsBase checks if pegged to USD
+    //  * @param _manager Manager contract address to check allowed deviation
+    //  */
+    // function isSwapExceedDeviation(
+    //     address _pool,
+    //     address _registry,
+    //     bool[] memory _usdAsBase,
+    //     address _manager
+    // ) public view returns (bool) {
+    //     IUniswapV3Pool pool = IUniswapV3Pool(_pool);
+
+    //     // get price of token0 Uniswap and convert it to USD
+    //     uint256 uniswapPriceInUSD = getUniswapPrice(_pool)
+    //         .mul(getPriceInUSD(_registry, pool.token1(), _usdAsBase[1]))
+    //         .div(BASE);
+
+    //     // get price of token0 from Chainlink in USD
+    //     uint256 chainlinkPriceInUSD = getPriceInUSD(
+    //         _registry,
+    //         pool.token0(),
+    //         _usdAsBase[0]
+    //     );
+
+    //     uint256 diff;
+
+    //     diff = uniswapPriceInUSD.mul(BASE).div(chainlinkPriceInUSD);
+
+    //     // check price deviation
+    //     uint256 deviation;
+    //     if (diff > BASE) {
+    //         deviation = diff.sub(BASE);
+    //     } else {
+    //         deviation = BASE.sub(diff);
+    //     }
+
+    //     if (deviation > IStrategyManager(_manager).allowedSwapDeviation()) {
+    //         return true;
+    //     }
+    //     return false;
+    // }
+
     /**
      * @notice Checks the if swap exceed allowed swap deviation or not
      * @param _pool Address of the pool
      * @param _registry Chainlink registry
+     * @param _amountIn Amount to be swapped
+     * @param _amountOut Amount received after swap
+     * @param _tokenIn Token to be swapped
+     * @param _tokenOut Token to which tokenIn should be swapped
      * @param _usdAsBase checks if pegged to USD
      * @param _manager Manager contract address to check allowed deviation
      */
     function isSwapExceedDeviation(
         address _pool,
         address _registry,
-        bool[] memory _usdAsBase,
+        uint256 _amountIn,
+        uint256 _amountOut,
+        address _tokenIn,
+        address _tokenOut,
+        bool[2] memory _usdAsBase,
         address _manager
     ) public view returns (bool) {
         IUniswapV3Pool pool = IUniswapV3Pool(_pool);
 
-        // get price of token0 Uniswap and convert it to USD
-        uint256 uniswapPriceInUSD = getUniswapPrice(_pool)
-            .mul(getPriceInUSD(_registry, pool.token1(), _usdAsBase[1]))
-            .div(BASE);
+        _amountIn = normalise(_tokenIn, _amountIn);
+        _amountOut = normalise(_tokenOut, _amountOut);
 
-        // get price of token0 from Chainlink in USD
-        uint256 chainlinkPriceInUSD = getPriceInUSD(
-            _registry,
-            pool.token0(),
-            _usdAsBase[0]
+        bool usdAsBaseAmountIn = pool.token0() == _tokenIn
+            ? _usdAsBase[0]
+            : _usdAsBase[1];
+
+        bool usdAsBaseAmountOut = pool.token1() == _tokenOut
+            ? _usdAsBase[1]
+            : _usdAsBase[0];
+
+        // get tokenIn prce in USD fron chainlink
+        uint256 amountInUSD = _amountIn.mul(
+            getPriceInUSD(
+                _registry,
+                _tokenIn,
+                usdAsBaseAmountIn
+            )
+        );
+
+        // get tokenout prce in USD fron chainlink
+        uint256 amountOutUSD = _amountOut.mul(
+            getPriceInUSD(
+                _registry,
+                _tokenOut,
+                usdAsBaseAmountOut
+            )
         );
 
         uint256 diff;
 
-        diff = uniswapPriceInUSD.mul(BASE).div(chainlinkPriceInUSD);
+        diff = amountInUSD.mul(BASE).div(amountOutUSD);
 
         // check price deviation
         uint256 deviation;

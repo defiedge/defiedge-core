@@ -16,6 +16,11 @@ library ShareHelper {
 
     uint256 public constant BASE = 1e18;
 
+    /**
+     * @notice Normalise token to 18 decimals
+     * @param _token Address of the token
+     * @param _amount Value to be normalised
+     */
     function normalise(address _token, uint256 _amount)
         public
         view
@@ -79,5 +84,57 @@ library ShareHelper {
             share = ((token0Price.mul(_amount0)).add(token1Price.mul(_amount1)))
                 .div(100 * 1e18);
         }
+    }
+
+    /**
+     * @notice Calculates the fee shares from accumulated fees
+     * @param _factory Strategy factory address
+     * @param _manager Strategy manager contract address
+     * @param _accManagementFee Accumulated management fees in terms of shares
+     * @param _accPerformanceFee Accumulated performance fee in terms of shares
+     */
+    function calculateFeeShares(
+        address _factory,
+        address _manager,
+        uint256 _accManagementFee,
+        uint256 _accPerformanceFee
+    )
+        public
+        view
+        returns (
+            address managerFeeTo,
+            address protocolFeeTo,
+            uint256 managerShare,
+            uint256 protocolShare
+        )
+    {
+        IStrategyFactory factory = IStrategyFactory(_factory);
+        IStrategyManager manager = IStrategyManager(_manager);
+
+        uint256 managementProtocolShare;
+        uint256 managementManagerShare;
+
+        // calculate the fees for protocol and manager from management fees
+        if (_accManagementFee > 0) {
+            managementProtocolShare = _accManagementFee.mul(
+                factory.PROTOCOL_FEE()
+            ).div(1e8);
+            managementManagerShare = _accManagementFee.sub(
+                managementProtocolShare
+            );
+        }
+
+        // calculate the fees for protocol and manager from performance fees
+        if (_accPerformanceFee > 0) {
+            protocolShare = _accPerformanceFee.mul(factory.PROTOCOL_FEE()).div(1e8);
+            managerShare = _accPerformanceFee.sub(protocolShare);
+        }
+
+        managerShare = managementManagerShare.add(managerShare);
+        protocolShare = managementProtocolShare.add(protocolShare);
+
+        // moved here for saving bytecode
+        managerFeeTo = manager.feeTo();
+        protocolFeeTo = factory.feeTo();
     }
 }

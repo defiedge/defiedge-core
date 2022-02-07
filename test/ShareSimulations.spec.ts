@@ -12,6 +12,7 @@ const UniswapV3OracleTestFactory = ethers.getContractFactory(
 );
 
 const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper");
+const OneInchHelperLibrary = ethers.getContractFactory("OneInchHelper");
 const OracleLibraryLibrary = ethers.getContractFactory("OracleLibrary");
 const ChainlinkRegistryMockFactory = ethers.getContractFactory(
   "ChainlinkRegistryMock"
@@ -33,6 +34,7 @@ import { ShareHelperTest } from "../typechain/ShareHelperTest";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
 import { ShareHelper } from "../typechain/ShareHelper";
 import { LiquidityHelper } from "../typechain/LiquidityHelper";
+import { OneInchHelper } from "../typechain/OneInchHelper";
 import { OracleLibrary } from "../typechain/OracleLibrary";
 import { ChainlinkRegistryMock } from "../typechain/ChainlinkRegistryMock";
 import { SwapRouter } from "../typechain/SwapRouter";
@@ -62,6 +64,7 @@ let periphery: Periphery;
 let shareHelper: ShareHelper;
 let oracle: UniswapV3OracleTest;
 let liquidityHelper: LiquidityHelper;
+let oneInchHelper: OneInchHelper;
 let oracleLibrary: OracleLibrary;
 let chainlinkRegistry: ChainlinkRegistryMock;
 let router: SwapRouter;
@@ -127,12 +130,15 @@ describe("Share Simulations", () => {
       await LiquidityHelperLibrary
     ).deploy()) as LiquidityHelper;
 
+    oneInchHelper = (await (await OneInchHelperLibrary).deploy()) as OneInchHelper;
+
     const DefiEdgeStrategyDeployerContract = ethers.getContractFactory("DefiEdgeStrategyDeployer",
     {
        libraries: {
          ShareHelper: shareHelper.address,
          OracleLibrary: oracleLibrary.address,
-         LiquidityHelper: liquidityHelper.address
+         LiquidityHelper: liquidityHelper.address,
+         OneInchHelper: oneInchHelper.address
        }
      }
     );
@@ -257,14 +263,14 @@ describe("Share Simulations", () => {
 
       console.log("👨‍💻  rebalancing");
 
-      await strategy.rebalance([
+      await strategy.rebalance("0x", [], [
         {
           amount0: expandTo18Decimals(1),
           amount1: expandTo18Decimals(1),
           tickLower: calculateTick(1 / 3600, 60),
           tickUpper: calculateTick(1 / 2500, 60),
         },
-      ]);
+      ], true);
       console.log('rebalance done')
       await approve(strategy.address, signers[1]);
 

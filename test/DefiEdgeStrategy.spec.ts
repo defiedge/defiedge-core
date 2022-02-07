@@ -12,6 +12,7 @@ const UniswapV3OracleTestFactory = ethers.getContractFactory(
 );
 
 const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper");
+const OneInchHelperLibrary = ethers.getContractFactory("OneInchHelper");
 const OracleLibraryLibrary = ethers.getContractFactory("OracleLibrary");
 const ChainlinkRegistryMockFactory = ethers.getContractFactory(
   "ChainlinkRegistryMock"
@@ -32,6 +33,7 @@ import { Periphery } from "../typechain/Periphery";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
 import { ShareHelper } from "../typechain/ShareHelper";
 import { LiquidityHelper } from "../typechain/LiquidityHelper";
+import { OneInchHelper } from "../typechain/OneInchHelper";
 import { OracleLibrary } from "../typechain/OracleLibrary";
 import { ChainlinkRegistryMock } from "../typechain/ChainlinkRegistryMock";
 import { SwapRouter } from "../typechain/SwapRouter";
@@ -60,6 +62,7 @@ let periphery: Periphery;
 let oracle: UniswapV3OracleTest;
 let shareHelper: ShareHelper;
 let liquidityHelper: LiquidityHelper;
+let oneInchHelper: OneInchHelper;
 let oracleLibrary: OracleLibrary;
 let chainlinkRegistry: ChainlinkRegistryMock;
 let router: SwapRouter;
@@ -116,12 +119,15 @@ describe("DeFiEdgeStrategy", () => {
       await LiquidityHelperLibrary
     ).deploy()) as LiquidityHelper;
 
+    oneInchHelper = (await (await OneInchHelperLibrary).deploy()) as OneInchHelper;
+
     const DefiEdgeStrategyDeployerContract = ethers.getContractFactory("DefiEdgeStrategyDeployer",
      {
         libraries: {
           ShareHelper: shareHelper.address,
           OracleLibrary: oracleLibrary.address,
-          LiquidityHelper: liquidityHelper.address
+          LiquidityHelper: liquidityHelper.address,
+          OneInchHelper: oneInchHelper.address,
         }
       }
     );
@@ -246,7 +252,7 @@ describe("DeFiEdgeStrategy", () => {
       expect(await strategy.onHold()).to.be.equal(false);
     });
     it("should set uniswap swap router contract address", async () => {
-      expect(await strategy.swapRouter()).to.be.equal(router.address);
+      expect(await strategy.oneInchRouter()).to.be.equal(router.address);
     });
     it("should set strategy manager contract address by default", async () => {
       expect(await strategy.manager()).to.be.equal(strategyManager.address);
@@ -291,42 +297,42 @@ describe("DeFiEdgeStrategy", () => {
             amount0: "1",
             amount1: "1",
             tickLower: "60",
-            tickUpper: "60",
+            tickUpper: "61",
           },
           {
             amount0: "2",
             amount1: "2",
-            tickLower: "60",
-            tickUpper: "60",
+            tickLower: "62",
+            tickUpper: "63",
           },
           {
             amount0: "3",
             amount1: "3",
-            tickLower: "60",
-            tickUpper: "60",
+            tickLower: "64",
+            tickUpper: "65",
           },
           {
             amount0: "4",
             amount1: "4",
-            tickLower: "60",
-            tickUpper: "60",
+            tickLower: "66",
+            tickUpper: "67",
           },
           {
             amount0: "5",
             amount1: "5",
-            tickLower: "60",
-            tickUpper: "60",
+            tickLower: "68",
+            tickUpper: "69",
           },
           {
             amount0: "6",
             amount1: "6",
-            tickLower: "60",
-            tickUpper: "60",
+            tickLower: "70",
+            tickUpper: "71",
           }
         ]
       }
     
-      expect(factory.createStrategy(params)).to.be.revertedWith('ITL');
+      await expect(factory.createStrategy(params)).to.be.revertedWith('ITL');
     });
     it("validTicks - should revert if two ticks are the same", async () => {
       let params = {
@@ -353,7 +359,7 @@ describe("DeFiEdgeStrategy", () => {
         ]
       }
     
-      expect(factory.createStrategy(params)).to.be.revertedWith('TS');
+      await expect(factory.createStrategy(params)).to.be.revertedWith('IT');
     });
   });
 
@@ -580,7 +586,7 @@ describe("DeFiEdgeStrategy", () => {
 
     it("should burn the liquidity with proper amounts when there is multiple ticks", async () => {
 
-      await strategy.rebalance([
+      await strategy.rebalance("0x", [],[
         {
           amount0: expandTo18Decimals(0.1),
           amount1: expandTo18Decimals(350),
@@ -593,7 +599,7 @@ describe("DeFiEdgeStrategy", () => {
           tickLower: calculateTick(2200, 60),
           tickUpper: calculateTick(3600, 60),
         }
-      ]);
+      ], true);
 
       await approve(strategy.address, signers[0]);
       await strategy
@@ -629,9 +635,9 @@ describe("DeFiEdgeStrategy", () => {
         .to.emit(strategy, "Burn")
         .withArgs(
           signers[0].address,
-          "117926706797723864612",
-          "1625057001189772695",
-          "6917499676203068344324"
+          "117926706797723864562",
+          "1625057001189772697",
+          "6917499676203068344311"
         );
     });
 
@@ -1010,7 +1016,160 @@ describe("DeFiEdgeStrategy", () => {
     })
   });
 
-  describe("#Rebalance", async () => {
+  describe("#Rebalance - Hold", async () => {
+    beforeEach("add liquidity and rebalance", async () => {
+      await mint(signers[1]);
+      await strategy.rebalance("0x", [],[
+        {
+          amount0: expandTo18Decimals(0.001),
+          amount1: expandTo18Decimals(0.35),
+          tickLower: calculateTick(2000, 60),
+          tickUpper: calculateTick(4000, 60),
+        },
+      ], true);
+    });
+
+    it("should set on hold to true", async () => {
+      await strategy.rebalance("0x", [],[],true);
+      expect(await strategy.onHold()).to.equal(true);
+    });
+
+    it("should burn all the liquidity", async () => {
+      await strategy.rebalance("0x", [],[],true);
+      const positionKey = getPositionKey(
+        strategy.address,
+        calculateTick(2500, 60),
+        calculateTick(3500, 60)
+      );
+
+      const position = await pool.positions(positionKey);
+      expect(position.liquidity).to.equal(0);
+    });
+
+    it("should delete the ticks", async () => {
+      await strategy.rebalance("0x", [],[],true);
+      await expect(strategy.ticks(0)).to.be.reverted;
+    });
+
+    it("should emit the hold event", async () => {
+      await expect(strategy.rebalance("0x", [],[],true)).to.emit(strategy, "Hold");
+    });
+  });
+  
+  describe("#Rebalance - partialRebalance", async () => {
+    beforeEach("add liquidity", async () => {
+      await mint(signers[1]);
+    });
+
+    it("should revert if caller is not operator", async () => {
+      await expect(
+        strategy.connect(signers[1]).rebalance("0x", [
+          {
+            index: "0",
+            burn: false,
+            amount0: expandTo18Decimals(0.001),
+            amount1: expandTo18Decimals(0.001)
+          },
+        ], [], false)
+      ).to.be.revertedWith("N");
+    });
+
+    it("should revert if strategy is invalid", async () => {
+
+      await factory.deny(strategy.address);
+
+      await expect(
+        strategy.rebalance("0x", [
+          {
+            index: "0",
+            burn: false,
+            amount0: expandTo18Decimals(0.001),
+            amount1: expandTo18Decimals(0.001)
+          },
+        ], [], false)
+      ).to.be.revertedWith("DL");
+    })
+
+    it("should burn all previous liquidity and decrease tick amounts", async () => {
+
+      expect((await strategy.ticks(0)).amount0).to.eq("1000000000000000000");
+      expect((await strategy.ticks(0)).amount1).to.eq("3452260981108611401314");
+
+      await strategy.rebalance("0x", [
+        {
+          index: "0",
+          burn: true,
+          amount0: expandTo18Decimals(1),
+          amount1: expandTo18Decimals(100)
+        },
+      ], [], false)
+
+      expect((await strategy.ticks(0)).amount0).to.eq("28966523836760275");
+      expect((await strategy.ticks(0)).amount1).to.eq("100000000000000000000");
+
+    })
+
+    it("should revert if contract have no balance left to mint liquidity", async () => {
+
+      expect(await token0.balanceOf(strategy.address)).to.eq("0");
+      expect(await token1.balanceOf(strategy.address)).to.eq("0");
+
+      await expect(strategy.rebalance("0x", [
+        {
+          index: "0",
+          burn: false,
+          amount0: expandTo18Decimals(0.001),
+          amount1: expandTo18Decimals(0.001)
+        },
+      ], [], false)).to.be.revertedWith("ST")
+
+    })
+
+    it("should mint liquidity and update tick amount", async () => {
+
+      await approve(strategy.address, signers[0]);
+      await strategy.mint(expandTo18Decimals(1), 0, 0, 0, 0);
+      await strategy.mint(0, expandTo18Decimals(3500), 0, 0, 0);
+
+      expect((await strategy.ticks(0)).amount0).to.eq("1000000000000000000");
+      expect((await strategy.ticks(0)).amount1).to.eq("3452260981108611401314");
+
+      await strategy.rebalance("0x", [
+        {
+          index: "0",
+          burn: false,
+          amount0: expandTo18Decimals(1),
+          amount1: expandTo18Decimals(3500)
+        },
+      ], [], false)
+
+      expect((await strategy.ticks(0)).amount0).to.eq("2000000000000000000");
+      expect((await strategy.ticks(0)).amount1).to.eq("6904521962217222802628");
+
+    })
+
+    it("should burn and redeploy all liquidity", async () => {
+
+      expect((await strategy.ticks(0)).amount0).to.eq("1000000000000000000");
+      expect((await strategy.ticks(0)).amount1).to.eq("3452260981108611401314");
+
+      await strategy.rebalance("0x", [
+        {
+          index: "0",
+          burn: true,
+          amount0: expandTo18Decimals(1),
+          amount1: expandTo18Decimals(3452)
+        },
+      ], [], false)
+
+      expect((await strategy.ticks(0)).amount0).to.eq("999924402844964639");
+      expect((await strategy.ticks(0)).amount1).to.eq("3451999999999999999999");
+
+    })
+
+  })
+
+  describe("#Rebalance - newticks", async () => {
     beforeEach("add liquidity", async () => {
       await mint(signers[1]);
     });
@@ -1020,42 +1179,42 @@ describe("DeFiEdgeStrategy", () => {
         expandTo18Decimals(3000),
         expandTo18Decimals(0.01)
       );
-      expect(
-        strategy.rebalance([
+      await expect(
+        strategy.rebalance("0x", [],[
           {
             amount0: expandTo18Decimals(0.001),
             amount1: expandTo18Decimals(0.001),
             tickLower: "60",
             tickUpper: "60",
           },
-        ])
+        ], true)
       ).to.be.revertedWith('D');
     });
 
     it("should revert if caller is not operator", async () => {
-      expect(
-        strategy.connect(signers[1]).rebalance([
+      await expect(
+        strategy.connect(signers[1]).rebalance("0x", [], [
           {
             amount0: expandTo18Decimals(0.001),
             amount1: expandTo18Decimals(0.001),
             tickLower: "60",
             tickUpper: "60",
           },
-        ])
+        ], true)
       ).to.be.revertedWith("N");
     });
 
     it("should redeploy when funds are on hold", async () => {
-      await strategy.hold();
+      await strategy.rebalance("0x", [], [], true); // hold
 
-      await strategy.rebalance([
+      await strategy.rebalance("0x", [], [
         {
           amount0: expandTo18Decimals(0.001),
           amount1: expandTo18Decimals(0.3),
           tickLower: calculateTick(2500, 60),
           tickUpper: calculateTick(3300, 60),
         },
-      ]);
+      ], true);
 
       const tick = await strategy.ticks(0);
 
@@ -1080,28 +1239,28 @@ describe("DeFiEdgeStrategy", () => {
         calculateTick(2500, 60),
         calculateTick(3500, 60)
       );
-      await strategy.rebalance([
+      await strategy.rebalance("0x", [],[
         {
           amount0: expandTo18Decimals(0.001),
           amount1: expandTo18Decimals(0.3),
           tickLower: calculateTick(2500, 60),
           tickUpper: calculateTick(3300, 60),
         },
-      ]);
+      ], true);
       const position = await pool.positions(positionKey);
       expect(position.liquidity).to.equal(0);
     });
 
     it("should emit rebalance event with ticks", async () => {
-      expect(
-        strategy.rebalance([
+      await expect(
+        strategy.rebalance("0x", [],[
           {
             amount0: expandTo18Decimals(0.001),
             amount1: expandTo18Decimals(0.3),
             tickLower: calculateTick(2500, 60),
             tickUpper: calculateTick(3300, 60),
           },
-        ])
+        ], true)
       ).to.emit(strategy, "Rebalance");
     });
   });
@@ -1117,14 +1276,14 @@ describe("DeFiEdgeStrategy", () => {
     beforeEach("Rebalance the ticks", async () => {
       await mint(signers[1]);
       oldTicks = [await strategy.ticks(0)];
-      strategy.rebalance([
+      await strategy.rebalance("0x", [],[
         {
           amount0: expandTo18Decimals(0.001),
           amount1: expandTo18Decimals(0.3),
           tickLower: calculateTick(2500, 60),
           tickUpper: calculateTick(3300, 60),
         },
-      ]);
+      ], true);
     });
 
     it("should set onHold to false", async () => {
@@ -1255,47 +1414,6 @@ describe("DeFiEdgeStrategy", () => {
     //     .withArgs(expandTo18Decimals(0.001), 331260979439, false);
     // });
   // });
-
-  describe("#Hold", async () => {
-    beforeEach("add liquidity and rebalance", async () => {
-      await mint(signers[1]);
-      await strategy.rebalance([
-        {
-          amount0: expandTo18Decimals(0.001),
-          amount1: expandTo18Decimals(0.35),
-          tickLower: calculateTick(2000, 60),
-          tickUpper: calculateTick(4000, 60),
-        },
-      ]);
-    });
-
-    it("should set on hold to true", async () => {
-      await strategy.hold();
-      expect(await strategy.onHold()).to.equal(true);
-    });
-
-    it("should burn all the liquidity", async () => {
-      await strategy.hold();
-      const positionKey = getPositionKey(
-        strategy.address,
-        calculateTick(2500, 60),
-        calculateTick(3500, 60)
-      );
-
-      const position = await pool.positions(positionKey);
-      expect(position.liquidity).to.equal(0);
-    });
-
-    it("should delete the ticks", async () => {
-      await strategy.hold();
-      await expect(strategy.ticks(0)).to.be.reverted;
-    });
-
-    it("should emit the hold event", async () => {
-      await strategy.hold();
-      expect(strategy.hold()).to.emit(strategy, "Hold");
-    });
-  });
 });
 
 async function approve(address: string, from: string | Signer | Provider) {

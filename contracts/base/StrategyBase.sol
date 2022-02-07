@@ -12,8 +12,19 @@ import "../libraries/OracleLibrary.sol";
 // interfaces
 import "../interfaces/IStrategyManager.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+// import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+interface IOneInchRouter {
+    function swap(
+        IERC20 fromToken,
+        IERC20 destToken,
+        uint256 amount,
+        uint256 minReturn,
+        uint256[] memory distribution,
+        uint256 flags
+    ) external returns (uint256 returnAmount);
+}
 
 contract StrategyBase is ERC20 {
     using SafeMath for uint256;
@@ -41,7 +52,7 @@ contract StrategyBase is ERC20 {
     address internal token0;
     address internal token1;
 
-    ISwapRouter public swapRouter; // instance of the Uniswap V3 Periphery Swap Router
+    IOneInchRouter public oneInchRouter; // instance of the Uniswap V3 Periphery Swap Router
     address internal chainlinkRegistry;
 
     IStrategyManager public manager; // instance of manager contract
@@ -50,17 +61,29 @@ contract StrategyBase is ERC20 {
 
     // Modifiers
     modifier onlyOperator() {
-        require(msg.sender == manager.operator(), "N");
+        require(manager.isAllowedToManage(msg.sender), "N");
         _;
     }
+
+    // modifier onlyOperatorAndBurner() {
+    //     require(
+    //         manager.hasRole(manager.ADMIN_ROLE(), msg.sender) ||
+    //             manager.hasRole(manager.MANAGER_ROLE(), msg.sender) ||
+    //             manager.hasRole(manager.BURNER_ROLE(), msg.sender),
+    //         "N"
+    //     );
+    //     _;
+    // }
 
     /**
      * @dev Replaces old ticks with new ticks
      * @param _ticks New ticks
      */
-    modifier validTicks(Tick[] memory _ticks) {
-        // checks for valid ticks length
-        require(_ticks.length <= 5, "ITL");
+    function isInvalidTicks(Tick[] memory _ticks)
+        internal
+        pure
+        returns (bool invalid)
+    {
         for (uint256 i = 0; i < _ticks.length; i++) {
             int24 tickLower = _ticks[i].tickLower;
             int24 tickUpper = _ticks[i].tickUpper;
@@ -69,11 +92,13 @@ contract StrategyBase is ERC20 {
             for (uint256 j = 0; j < i; j++) {
                 if (i != j) {
                     if (tickLower == _ticks[j].tickLower) {
-                        require(tickUpper != _ticks[j].tickUpper, "TS");
+                        if (tickUpper == _ticks[j].tickUpper) {
+                            invalid = true;
+                        }
+                        // require(tickUpper != _ticks[j].tickUpper, "TS");
                     }
                 }
             }
-            _;
         }
     }
 
@@ -134,7 +159,7 @@ contract StrategyBase is ERC20 {
         uint256 managerShare;
         uint256 managementFee = manager.managementFee();
         // strategy owner fees
-        if (manager.feeTo() != address(0) && managementFee > 0) {
+        if (managementFee > 0) {
             managerShare = share.mul(managementFee).div(1e8);
             accManagementFee = accManagementFee.add(managerShare);
         }
@@ -152,42 +177,31 @@ contract StrategyBase is ERC20 {
      * Protocol receives X percentage from manager fee
      */
     function claimFee() external {
-        if (accManagementFee > 0) {
-            address _factoryFeeTo = factory.feeTo();
-            address _managerFeeTo = manager.feeTo();
-
-            uint256 protocolShare;
-
-            if (factory.PROTOCOL_FEE() > 0) {
-                uint256 protocolManagementShare = accManagementFee
-                    .mul(factory.PROTOCOL_FEE())
-                    .div(1e8);
-
-                uint256 protocolPerformanceShare = accPerformanceFee
-                    .mul(factory.PROTOCOL_FEE())
-                    .div(1e8);
-
-                protocolShare = protocolManagementShare.add(
-                    protocolPerformanceShare
-                );
-
-                _mint(_factoryFeeTo, protocolShare);
-            }
-
-            // require(_managerFeeTo != address(0) && _factoryFeeTo != address(0));
-
-            _mint(
-                _managerFeeTo,
-                (accManagementFee.add(accPerformanceFee)).sub(protocolShare)
+        (
+            address managerFeeTo,
+            address protocolFeeTo,
+            uint256 managerShare,
+            uint256 protocolShare
+        ) = ShareHelper.calculateFeeShares(
+                address(factory),
+                address(manager),
+                accManagementFee,
+                accPerformanceFee
             );
-            emit ClaimFee(
-                accManagementFee.add(accPerformanceFee),
-                protocolShare
-            );
-            
-            accManagementFee = 0;
-            accPerformanceFee = 0;
+
+        if (managerShare > 0) {
+            _mint(managerFeeTo, managerShare);
         }
+
+        if (protocolShare > 0) {
+            _mint(protocolFeeTo, protocolShare);
+        }
+
+        // set the variables to 0
+        accManagementFee = 0;
+        accPerformanceFee = 0;
+
+        emit ClaimFee(managerShare, protocolShare);
     }
 
     /**

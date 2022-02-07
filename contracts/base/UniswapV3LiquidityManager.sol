@@ -8,7 +8,9 @@ import "../base/StrategyBase.sol";
 
 // interfaces
 import "../libraries/LiquidityHelper.sol";
+import "../libraries/OneInchHelper.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+import "../interfaces/IOneInch.sol";
 
 // libraries
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
@@ -28,11 +30,6 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
     struct MintCallbackData {
         address payer;
         address pool;
-    }
-
-    struct SwapCallbackData {
-        address pool;
-        bool zeroToOne;
     }
 
     /**
@@ -133,11 +130,9 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
         // mint performance fees
         addPerformanceFees(fee0, fee1);
-
     }
 
     function addPerformanceFees(uint256 _fee0, uint256 _fee1) internal {
-
         // transfer performance fee to manager
         uint256 performanceFee = manager.performanceFee();
         // address feeTo = manager.feeTo();
@@ -160,123 +155,221 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         );
 
         emit FeesClaimed(address(this), _fee0, _fee1);
-
     }
 
     /**
      * @notice Burns all the liquidity and collects fees
-     * @param _ticks Array of the ticks
      */
-    function burnAllLiquidity(Tick[] memory _ticks) internal {
-        for (uint256 i = 0; i < _ticks.length; i++) {
-            (uint128 currentLiquidity, , , , ) = pool.positions(
-                PositionKey.compute(
-                    address(this),
-                    _ticks[i].tickLower,
-                    _ticks[i].tickUpper
-                )
-            );
-            if (currentLiquidity > 0) {
-                burnLiquidity(
-                    _ticks[i].tickLower,
-                    _ticks[i].tickUpper,
-                    0,
-                    currentLiquidity
-                );
-            }
+    function burnAllLiquidity() internal {
+        for (uint256 i = 0; i < ticks.length; i++) {
+            burnLiquiditySingle(i);
         }
     }
 
     /**
-     * @notice Swaps through the path calculated by Uniswap auto-router
+     * @notice Burn liquidity from specific tick
+     * @param _tickIndex Index of tick which needs to be burned
      */
-    function swap(
-        bool _usePath,
-        bool _zeroForOne,
-        bytes memory _path,
-        uint256 _deadline,
-        uint256 _amountIn,
-        uint256 _amountOutMinimum,
-        uint160 _sqrtPriceLimitX96
-    ) external onlyOperator hasDeviation {
-        if (ticks.length > 0) {
-            onHold = true;
-            // burn all liquidity
-            burnAllLiquidity(ticks);
-            // delete ticks
-            delete ticks;
+    function burnLiquiditySingle(uint256 _tickIndex)
+        public
+        hasDeviation
+        returns (
+            uint256 amount0,
+            uint256 amount1,
+            uint256 fee0,
+            uint256 fee1
+        )
+    {
+        require(manager.isAllowedToBurn(msg.sender), "N");
+
+        Tick storage tick = ticks[_tickIndex];
+
+        (uint128 currentLiquidity, , , , ) = pool.positions(
+            PositionKey.compute(address(this), tick.tickLower, tick.tickUpper)
+        );
+
+        if (currentLiquidity > 0) {
+            (amount0, amount1, fee0, fee1) = burnLiquidity(
+                tick.tickLower,
+                tick.tickUpper,
+                0,
+                currentLiquidity
+            );
+
+            // update data in ticks
+            tick.amount0 = tick.amount0 >= amount0
+                    ? tick.amount0.sub(amount0)
+                    : tick.amount0;
+            tick.amount1 = tick.amount1 >= amount1
+                ? tick.amount1.sub(amount1)
+                : tick.amount1;
         }
+    }
+
+    /**
+     * @notice Swap the fudns to 1Inch
+     * @param data Swap data to perform exchange from 1inch
+     */
+    function swap(bytes calldata data) public onlyOperator hasDeviation {
+        (address srcToken, address dstToken, uint256 amount) = OneInchHelper
+            .decodeData(token0, token1, data);
+
+        require(srcToken == token0 || srcToken == token1, "IT");
+        require(dstToken == token0 || dstToken == token1, "IT");
+
+        address tokenIn = srcToken == token0 ? token0 : token1;
+        address tokenOut = dstToken == token0 ? token0 : token1;
+
+        uint256 tokenInBalBefore = IERC20(tokenIn).balanceOf(address(this));
+        uint256 tokenOutBalBefore = IERC20(tokenOut).balanceOf(address(this));
+
+        IERC20(srcToken).approve(address(oneInchRouter), amount);
+
+        // Interact with 1inch through contract call with data
+        (bool success, bytes memory returnData) = address(oneInchRouter).call{
+            value: 0
+        }(data);
+
+        // Verify return status and data
+        if (!success) {
+            if (returnData.length < 68) {
+                // If the returnData length is less than 68, then the transaction failed silently.
+                revert("swap");
+            } else {
+                // Look for revert reason and bubble it up if present
+                assembly {
+                    returnData := add(returnData, 0x04)
+                }
+                revert(abi.decode(returnData, (string)));
+            }
+        }
+
+        uint256 tokenInBalAfter = IERC20(tokenIn).balanceOf(address(this));
+        uint256 tokenOutBalAfter = IERC20(tokenOut).balanceOf(address(this));
+
+        uint256 amountIn = tokenInBalBefore.sub(tokenInBalAfter);
+        uint256 amountOut = tokenOutBalAfter.sub(tokenOutBalBefore);
 
         // check if swap exceed allowed deviation and revert if maximum swap limits reached
         if (
             OracleLibrary.isSwapExceedDeviation(
                 address(pool),
                 chainlinkRegistry,
-                usdAsBase,
+                amountIn,
+                amountOut,
+                tokenIn,
+                tokenOut,
+                [usdAsBase[0], usdAsBase[1]],
                 address(manager)
             )
         ) {
             require(manager.increamentSwapCounter(), "LR");
         }
 
-        address tokenIn;
-        address tokenOut;
-        bool[2] memory isBase; // is direct USD feed is available for the token?
-
-        if (_zeroForOne) {
-            tokenIn = token0;
-            tokenOut = token1;
-            isBase = [usdAsBase[0], usdAsBase[1]];
-        } else {
-            tokenIn = token1;
-            tokenOut = token0;
-            isBase = [usdAsBase[1], usdAsBase[0]];
-        }
-
-        IERC20(tokenIn).approve(address(swapRouter), _amountIn);
-
-        uint256 amountOut;
-
-        if (_usePath) {
-            amountOut = swapRouter.exactInput(
-                ISwapRouter.ExactInputParams({
-                    path: _path,
-                    recipient: address(this),
-                    deadline: _deadline,
-                    amountIn: _amountIn,
-                    amountOutMinimum: _amountOutMinimum
-                })
-            );
-        } else {
-            amountOut = swapRouter.exactInputSingle(
-                ISwapRouter.ExactInputSingleParams({
-                    tokenIn: tokenIn,
-                    tokenOut: tokenOut,
-                    fee: pool.fee(),
-                    recipient: address(this),
-                    deadline: _deadline,
-                    amountIn: _amountIn,
-                    amountOutMinimum: _amountOutMinimum,
-                    sqrtPriceLimitX96: _sqrtPriceLimitX96
-                })
-            );
-        }
-
         require(
             OracleLibrary.allowSwap(
                 address(pool),
                 address(factory),
-                _amountIn,
+                amountIn,
                 amountOut,
                 tokenIn,
                 tokenOut,
-                isBase
+                [usdAsBase[0], usdAsBase[1]]
             ),
             "S"
         );
-
-        emit Swap(_amountIn, amountOut, _zeroForOne);
     }
+
+    // /**
+    //  * @notice Swaps through the path calculated by Uniswap auto-router
+    //  */
+    // function swap(
+    //     bool _usePath,
+    //     bool _zeroForOne,
+    //     bytes memory _path,
+    //     uint256 _deadline,
+    //     uint256 _amountIn,
+    //     uint256 _amountOutMinimum,
+    //     uint160 _sqrtPriceLimitX96
+    // ) external onlyOperator hasDeviation {
+    //     if (ticks.length > 0) {
+    //         onHold = true;
+    //         // burn all liquidity
+    //         burnAllLiquidity(ticks);
+    //         // delete ticks
+    //         delete ticks;
+    //     }
+
+    //     // check if swap exceed allowed deviation and revert if maximum swap limits reached
+    //     if (
+    //         OracleLibrary.isSwapExceedDeviation(
+    //             address(pool),
+    //             chainlinkRegistry,
+    //             usdAsBase,
+    //             address(manager)
+    //         )
+    //     ) {
+    //         require(manager.increamentSwapCounter(), "LR");
+    //     }
+
+    //     address tokenIn;
+    //     address tokenOut;
+    //     bool[2] memory isBase; // is direct USD feed is available for the token?
+
+    //     if (_zeroForOne) {
+    //         tokenIn = token0;
+    //         tokenOut = token1;
+    //         isBase = [usdAsBase[0], usdAsBase[1]];
+    //     } else {
+    //         tokenIn = token1;
+    //         tokenOut = token0;
+    //         isBase = [usdAsBase[1], usdAsBase[0]];
+    //     }
+
+    //     IERC20(tokenIn).approve(address(swapRouter), _amountIn);
+
+    //     uint256 amountOut;
+
+    //     if (_usePath) {
+    //         amountOut = swapRouter.exactInput(
+    //             ISwapRouter.ExactInputParams({
+    //                 path: _path,
+    //                 recipient: address(this),
+    //                 deadline: _deadline,
+    //                 amountIn: _amountIn,
+    //                 amountOutMinimum: _amountOutMinimum
+    //             })
+    //         );
+    //     } else {
+    //         amountOut = swapRouter.exactInputSingle(
+    //             ISwapRouter.ExactInputSingleParams({
+    //                 tokenIn: tokenIn,
+    //                 tokenOut: tokenOut,
+    //                 fee: pool.fee(),
+    //                 recipient: address(this),
+    //                 deadline: _deadline,
+    //                 amountIn: _amountIn,
+    //                 amountOutMinimum: _amountOutMinimum,
+    //                 sqrtPriceLimitX96: _sqrtPriceLimitX96
+    //             })
+    //         );
+    //     }
+
+    //     require(
+    //         OracleLibrary.allowSwap(
+    //             address(pool),
+    //             address(factory),
+    //             _amountIn,
+    //             amountOut,
+    //             tokenIn,
+    //             tokenOut,
+    //             isBase
+    //         ),
+    //         "S"
+    //     );
+
+    //     emit Swap(_amountIn, amountOut, _zeroForOne);
+    // }
 
     /**
      * @dev Callback for Uniswap V3 pool.
@@ -292,16 +385,16 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         if (decoded.payer == address(this)) {
             // transfer tokens already in the contract
             if (amount0 > 0) {
-                TransferHelper.safeTransfer(pool.token0(), msg.sender, amount0);
+                TransferHelper.safeTransfer(token0, msg.sender, amount0);
             }
             if (amount1 > 0) {
-                TransferHelper.safeTransfer(pool.token1(), msg.sender, amount1);
+                TransferHelper.safeTransfer(token1, msg.sender, amount1);
             }
         } else {
             // take and transfer tokens to Uniswap V3 pool from the user
             if (amount0 > 0) {
                 TransferHelper.safeTransferFrom(
-                    pool.token0(),
+                    token0,
                     decoded.payer,
                     msg.sender,
                     amount0
@@ -309,7 +402,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             }
             if (amount1 > 0) {
                 TransferHelper.safeTransferFrom(
-                    pool.token1(),
+                    token1,
                     decoded.payer,
                     msg.sender,
                     amount1
@@ -331,8 +424,8 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         )
     {
         // get unused amounts
-        amount0 = IERC20(pool.token0()).balanceOf(address(this));
-        amount1 = IERC20(pool.token1()).balanceOf(address(this));
+        amount0 = IERC20(token0).balanceOf(address(this));
+        amount1 = IERC20(token1).balanceOf(address(this));
 
         // get fees accumulated in each tick
         for (uint256 i = 0; i < ticks.length; i++) {

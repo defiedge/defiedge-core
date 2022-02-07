@@ -12,6 +12,7 @@ const UniswapV3OracleTestFactory = ethers.getContractFactory(
 );
 
 const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper");
+const OneInchHelperLibrary = ethers.getContractFactory("OneInchHelper");
 const OracleLibraryLibrary = ethers.getContractFactory("OracleLibrary");
 const ChainlinkRegistryMockFactory = ethers.getContractFactory(
   "ChainlinkRegistryMock"
@@ -32,6 +33,7 @@ import { Periphery } from "../typechain/Periphery";
 import { UniswapV3OracleTest } from "../typechain/UniswapV3OracleTest";
 import { ShareHelper } from "../typechain/ShareHelper";
 import { LiquidityHelper } from "../typechain/LiquidityHelper";
+import { OneInchHelper } from "../typechain/OneInchHelper";
 import { OracleLibrary } from "../typechain/OracleLibrary";
 import { ChainlinkRegistryMock } from "../typechain/ChainlinkRegistryMock";
 import { SwapRouter } from "../typechain/SwapRouter";
@@ -60,6 +62,7 @@ let periphery: Periphery;
 let oracle: UniswapV3OracleTest;
 let shareHelper: ShareHelper;
 let liquidityHelper: LiquidityHelper;
+let oneInchHelper: OneInchHelper;
 let oracleLibrary: OracleLibrary;
 let chainlinkRegistry: ChainlinkRegistryMock;
 let router: SwapRouter;
@@ -116,12 +119,15 @@ describe("StrategyManager", () => {
       await LiquidityHelperLibrary
     ).deploy()) as LiquidityHelper;
 
+    oneInchHelper = (await (await OneInchHelperLibrary).deploy()) as OneInchHelper;
+
     const DefiEdgeStrategyDeployerContract = ethers.getContractFactory("DefiEdgeStrategyDeployer",
      {
         libraries: {
           ShareHelper: shareHelper.address,
           OracleLibrary: oracleLibrary.address,
-          LiquidityHelper: liquidityHelper.address
+          LiquidityHelper: liquidityHelper.address,
+          OneInchHelper: oneInchHelper.address,
         }
       }
     );
@@ -492,7 +498,7 @@ describe("StrategyManager", () => {
 
       expect(await strategy.accPerformanceFee()).to.equal("53619");
 
-      expect(burn).to.emit(strategy, "FeesClaimed").withArgs(signers[0].address, "0", "1072391033");
+      await expect(burn).to.emit(strategy, "FeesClaimed").withArgs(strategy.address, "0", "1072391033");
     });
   })
 });
