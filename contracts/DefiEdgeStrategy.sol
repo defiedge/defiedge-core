@@ -230,7 +230,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
      * @param _newTicks New ticks in case there are any
      * @param _burnAll When burning into new ticks, should we burn all liquidity?
      */
-    function swapOrRebalance(
+    function rebalance(
         bytes calldata _swapData,
         PartialTick[] memory _existingTicks,
         Tick[] memory _newTicks,
