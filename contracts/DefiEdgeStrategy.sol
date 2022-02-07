@@ -225,15 +225,23 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
 
     /**
      * @notice Rebalances the strategy
+     * @param _swapData Swap data to perform exchange from 1inch
      * @param _existingTicks Array of existing ticks to rebalance
      * @param _newTicks New ticks in case there are any
      * @param _burnAll When burning into new ticks, should we burn all liquidity?
      */
-    function rebalance(
+    function swapOrRebalance(
+        bytes calldata _swapData,
         PartialTick[] memory _existingTicks,
         Tick[] memory _newTicks,
         bool _burnAll
     ) external onlyOperator isValidStrategy {
+
+        //swap from 1inch if needed
+        if(_swapData.length > 0) {
+            swap(_swapData);
+        }
+
         // redeploy the partial ticks
         if (_existingTicks.length > 0) {
             for (uint256 i = 0; i < _existingTicks.length; i++) {
@@ -292,23 +300,6 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         require(!isInvalidTicks(ticks), "IT");
         // checks for valid ticks length
         require(ticks.length <= 5, "ITL");
-    }
-
-    /**
-     * @notice Swap & Rebalances the strategy
-     * @param _swapData Data to excute 1inch swap
-     * @param _existingTicks Array of existing ticks to rebalance
-     * @param _newTicks New ticks in case there are any
-     * @param _burnAll When burning into new ticks, should we burn all liquidity?
-     */
-    function swapAndRebalance(
-        bytes calldata _swapData,
-        PartialTick[] memory _existingTicks,
-        Tick[] memory _newTicks,
-        bool _burnAll
-    ) external onlyOperator hasDeviation isValidStrategy {
-        this.swap(_swapData);
-        this.rebalance(_existingTicks, _newTicks, _burnAll);
     }
 
     /**

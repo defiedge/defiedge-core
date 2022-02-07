@@ -208,8 +208,9 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
     /**
      * @notice Swap the fudns to 1Inch
+     * @param data Swap data to perform exchange from 1inch
      */
-    function swap(bytes calldata data) external onlyOperator hasDeviation {
+    function swap(bytes calldata data) public onlyOperator hasDeviation {
         (address srcToken, address dstToken, uint256 amount) = OneInchHelper
             .decodeData(token0, token1, data);
 
