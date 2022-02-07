@@ -341,7 +341,7 @@ describe("UniswapV3LiquidityManager", () => {
     });
 
     it("should burn all the liquidity", async () => {
-      await strategy.hold();
+      await strategy.rebalance("0x", [], [], true);
       const positionKey = getPositionKey(
         strategy.address,
         calculateTick(2500, 60),
@@ -353,13 +353,13 @@ describe("UniswapV3LiquidityManager", () => {
     });
 
     it("should emit fees claimed event with correct values - strategy contract", async () => {
-      expect(await strategy.hold())
+      expect(await strategy.rebalance("0x", [], [], true))
         .to.emit(strategy, "FeesClaimed")
         .withArgs(strategy.address, "0", "0");
     });
 
     it("should emit collect event with correct values - uniswap pool contract", async () => {
-      expect(await strategy.hold())
+      expect(await strategy.rebalance("0x", [], [], true))
         .to.emit(pool, "Collect")
         .withArgs(
           strategy.address,

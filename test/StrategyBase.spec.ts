@@ -280,7 +280,7 @@ describe("StrategyBase", () => {
         0,
         0
       );
-      await strategy.rebalance([
+      await strategy.rebalance("0x", [], [
         {
           amount0: expandTo18Decimals(1),
           amount1: expandTo18Decimals(1),
@@ -320,7 +320,7 @@ describe("StrategyBase", () => {
         };
         ticks.push(tick);
       }
-      await expect(strategy.rebalance(ticks, true)).to.be.revertedWith("ITL");
+      await expect(strategy.rebalance("0x", [], ticks, true)).to.be.revertedWith("ITL");
     });
 
     it("should revert if two tick upper and tick lower are same", async () => {
@@ -338,7 +338,7 @@ describe("StrategyBase", () => {
           tickUpper: calculateTick(4000, 60),
         },
       ];
-      await expect(strategy.rebalance(ticks, true)).to.be.revertedWith("IT");
+      await expect(strategy.rebalance("0x", [], ticks, true)).to.be.revertedWith("IT");
     });
   });
 
@@ -359,7 +359,7 @@ describe("StrategyBase", () => {
 
     it("should revert while redeploying", async () => {
       await expect(
-        strategy.rebalance([
+        strategy.rebalance("0x", [], [
           {
             amount0: expandTo18Decimals(1),
             amount1: expandTo18Decimals(1),
@@ -389,7 +389,7 @@ describe("StrategyBase", () => {
     // });
 
     it("should revert while hold", async () => {
-      await expect(strategy.hold()).to.be.revertedWith("D");
+      await expect(strategy.rebalance("0x", [], [], true)).to.be.revertedWith("D");
     });
   });
   describe("#issueShare", async () => {
@@ -522,7 +522,7 @@ describe("StrategyBase", () => {
         0,
         0
       );
-      await strategy.rebalance([
+      await strategy.rebalance("0x", [], [
         {
           amount0: expandTo18Decimals(0.00001),
           amount1: expandTo18Decimals(0.00001),

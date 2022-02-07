@@ -263,7 +263,7 @@ describe("Share Simulations", () => {
 
       console.log("👨‍💻  rebalancing");
 
-      await strategy.rebalance([
+      await strategy.rebalance("0x", [], [
         {
           amount0: expandTo18Decimals(1),
           amount1: expandTo18Decimals(1),
