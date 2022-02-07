@@ -295,6 +295,23 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
     }
 
     /**
+     * @notice Swap & Rebalances the strategy
+     * @param _swapData Data to excute 1inch swap
+     * @param _existingTicks Array of existing ticks to rebalance
+     * @param _newTicks New ticks in case there are any
+     * @param _burnAll When burning into new ticks, should we burn all liquidity?
+     */
+    function swapAndRebalance(
+        bytes calldata _swapData,
+        PartialTick[] memory _existingTicks,
+        Tick[] memory _newTicks,
+        bool _burnAll
+    ) external onlyOperator hasDeviation isValidStrategy {
+        this.swap(_swapData);
+        this.rebalance(_existingTicks, _newTicks, _burnAll);
+    }
+
+    /**
      * @notice Redeploys between ticks
      * @param _ticks Array of the ticks with amounts
      */
