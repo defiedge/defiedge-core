@@ -118,7 +118,7 @@ library ShareHelper {
         if (_accManagementFee > 0) {
             managementProtocolShare = _accManagementFee.mul(
                 factory.PROTOCOL_FEE()
-            );
+            ).div(1e8);
             managementManagerShare = _accManagementFee.sub(
                 managementProtocolShare
             );
@@ -126,7 +126,7 @@ library ShareHelper {
 
         // calculate the fees for protocol and manager from performance fees
         if (_accPerformanceFee > 0) {
-            protocolShare = _accPerformanceFee.mul(factory.PROTOCOL_FEE());
+            protocolShare = _accPerformanceFee.mul(factory.PROTOCOL_FEE()).div(1e8);
             managerShare = _accPerformanceFee.sub(protocolShare);
         }
 
