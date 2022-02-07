@@ -236,8 +236,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         Tick[] memory _newTicks,
         bool _burnAll
     ) external onlyOperator isValidStrategy {
-
-        if (_existingTicks.length == 0 && _newTicks.length == 0 && _burnAll) {
+        if (_burnAll) {
             onHold = true;
             burnAllLiquidity();
             delete ticks;
@@ -245,7 +244,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         }
 
         //swap from 1inch if needed
-        if(_swapData.length > 0) {
+        if (_swapData.length > 0) {
             swap(_swapData);
         }
 
@@ -277,23 +276,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
 
         // deploy liquidity into new ticks
         if (_newTicks.length > 0) {
-            if (onHold) {
-                // delete ticks
-                delete ticks;
-                // deploy between ticks
-                redeploy(_newTicks);
-            } else if (_burnAll) {
-                // burn all liquidity
-                burnAllLiquidity();
-                // delete ticks
-                delete ticks;
-                // redeploy to the amounts specified
-                redeploy(_newTicks);
-            } else {
-                // redeploy ticks
-                redeploy(_newTicks);
-            }
-
+            redeploy(_newTicks);
             emit Rebalance(ticks);
         }
 
