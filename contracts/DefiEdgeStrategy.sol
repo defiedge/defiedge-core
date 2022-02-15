@@ -48,7 +48,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
     ) {
         require(!isInvalidTicks(_ticks), "IT");
         // checks for valid ticks length
-        require(_ticks.length <= 5, "ITL");
+        require(_ticks.length <= 30, "ITL");
         manager = IStrategyManager(_manager);
         factory = IStrategyFactory(_factory);
         oneInchRouter = IOneInchRouter(_oneInchRouter);
@@ -257,18 +257,23 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                     burnLiquiditySingle(_existingTicks[i].index);
                 }
 
-                // mint liquidity
-                (uint256 amount0, uint256 amount1) = mintLiquidity(
-                    tick.tickLower,
-                    tick.tickUpper,
-                    _existingTicks[i].amount0,
-                    _existingTicks[i].amount1,
-                    address(this)
-                );
+                if (
+                    _existingTicks[i].amount0 > 0 ||
+                    _existingTicks[i].amount1 > 0
+                ) {
+                    // mint liquidity
+                    (uint256 amount0, uint256 amount1) = mintLiquidity(
+                        tick.tickLower,
+                        tick.tickUpper,
+                        _existingTicks[i].amount0,
+                        _existingTicks[i].amount1,
+                        address(this)
+                    );
 
-                // update data in the tick
-                tick.amount0 = tick.amount0.add(amount0);
-                tick.amount1 = tick.amount1.add(amount1);
+                    // update data in the tick
+                    tick.amount0 = tick.amount0.add(amount0);
+                    tick.amount1 = tick.amount1.add(amount1);
+                }
             }
 
             emit PartialRebalance(_existingTicks);
@@ -282,7 +287,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
 
         require(!isInvalidTicks(ticks), "IT");
         // checks for valid ticks length
-        require(ticks.length <= 5, "ITL");
+        require(ticks.length <= 30, "ITL");
     }
 
     /**
