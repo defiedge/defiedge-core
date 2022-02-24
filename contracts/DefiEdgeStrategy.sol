@@ -48,7 +48,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
     ) {
         require(!isInvalidTicks(_ticks), "IT");
         // checks for valid ticks length
-        require(_ticks.length <= 30, "ITL");
+        require(_ticks.length <= 20, "ITL");
         manager = IStrategyManager(_manager);
         factory = IStrategyFactory(_factory);
         oneInchRouter = IOneInchRouter(_oneInchRouter);
@@ -257,9 +257,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                     // burn liquidity from range
                     burnLiquiditySingle(_existingTicks[i].index);
                     // shift the index element at last of array
-                    ticks[_existingTicks[i].index] = ticks[
-                        _existingTicks[i].index - 1
-                    ];
+                    ticks[_existingTicks[i].index] = ticks[ticks.length - 1];
                     // remove last element
                     ticks.pop();
                 }
