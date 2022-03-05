@@ -256,10 +256,6 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                 if (_existingTicks[i].burn) {
                     // burn liquidity from range
                     burnLiquiditySingle(_existingTicks[i].index);
-                    // shift the index element at last of array
-                    ticks[_existingTicks[i].index] = ticks[ticks.length - 1];
-                    // remove last element
-                    ticks.pop();
                 }
 
                 if (

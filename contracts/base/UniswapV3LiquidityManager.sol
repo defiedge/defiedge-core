@@ -132,6 +132,11 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         addPerformanceFees(fee0, fee1);
     }
 
+    /**
+     * @notice Splits and stores the performance feees in the local variables
+     * @param _fee0 Amount of accumulated fee for token0
+     * @param _fee1 Amount of accumulated fee for token1
+     */
     function addPerformanceFees(uint256 _fee0, uint256 _fee1) internal {
         // transfer performance fee to manager
         uint256 performanceFee = manager.performanceFee();
@@ -198,12 +203,17 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
             // update data in ticks
             tick.amount0 = tick.amount0 >= amount0
-                    ? tick.amount0.sub(amount0)
-                    : tick.amount0;
+                ? tick.amount0.sub(amount0)
+                : tick.amount0;
             tick.amount1 = tick.amount1 >= amount1
                 ? tick.amount1.sub(amount1)
                 : tick.amount1;
         }
+
+        // shift the index element at last of array
+        ticks[_tickIndex] = ticks[ticks.length - 1];
+        // remove last element
+        ticks.pop();
     }
 
     /**
