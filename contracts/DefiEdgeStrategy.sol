@@ -38,22 +38,22 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
      * @param _ticks Array of the ticks
      */
     constructor(
-        address _factory,
-        address _pool,
-        address _oneInchRouter,
-        address _chainlinkRegistry,
-        address _manager,
-        bool[] memory _usdAsBase,
+        IStrategyFactory _factory,
+        IUniswapV3Pool _pool,
+        IOneInchRouter _oneInchRouter,
+        FeedRegistryInterface _chainlinkRegistry,
+        IStrategyManager _manager,
+        bool[2] memory _usdAsBase,
         Tick[] memory _ticks
     ) {
         require(!isInvalidTicks(_ticks), "IT");
         // checks for valid ticks length
-        require(_ticks.length <= 5, "ITL");
-        manager = IStrategyManager(_manager);
-        factory = IStrategyFactory(_factory);
-        oneInchRouter = IOneInchRouter(_oneInchRouter);
+        require(_ticks.length <= MAX_TICK_LENGTH, "ITL");
+        manager = _manager;
+        factory = _factory;
+        oneInchRouter = _oneInchRouter;
         chainlinkRegistry = _chainlinkRegistry;
-        pool = IUniswapV3Pool(_pool);
+        pool = _pool;
         token0 = pool.token0();
         token1 = pool.token1();
         usdAsBase = _usdAsBase;
@@ -89,23 +89,27 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         (uint256 totalAmount0, uint256 totalAmount1, , ) = this
             .getAUMWithFees();
 
-        amount0 = _amount0;
-        amount1 = _amount1;
+        if (_amount0 > 0 && _amount1 > 0 && ticks.length > 0) {
 
-        if (amount0 > 0 && amount1 > 0 && ticks.length > 0) {
+            Tick storage tick = ticks[0];
             // index 0 will always be an primary tick
             (amount0, amount1) = mintLiquidity(
-                ticks[0].tickLower,
-                ticks[0].tickUpper,
+                tick.tickLower,
+                tick.tickUpper,
                 _amount0,
                 _amount1,
                 msg.sender
             );
 
             // update data in the tick
-            ticks[0].amount0 = ticks[0].amount0.add(amount0);
-            ticks[0].amount1 = ticks[0].amount1.add(amount1);
+            tick.amount0 = tick.amount0.add(amount0);
+            tick.amount1 = tick.amount1.add(amount1);
+            
         } else {
+
+            amount0 = _amount0;
+            amount1 = _amount1;
+
             if (amount0 > 0) {
                 TransferHelper.safeTransferFrom(
                     token0,
@@ -282,7 +286,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
 
         require(!isInvalidTicks(ticks), "IT");
         // checks for valid ticks length
-        require(ticks.length <= 5, "ITL");
+        require(ticks.length <= MAX_TICK_LENGTH, "ITL");
     }
 
     /**
