@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: BSL
-pragma solidity =0.7.6;
+pragma solidity ^0.7.6;
 
 // libraries
 import "../libraries/ShareHelper.sol";

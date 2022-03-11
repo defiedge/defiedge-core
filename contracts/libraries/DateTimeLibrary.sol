@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: BSL
-pragma solidity =0.7.6;
+pragma solidity ^0.7.6;
 
 library DateTimeLibrary {
     uint256 constant SECONDS_PER_DAY = 24 * 60 * 60;

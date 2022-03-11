@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSL
 
-pragma solidity =0.7.6;
+pragma solidity ^0.7.6;
 pragma abicoder v2;
 
 // contracts
@@ -15,8 +15,8 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
     using SafeMath for uint256;
 
     // events
-    event Mint(address user, uint256 share, uint256 amount0, uint256 amount1);
-    event Burn(address user, uint256 share, uint256 amount0, uint256 amount1);
+    event Mint(address indexed user, uint256 share, uint256 amount0, uint256 amount1);
+    event Burn(address indexed user, uint256 share, uint256 amount0, uint256 amount1);
     event Hold();
     event Rebalance(Tick[] ticks);
     event PartialRebalance(PartialTick[] ticks);

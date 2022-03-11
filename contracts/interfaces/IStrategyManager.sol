@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: Unlicense
-pragma solidity =0.7.6;
+pragma solidity ^0.7.6;
 
 interface IStrategyManager {
     function isAllowedToManage(address) external view returns (bool);

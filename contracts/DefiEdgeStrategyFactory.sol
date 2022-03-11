@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSL
 
-pragma solidity =0.7.6;
+pragma solidity ^0.7.6;
 pragma abicoder v2;
 
 import "./DefiEdgeStrategy.sol";
