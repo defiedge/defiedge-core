@@ -175,39 +175,37 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         uint256 _totalSupply = totalSupply();
 
         if (collect0 > 0) {
-            collect0 = collect0.mul(_shares).div(_totalSupply);
+            collect0 = FullMath.mulDiv(collect0, _shares, _totalSupply);
         }
 
         if (collect1 > 0) {
-            collect1 = collect1.mul(_shares).div(_totalSupply);
+            collect1 = FullMath.mulDiv(collect1, _shares, _totalSupply);
         }
 
         // burn liquidity based on shares from existing ticks
-        if (ticks.length != 0) {
-            for (uint256 i = 0; i < ticks.length; i++) {
-                Tick storage tick = ticks[i];
+        for (uint256 i = 0; i < ticks.length; i++) {
+            Tick storage tick = ticks[i];
 
-                uint256 fee0;
-                uint256 fee1;
-                // burn liquidity and collect fees
-                (amount0, amount1, fee0, fee1) = burnLiquidity(
-                    tick.tickLower,
-                    tick.tickUpper,
-                    _shares,
-                    0
-                );
+            uint256 fee0;
+            uint256 fee1;
+            // burn liquidity and collect fees
+            (amount0, amount1, fee0, fee1) = burnLiquidity(
+                tick.tickLower,
+                tick.tickUpper,
+                _shares,
+                0
+            );
 
-                // add to total amounts
-                collect0 = collect0.add(amount0);
-                collect1 = collect1.add(amount1);
+            // add to total amounts
+            collect0 = collect0.add(amount0);
+            collect1 = collect1.add(amount1);
 
-                tick.amount0 = tick.amount0 >= amount0
-                    ? tick.amount0.sub(amount0)
-                    : tick.amount0;
-                tick.amount1 = tick.amount1 >= amount1
-                    ? tick.amount1.sub(amount1)
-                    : tick.amount1;
-            }
+            tick.amount0 = tick.amount0 >= amount0
+                ? tick.amount0.sub(amount0)
+                : 0;
+            tick.amount1 = tick.amount1 >= amount1
+                ? tick.amount1.sub(amount1)
+                : 0;
         }
 
         // check slippage
@@ -241,6 +239,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         bool _burnAll
     ) external onlyOperator isValidStrategy {
         if (_burnAll) {
+            require(_existingTicks.length == 0, "IA");
             onHold = true;
             burnAllLiquidity();
             delete ticks;
