@@ -35,13 +35,13 @@ abstract contract ERC20 is Context, IERC20 {
 
     mapping(address => uint256) private _balances;
 
-    mapping(address => mapping(address => uint256)) public override allowance;
+    mapping(address => mapping(address => uint256)) public override allowance; // map approval of from to to address
 
     uint256 internal _totalSupply;
 
-    bytes32 public name = "DefiEdge Share";
-    bytes32 public symbol = "DEShare";
-    uint8 public decimals = 18;
+    bytes32 public constant name = "DefiEdge Share";
+    bytes32 public constant symbol = "DEShare";
+    uint8 public constant decimals = 18;
 
     /**
      * @dev See {IERC20-balanceOf}.
@@ -73,19 +73,6 @@ abstract contract ERC20 is Context, IERC20 {
         _transfer(_msgSender(), recipient, amount);
         return true;
     }
-
-    // /**
-    //  * @dev See {IERC20-allowance}.
-    //  */
-    // function allowance(address owner, address spender)
-    //     public
-    //     view
-    //     virtual
-    //     override
-    //     returns (uint256)
-    // {
-    //     return allowance[owner][spender];
-    // }
 
     /**
      * @dev See {IERC20-approve}.
@@ -202,9 +189,6 @@ abstract contract ERC20 is Context, IERC20 {
         address recipient,
         uint256 amount
     ) internal virtual {
-        require(sender != address(0), "0");
-        require(recipient != address(0), "0");
-
         _beforeTokenTransfer(sender, recipient, amount);
 
         _balances[sender] = _balances[sender].sub(
@@ -225,8 +209,6 @@ abstract contract ERC20 is Context, IERC20 {
      * - `to` cannot be the zero address.
      */
     function _mint(address account, uint256 amount) internal virtual {
-        require(account != address(0), "0");
-
         _beforeTokenTransfer(address(0), account, amount);
 
         _totalSupply = _totalSupply.add(amount);
@@ -246,8 +228,6 @@ abstract contract ERC20 is Context, IERC20 {
      * - `account` must have at least `amount` tokens.
      */
     function _burn(address account, uint256 amount) internal virtual {
-        require(account != address(0), "0");
-
         _beforeTokenTransfer(account, address(0), amount);
 
         _balances[account] = _balances[account].sub(amount, "b");
@@ -273,9 +253,6 @@ abstract contract ERC20 is Context, IERC20 {
         address spender,
         uint256 amount
     ) internal virtual {
-        require(owner != address(0), "0");
-        require(spender != address(0), "0");
-
         allowance[owner][spender] = amount;
         emit Approval(owner, spender, amount);
     }
