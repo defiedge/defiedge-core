@@ -4,6 +4,7 @@ pragma abicoder v2;
 
 import "../interfaces/IOneInch.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 library OneInchHelper {
 
@@ -13,46 +14,60 @@ library OneInchHelper {
      * @param token1 token1 address of strategy
      * @param data bytes data to decode
      */
-    function decodeData(address token0, address token1, bytes calldata data)
+    function decodeData(IERC20 token0, IERC20 token1, bytes calldata data)
         public
         view
         returns (
-            address srcToken,
-            address dstToken,
+            IERC20 srcToken,
+            IERC20 dstToken,
             uint256 amount
         )
     {
         IOneInch.SwapDescription memory description;
-        if(data[0] == 0x7c) {
+
+        bytes memory _data = data;
+        
+        bytes4 selector;
+        assembly {
+            selector := mload (add (_data, 0x20))
+        }
+
+        if(selector == 0x7c025200) {
             // call swap() method
             (, description, ) = abi.decode(data[4:], (address, IOneInch.SwapDescription, bytes));
 
-            srcToken = description.srcToken;
-            dstToken = description.dstToken;
+            srcToken = IERC20(description.srcToken);
+            dstToken = IERC20(description.dstToken);
             amount = description.amount;
 
-        } else if(data[0] == 0x2e){
+        } else if(selector == 0x2e95b6c8){
             // call unoswap() method
-            (srcToken, amount, ,) = abi.decode(
+            address tokenIn;
+            (tokenIn, amount, ,) = abi.decode(
                 data[4:],
                 (address, uint256, uint256, bytes32[])
             );
 
+            srcToken = IERC20(tokenIn);
             dstToken = srcToken == token0 ? token1 : token0;
 
-        } else if(data[0] == 0xe4){
+        } else if(selector == 0xe449022e){
             // call uniswapV3Swap() method
-            (uint256 _amount, ,uint256[] memory pools) = abi.decode(
+            uint256[] memory pools;
+            (amount, ,pools) = abi.decode(
                 data[4:],
                 (uint256, uint256, uint256[])
             );
 
-            bool zeroForOne = pools[0] & 1 << 255 == 0;
+            uint256 _pool = pools[0];
+            bool zeroForOne = _pool >> 255 == 0;
 
-            srcToken = zeroForOne ? IUniswapV3Pool(pools[0]).token0() : IUniswapV3Pool(pools[0]).token1();
+            address tokenIn = zeroForOne ? IUniswapV3Pool(_pool).token0() : IUniswapV3Pool(_pool).token1();
+            srcToken = IERC20(tokenIn);
             dstToken = srcToken == token0 ? token1 : token0;
-            amount = _amount;
 
+        } else {
+            revert("IM");
         }
 
     }
