@@ -48,7 +48,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         address _payer
     ) internal hasDeviation returns (uint256 amount0, uint256 amount1) {
         uint128 liquidity = LiquidityHelper.getLiquidityForAmounts(
-            address(pool),
+            pool,
             _tickLower,
             _tickUpper,
             _amount0,
@@ -444,7 +444,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
                 // calculate current positions in the pool from currentLiquidity
                 (uint256 position0, uint256 position1) = LiquidityHelper
                     .getAmountsForLiquidity(
-                        address(pool),
+                        pool,
                         tick.tickLower,
                         tick.tickUpper,
                         currentLiquidity
