@@ -24,11 +24,11 @@ interface IStrategyFactory {
 
     function totalIndex() external view returns (uint256);
 
-    function allowedDeviation() external view returns (uint256);
+    function allowedDeviation() external view returns (uint256); // 1e18 means 100%
 
-    function allowedSlippage() external view returns (uint256);
+    function allowedSlippage() external view returns (uint256); // 1e18 means 100%
 
-    function isValid(address) external view returns (bool);
+    function isValidStrategy(address) external view returns (bool);
 
     function strategyByIndex(uint256) external view returns (address);
 
@@ -38,7 +38,7 @@ interface IStrategyFactory {
 
     function denied(address) external view returns (bool);
 
-    function protocolFee() external view returns (uint256);
+    function protocolFee() external view returns (uint256);  // 1e8 means 100%
 
     function governance() external view returns (address);
 

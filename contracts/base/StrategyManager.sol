@@ -11,7 +11,7 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract StrategyManager is AccessControl {
+contract StrategyManager is AccessControl, IStrategyManager {
     using SafeMath for uint256;
 
     event FeeChanged(uint256 tier);
@@ -29,31 +29,31 @@ contract StrategyManager is AccessControl {
     uint256 public constant MIN_FEE = 20e6; // minimum 20%
     uint256 public constant MIN_DEVIATION = 2e17; // minimum 20%
 
-    IStrategyFactory public factory;
-    address public operator;
+    IStrategyFactory public override factory;
+    address public override operator;
     address public pendingOperator;
-    address public feeTo;
+    address public override feeTo;
 
     // when true emergency functions will be frozen forever
-    bool public freezeEmergency;
+    bool public override freezeEmergency;
 
     // allowed price difference for the oracle and the current price
     // 1e18 is 100%
-    uint256 public allowedDeviation;
+    uint256 public override allowedDeviation;
 
     // allowed swap price difference for the oracle and the current price to increase swap counter
     // 1e18 is 100%
-    uint256 public allowedSwapDeviation;
+    uint256 public override allowedSwapDeviation;
 
     // fee to take when user adds the liquidity
-    uint256 public managementFee; // 1e8 is 100%
+    uint256 public override managementFee; // 1e8 is 100%
 
     // fees for the manager
-    uint256 public performanceFee; // 1e8 is 100%
+    uint256 public override performanceFee; // 1e8 is 100%
 
     // max number of shares to be minted
     // if set 0, allows unlimited deposits
-    uint256 public limit;
+    uint256 public override limit;
 
     // number of times user can perform swap in a day
     uint256 public maxAllowedSwap;
@@ -114,11 +114,11 @@ contract StrategyManager is AccessControl {
         _;
     }
 
-    function isAllowedToManage(address _account) public view returns (bool) {
+    function isAllowedToManage(address _account) public view override returns (bool) {
         return hasRole(ADMIN_ROLE, _account) || hasRole(MANAGER_ROLE, _account);
     }
 
-    function isAllowedToBurn(address _account) public view returns (bool) {
+    function isAllowedToBurn(address _account) public view override returns (bool) {
         return 
             hasRole(ADMIN_ROLE, _account) || 
             hasRole (MANAGER_ROLE, _account) ||
@@ -229,7 +229,7 @@ contract StrategyManager is AccessControl {
      * @notice Track total swap performed in a day and revert if maximum swap limit reached.
      *         Can only be called by strategy contract
      */
-    function increamentSwapCounter() external onlyStrategy {
+    function increamentSwapCounter() external override onlyStrategy {
         uint256 currentDay = block.timestamp /  1 days;
         uint256 swapDay = lastSwapTimestamp /  1 days;
 

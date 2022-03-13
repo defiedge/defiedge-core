@@ -21,7 +21,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
     event Swap(uint256 amountIn, uint256 amountOut, bool _zeroForOne);
 
-    event FeesClaimed(
+    event FeesClaim(
         address indexed strategy,
         uint256 amount0,
         uint256 amount1
@@ -29,7 +29,15 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
     struct MintCallbackData {
         address payer;
-        address pool;
+        IUniswapV3Pool pool;
+    }
+
+    // to handle stake too deep error inside swap function
+    struct LocalVariables_Balances {
+        uint256 tokenInBalBefore;
+        uint256 tokenOutBalBefore;
+        uint256 tokenInBalAfter;
+        uint256 tokenOutBalAfter;
     }
 
     /**
@@ -46,7 +54,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         uint256 _amount0,
         uint256 _amount1,
         address _payer
-    ) internal hasDeviation returns (uint256 amount0, uint256 amount1) {
+    ) internal onlyHasDeviation returns (uint256 amount0, uint256 amount1) {
         uint128 liquidity = LiquidityHelper.getLiquidityForAmounts(
             pool,
             _tickLower,
@@ -60,7 +68,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             _tickLower,
             _tickUpper,
             liquidity,
-            abi.encode(MintCallbackData({payer: _payer, pool: address(pool)}))
+            abi.encode(MintCallbackData({payer: _payer, pool: pool}))
         );
     }
 
@@ -77,7 +85,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         uint128 _currentLiquidity
     )
         internal
-        hasDeviation
+        onlyHasDeviation
         returns (
             uint256 collect0,
             uint256 collect1,
@@ -93,9 +101,9 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
                 PositionKey.compute(address(this), _tickLower, _tickUpper)
             );
             if (_currentLiquidity > 0) {
-                uint256 liquidity = uint256(_currentLiquidity).mul(_shares).div(
-                    totalSupply()
-                );
+
+                uint256 liquidity = FullMath.mulDiv(_currentLiquidity, _shares, totalSupply());
+
                 (tokensBurned0, tokensBurned1) = pool.burn(
                     _tickLower,
                     _tickUpper,
@@ -144,25 +152,47 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         accPerformanceFee = accPerformanceFee.add(
             ShareHelper.calculateShares(
                 chainlinkRegistry,
-                address(pool),
+                pool,
                 usdAsBase,
-                _fee0.mul(performanceFee).div(1e8),
-                _fee1.mul(performanceFee).div(1e8),
+                FullMath.mulDiv(_fee0, performanceFee, FEE_PRECISION),
+                FullMath.mulDiv(_fee1, performanceFee, FEE_PRECISION),
                 totalAmount0,
                 totalAmount1,
                 totalSupply()
             )
         );
 
-        emit FeesClaimed(address(this), _fee0, _fee1);
+        emit FeesClaim(address(this), _fee0, _fee1);
     }
 
     /**
      * @notice Burns all the liquidity and collects fees
      */
     function burnAllLiquidity() internal {
-        for (uint256 i = 0; i < ticks.length; i++) {
-            burnLiquiditySingle(i);
+        for (uint256 _tickIndex = 0; _tickIndex < ticks.length; _tickIndex++) {
+
+            Tick storage tick = ticks[_tickIndex];
+
+            (uint128 currentLiquidity, , , , ) = pool.positions(
+                PositionKey.compute(address(this), tick.tickLower, tick.tickUpper)
+            );
+
+            if (currentLiquidity > 0) {
+                (uint256 amount0, uint256 amount1, , ) = burnLiquidity(
+                    tick.tickLower,
+                    tick.tickUpper,
+                    0,
+                    currentLiquidity
+                );
+
+                // update data in ticks
+                tick.amount0 = tick.amount0 >= amount0
+                        ? tick.amount0.sub(amount0)
+                        : 0;
+                tick.amount1 = tick.amount1 >= amount1
+                    ? tick.amount1.sub(amount1)
+                    : 0;
+            }
         }
     }
 
@@ -172,7 +202,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
      */
     function burnLiquiditySingle(uint256 _tickIndex)
         public
-        hasDeviation
+        onlyHasDeviation
         returns (
             uint256 amount0,
             uint256 amount1,
@@ -199,10 +229,10 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             // update data in ticks
             tick.amount0 = tick.amount0 >= amount0
                     ? tick.amount0.sub(amount0)
-                    : tick.amount0;
+                    : 0;
             tick.amount1 = tick.amount1 >= amount1
                 ? tick.amount1.sub(amount1)
-                : tick.amount1;
+                : 0;
         }
     }
 
@@ -210,20 +240,19 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
      * @notice Swap the fudns to 1Inch
      * @param data Swap data to perform exchange from 1inch
      */
-    function swap(bytes calldata data) public onlyOperator hasDeviation {
-        (address srcToken, address dstToken, uint256 amount) = OneInchHelper
-            .decodeData(token0, token1, data);
+    function swap(bytes calldata data) public onlyOperator onlyHasDeviation {
 
-        require(srcToken == token0 || srcToken == token1, "IT");
-        require(dstToken == token0 || dstToken == token1, "IT");
+        LocalVariables_Balances memory balances;
 
-        address tokenIn = srcToken == token0 ? token0 : token1;
-        address tokenOut = dstToken == token0 ? token0 : token1;
+        (IERC20 srcToken, IERC20 dstToken, uint256 amount) = OneInchHelper
+            .decodeData(IERC20(token0), IERC20(token1), data);
 
-        uint256 tokenInBalBefore = IERC20(tokenIn).balanceOf(address(this));
-        uint256 tokenOutBalBefore = IERC20(tokenOut).balanceOf(address(this));
+        require (srcToken == token0 && dstToken == token1 || srcToken == token1 && dstToken == token0, "IA");
 
-        IERC20(srcToken).approve(address(oneInchRouter), amount);
+        balances.tokenInBalBefore = srcToken.balanceOf(address(this));
+        balances.tokenOutBalBefore = dstToken.balanceOf(address(this));
+
+        srcToken.approve(address(oneInchRouter), amount);
 
         // Interact with 1inch through contract call with data
         (bool success, bytes memory returnData) = address(oneInchRouter).call{
@@ -232,144 +261,61 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
         // Verify return status and data
         if (!success) {
-            if (returnData.length < 68) {
+            uint256 length = returnData.length;
+            if (length < 68) {
                 // If the returnData length is less than 68, then the transaction failed silently.
                 revert("swap");
             } else {
                 // Look for revert reason and bubble it up if present
+                uint t;
                 assembly {
-                    returnData := add(returnData, 0x04)
+                    returnData := add (returnData, 4)
+                    t := mload (returnData) // Save the content of the length slot
+                    mstore (returnData, sub (length, 4)) // Set proper length
                 }
-                revert(abi.decode(returnData, (string)));
+                string memory reason = abi.decode (returnData, (string));
+                assembly {
+                    mstore (returnData, t) // Restore the content of the length slot
+                }
+                revert(reason);
             }
         }
 
-        uint256 tokenInBalAfter = IERC20(tokenIn).balanceOf(address(this));
-        uint256 tokenOutBalAfter = IERC20(tokenOut).balanceOf(address(this));
+        balances.tokenInBalAfter = srcToken.balanceOf(address(this));
+        balances.tokenOutBalAfter = dstToken.balanceOf(address(this));
 
-        uint256 amountIn = tokenInBalBefore.sub(tokenInBalAfter);
-        uint256 amountOut = tokenOutBalAfter.sub(tokenOutBalBefore);
+        uint256 amountIn = balances.tokenInBalBefore.sub(balances.tokenInBalAfter);
+        uint256 amountOut = balances.tokenOutBalAfter.sub(balances.tokenOutBalBefore);
 
         // check if swap exceed allowed deviation and revert if maximum swap limits reached
         if (
             OracleLibrary.isSwapExceedDeviation(
-                address(pool),
+                pool,
                 chainlinkRegistry,
                 amountIn,
                 amountOut,
-                tokenIn,
-                tokenOut,
+                address(srcToken),
+                address(dstToken),
                 [usdAsBase[0], usdAsBase[1]],
                 address(manager)
             )
         ) {
-            require(manager.increamentSwapCounter(), "LR");
+            manager.increamentSwapCounter();
         }
 
         require(
             OracleLibrary.allowSwap(
-                address(pool),
-                address(factory),
+                pool,
+                factory,
                 amountIn,
                 amountOut,
-                tokenIn,
-                tokenOut,
+                address(srcToken),
+                address(dstToken),
                 [usdAsBase[0], usdAsBase[1]]
             ),
             "S"
         );
     }
-
-    // /**
-    //  * @notice Swaps through the path calculated by Uniswap auto-router
-    //  */
-    // function swap(
-    //     bool _usePath,
-    //     bool _zeroForOne,
-    //     bytes memory _path,
-    //     uint256 _deadline,
-    //     uint256 _amountIn,
-    //     uint256 _amountOutMinimum,
-    //     uint160 _sqrtPriceLimitX96
-    // ) external onlyOperator hasDeviation {
-    //     if (ticks.length > 0) {
-    //         onHold = true;
-    //         // burn all liquidity
-    //         burnAllLiquidity(ticks);
-    //         // delete ticks
-    //         delete ticks;
-    //     }
-
-    //     // check if swap exceed allowed deviation and revert if maximum swap limits reached
-    //     if (
-    //         OracleLibrary.isSwapExceedDeviation(
-    //             address(pool),
-    //             chainlinkRegistry,
-    //             usdAsBase,
-    //             address(manager)
-    //         )
-    //     ) {
-    //         require(manager.increamentSwapCounter(), "LR");
-    //     }
-
-    //     address tokenIn;
-    //     address tokenOut;
-    //     bool[2] memory isBase; // is direct USD feed is available for the token?
-
-    //     if (_zeroForOne) {
-    //         tokenIn = token0;
-    //         tokenOut = token1;
-    //         isBase = [usdAsBase[0], usdAsBase[1]];
-    //     } else {
-    //         tokenIn = token1;
-    //         tokenOut = token0;
-    //         isBase = [usdAsBase[1], usdAsBase[0]];
-    //     }
-
-    //     IERC20(tokenIn).approve(address(swapRouter), _amountIn);
-
-    //     uint256 amountOut;
-
-    //     if (_usePath) {
-    //         amountOut = swapRouter.exactInput(
-    //             ISwapRouter.ExactInputParams({
-    //                 path: _path,
-    //                 recipient: address(this),
-    //                 deadline: _deadline,
-    //                 amountIn: _amountIn,
-    //                 amountOutMinimum: _amountOutMinimum
-    //             })
-    //         );
-    //     } else {
-    //         amountOut = swapRouter.exactInputSingle(
-    //             ISwapRouter.ExactInputSingleParams({
-    //                 tokenIn: tokenIn,
-    //                 tokenOut: tokenOut,
-    //                 fee: pool.fee(),
-    //                 recipient: address(this),
-    //                 deadline: _deadline,
-    //                 amountIn: _amountIn,
-    //                 amountOutMinimum: _amountOutMinimum,
-    //                 sqrtPriceLimitX96: _sqrtPriceLimitX96
-    //             })
-    //         );
-    //     }
-
-    //     require(
-    //         OracleLibrary.allowSwap(
-    //             address(pool),
-    //             address(factory),
-    //             _amountIn,
-    //             amountOut,
-    //             tokenIn,
-    //             tokenOut,
-    //             isBase
-    //         ),
-    //         "S"
-    //     );
-
-    //     emit Swap(_amountIn, amountOut, _zeroForOne);
-    // }
 
     /**
      * @dev Callback for Uniswap V3 pool.
@@ -379,22 +325,22 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         uint256 amount1,
         bytes calldata data
     ) external override {
+        require(msg.sender == address(pool));
         MintCallbackData memory decoded = abi.decode(data, (MintCallbackData));
         // check if the callback is received from Uniswap V3 Pool
-        require(msg.sender == address(pool));
         if (decoded.payer == address(this)) {
             // transfer tokens already in the contract
             if (amount0 > 0) {
-                TransferHelper.safeTransfer(token0, msg.sender, amount0);
+                TransferHelper.safeTransfer(address(token0), msg.sender, amount0);
             }
             if (amount1 > 0) {
-                TransferHelper.safeTransfer(token1, msg.sender, amount1);
+                TransferHelper.safeTransfer(address(token1), msg.sender, amount1);
             }
         } else {
             // take and transfer tokens to Uniswap V3 pool from the user
             if (amount0 > 0) {
                 TransferHelper.safeTransferFrom(
-                    token0,
+                    address(token0),
                     decoded.payer,
                     msg.sender,
                     amount0
@@ -402,7 +348,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             }
             if (amount1 > 0) {
                 TransferHelper.safeTransferFrom(
-                    token1,
+                    address(token1),
                     decoded.payer,
                     msg.sender,
                     amount1
@@ -468,9 +414,12 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
                 totalFee0 = totalFee0.add(tokensOwed0);
                 totalFee1 = totalFee1.add(tokensOwed1);
 
-                amount0 = amount0.add(tokensOwed0).add(position0);
-                amount1 = amount1.add(tokensOwed1).add(position1);
+                amount0 = amount0.add(position0);
+                amount1 = amount1.add(position1);
             }
         }
+
+        amount0 = amount0.add(totalFee0);
+        amount1 = amount1.add(totalFee1);
     }
 }

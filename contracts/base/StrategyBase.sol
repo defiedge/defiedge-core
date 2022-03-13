@@ -9,40 +9,30 @@ import "../ERC20.sol";
 import "../libraries/ShareHelper.sol";
 import "../libraries/OracleLibrary.sol";
 
-// interfaces
-import "../interfaces/IStrategyManager.sol";
-import "../interfaces/IStrategyBase.sol";
-import "../interfaces/IOneInchRouter.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-// import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 contract StrategyBase is ERC20, IStrategyBase {
     using SafeMath for uint256;
 
-    event ClaimFee(uint256 managerFee, uint256 protocolFee);
-
     uint256 public constant FEE_PRECISION = 1e8;
-    bool public onHold;
+    bool public override onHold;
 
     // store ticks
     Tick[] public ticks;
 
-    uint256 public accManagementFee;
+    uint256 public override accManagementFee;
     uint256 public accPerformanceFee;
 
-    IStrategyFactory public factory; // instance of the strategy factory
-    IUniswapV3Pool public pool; // instance of the Uniswap V3 pool
+    IStrategyFactory public override factory; // instance of the strategy factory
+    IUniswapV3Pool public override pool; // instance of the Uniswap V3 pool
 
     IERC20 internal token0;
     IERC20 internal token1;
 
-    IOneInchRouter public oneInchRouter; // instance of the Uniswap V3 Periphery Swap Router
+    IOneInchRouter public override oneInchRouter; // instance of the Uniswap V3 Periphery Swap Router
     FeedRegistryInterface internal chainlinkRegistry;
 
-    IStrategyManager public manager; // instance of manager contract
+    IStrategyManager public override manager; // instance of manager contract
 
-    bool[2] public usdAsBase; // for Chainlink oracle
+    bool[2] public override usdAsBase; // for Chainlink oracle
 
     uint256 internal MAX_TICK_LENGTH = 5;
 
@@ -152,7 +142,7 @@ contract StrategyBase is ERC20, IStrategyBase {
      * @notice Claims the fee for protocol and management
      * Protocol receives X percentage from manager fee
      */
-    function claimFee() external {
+    function claimFee() external override {
         (
             address managerFeeTo,
             address protocolFeeTo,
