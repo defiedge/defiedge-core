@@ -11,33 +11,18 @@ import "../libraries/OracleLibrary.sol";
 
 // interfaces
 import "../interfaces/IStrategyManager.sol";
+import "../interfaces/IStrategyBase.sol";
+import "../interfaces/IOneInchRouter.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 // import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IOneInchRouter {
-    function swap(
-        IERC20 fromToken,
-        IERC20 destToken,
-        uint256 amount,
-        uint256 minReturn,
-        uint256[] memory distribution,
-        uint256 flags
-    ) external returns (uint256 returnAmount);
-}
-
-contract StrategyBase is ERC20 {
+contract StrategyBase is ERC20, IStrategyBase {
     using SafeMath for uint256;
 
     event ClaimFee(uint256 managerFee, uint256 protocolFee);
 
-    struct Tick {
-        uint256 amount0;
-        uint256 amount1;
-        int24 tickLower;
-        int24 tickUpper;
-    }
-
+    uint256 public constant FEE_PRECISION = 1e8;
     bool public onHold;
 
     // store ticks
@@ -49,31 +34,23 @@ contract StrategyBase is ERC20 {
     IStrategyFactory public factory; // instance of the strategy factory
     IUniswapV3Pool public pool; // instance of the Uniswap V3 pool
 
-    address internal token0;
-    address internal token1;
+    IERC20 internal token0;
+    IERC20 internal token1;
 
     IOneInchRouter public oneInchRouter; // instance of the Uniswap V3 Periphery Swap Router
-    address internal chainlinkRegistry;
+    FeedRegistryInterface internal chainlinkRegistry;
 
     IStrategyManager public manager; // instance of manager contract
 
-    bool[] public usdAsBase; // for Chainlink oracle
+    bool[2] public usdAsBase; // for Chainlink oracle
+
+    uint256 internal MAX_TICK_LENGTH = 5;
 
     // Modifiers
     modifier onlyOperator() {
         require(manager.isAllowedToManage(msg.sender), "N");
         _;
     }
-
-    // modifier onlyOperatorAndBurner() {
-    //     require(
-    //         manager.hasRole(manager.ADMIN_ROLE(), msg.sender) ||
-    //             manager.hasRole(manager.MANAGER_ROLE(), msg.sender) ||
-    //             manager.hasRole(manager.BURNER_ROLE(), msg.sender),
-    //         "N"
-    //     );
-    //     _;
-    // }
 
     /**
      * @dev Replaces old ticks with new ticks
@@ -90,13 +67,12 @@ contract StrategyBase is ERC20 {
 
             // check that two tick upper and tick lowers are not in array cannot be same
             for (uint256 j = 0; j < i; j++) {
-                if (i != j) {
-                    if (tickLower == _ticks[j].tickLower) {
-                        if (tickUpper == _ticks[j].tickUpper) {
-                            invalid = true;
-                        }
-                        // require(tickUpper != _ticks[j].tickUpper, "TS");
+                if (tickLower == _ticks[j].tickLower) {
+                    if (tickUpper == _ticks[j].tickUpper) {
+                        invalid = true;
+                        return invalid;
                     }
+                    // require(tickUpper != _ticks[j].tickUpper, "TS");
                 }
             }
         }
@@ -105,7 +81,7 @@ contract StrategyBase is ERC20 {
     /**
      * @dev Checks if it's valid strategy or not
      */
-    modifier isValidStrategy() {
+    modifier onlyValidStrategy() {
         // check if strategy is in denylist
         require(!factory.denied(address(this)), "DL");
         _;
@@ -114,10 +90,10 @@ contract StrategyBase is ERC20 {
     /**
      * @dev checks if the pool is manipulated
      */
-    modifier hasDeviation() {
+    modifier onlyHasDeviation() {
         require(
             !OracleLibrary.hasDeviation(
-                address(pool),
+                pool,
                 chainlinkRegistry,
                 usdAsBase,
                 address(manager)
@@ -145,7 +121,7 @@ contract StrategyBase is ERC20 {
         // calculate number of shares
         share = ShareHelper.calculateShares(
             chainlinkRegistry,
-            address(pool),
+            pool,
             usdAsBase,
             _amount0,
             _amount1,
@@ -160,7 +136,7 @@ contract StrategyBase is ERC20 {
         uint256 managementFee = manager.managementFee();
         // strategy owner fees
         if (managementFee > 0) {
-            managerShare = share.mul(managementFee).div(1e8);
+            managerShare = share.mul(managementFee).div(FEE_PRECISION);
             accManagementFee = accManagementFee.add(managerShare);
         }
 
@@ -183,8 +159,8 @@ contract StrategyBase is ERC20 {
             uint256 managerShare,
             uint256 protocolShare
         ) = ShareHelper.calculateFeeShares(
-                address(factory),
-                address(manager),
+                factory,
+                manager,
                 accManagementFee,
                 accPerformanceFee
             );
