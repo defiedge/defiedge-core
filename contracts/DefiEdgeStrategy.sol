@@ -54,8 +54,8 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         oneInchRouter = _oneInchRouter;
         chainlinkRegistry = _chainlinkRegistry;
         pool = _pool;
-        token0 = pool.token0();
-        token1 = pool.token1();
+        token0 = IERC20(pool.token0());
+        token1 = IERC20(pool.token1());
         usdAsBase = _usdAsBase;
         for (uint256 i = 0; i < _ticks.length; i++) {
             ticks.push(Tick(0, 0, _ticks[i].tickLower, _ticks[i].tickUpper));
@@ -78,7 +78,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         uint256 _minShare
     )
         external
-        isValidStrategy
+        onlyValidStrategy
         returns (
             uint256 amount0,
             uint256 amount1,
@@ -112,7 +112,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
 
             if (amount0 > 0) {
                 TransferHelper.safeTransferFrom(
-                    token0,
+                    address(token0),
                     msg.sender,
                     address(this),
                     amount0
@@ -120,7 +120,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             }
             if (amount1 > 0) {
                 TransferHelper.safeTransferFrom(
-                    token1,
+                    address(token1),
                     msg.sender,
                     address(this),
                     amount1
@@ -216,10 +216,10 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
 
         // transfer tokens
         if (collect0 > 0) {
-            TransferHelper.safeTransfer(token0, msg.sender, collect0);
+            TransferHelper.safeTransfer(address(token0), msg.sender, collect0);
         }
         if (collect1 > 0) {
-            TransferHelper.safeTransfer(token1, msg.sender, collect1);
+            TransferHelper.safeTransfer(address(token1), msg.sender, collect1);
         }
 
         emit Burn(msg.sender, _shares, collect0, collect1);
@@ -237,7 +237,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         PartialTick[] memory _existingTicks,
         Tick[] memory _newTicks,
         bool _burnAll
-    ) external onlyOperator isValidStrategy {
+    ) external onlyOperator onlyValidStrategy {
         if (_burnAll) {
             require(_existingTicks.length == 0, "IA");
             onHold = true;
@@ -292,7 +292,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
      * @notice Redeploys between ticks
      * @param _ticks Array of the ticks with amounts
      */
-    function redeploy(Tick[] memory _ticks) internal hasDeviation {
+    function redeploy(Tick[] memory _ticks) internal onlyHasDeviation {
         // set hold false
         onHold = false;
         // redeploy the liquidity

@@ -14,7 +14,7 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
     using SafeMath for uint256;
 
     mapping(uint256 => address) public override strategyByIndex; // map strategies by index
-    mapping(address => bool) public override isValid; // make strategy valid when deployed
+    mapping(address => bool) public override isValidStrategy; // make strategy valid when deployed
 
     mapping(address => address) public override strategyByManager; // strategy manager contracts linked with strategies
 
@@ -99,7 +99,7 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
 
         address manager = address(
             new StrategyManager(
-                address(this),
+                IStrategyFactory(address(this)),
                 params.operator,
                 params.feeTo,
                 params.managementFee,
@@ -126,7 +126,7 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
 
         strategyByIndex[totalIndex] = strategy;
 
-        isValid[strategy] = true;
+        isValidStrategy[strategy] = true;
         emit NewStrategy(strategy, msg.sender);
     }
 
