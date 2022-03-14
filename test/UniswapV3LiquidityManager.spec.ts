@@ -118,11 +118,7 @@ describe("UniswapV3LiquidityManager", () => {
       "100000000"
     );    
 
-    const ShareHelperLibrary = ethers.getContractFactory("ShareHelper", {
-      libraries: {
-        OracleLibrary: oracleLibrary.address
-      }
-    });
+    const ShareHelperLibrary = ethers.getContractFactory("ShareHelper");
 
     shareHelper = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
 
@@ -162,6 +158,8 @@ describe("UniswapV3LiquidityManager", () => {
       "10000000000000000"
     )) as DefiEdgeStrategyFactory;
 
+    let usdAsBase: [boolean, boolean] = [true, true];
+
     let params = {
       operator: signers[0].address,
       feeTo: signers[1].address,
@@ -169,7 +167,7 @@ describe("UniswapV3LiquidityManager", () => {
       performanceFee: "500000", // 0.5%
       limit: 0,
       pool: pool.address,
-      usdAsBase: [true, true],
+      usdAsBase: usdAsBase,
       ticks: [
         {
           amount0: 0,
@@ -258,13 +256,13 @@ describe("UniswapV3LiquidityManager", () => {
     });
 
     it("should emit mint event with correct values - uniswap pool contract", async () => {
-      let liquidity = await liquidityHelper.getLiquidityForAmounts(
-        pool.address,
-        calculateTick(2500, 60),
-        calculateTick(3500, 60),
-        expandTo18Decimals(1),
-        expandTo18Decimals(3500)
-      );
+      // let liquidity = await liquidityHelper.getLiquidityForAmounts(
+      //   pool.address,
+      //   calculateTick(2500, 60),
+      //   calculateTick(3500, 60),
+      //   expandTo18Decimals(1),
+      //   expandTo18Decimals(3500)
+      // );
 
       expect(await mint(signers[0]))
         .to.emit(pool, "Mint")
@@ -273,7 +271,7 @@ describe("UniswapV3LiquidityManager", () => {
           strategy.address,
           calculateTick(2500, 60),
           calculateTick(3500, 60),
-          liquidity.toString(),
+          "731166206079261908657",
           expandTo18Decimals(1),
           "3452260981108611401314"
         );
@@ -300,7 +298,7 @@ describe("UniswapV3LiquidityManager", () => {
     it("should emit fees claimed event with correct values - strategy contract", async () => {
       const shares = "64199996762030683443";
       await expect(strategy.connect(signers[0]).burn(shares, 0, 0))
-        .to.emit(strategy, "FeesClaimed")
+        .to.emit(strategy, "FeesClaim")
         .withArgs(strategy.address, "0", "0");
     });
 
@@ -354,7 +352,7 @@ describe("UniswapV3LiquidityManager", () => {
 
     it("should emit fees claimed event with correct values - strategy contract", async () => {
       expect(await strategy.rebalance("0x", [], [], true))
-        .to.emit(strategy, "FeesClaimed")
+        .to.emit(strategy, "FeesClaim")
         .withArgs(strategy.address, "0", "0");
     });
 

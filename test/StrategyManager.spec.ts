@@ -106,11 +106,7 @@ describe("StrategyManager", () => {
       await OracleLibraryLibrary
     ).deploy()) as OracleLibrary;
 
-    const ShareHelperLibrary = ethers.getContractFactory("ShareHelper", {
-      libraries: {
-        OracleLibrary: oracleLibrary.address
-      }
-    });
+    const ShareHelperLibrary = ethers.getContractFactory("ShareHelper");
         
     // deploy sharehelper library
     shareHelper = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
@@ -161,6 +157,8 @@ describe("StrategyManager", () => {
       "10000000000000000"
     )) as DefiEdgeStrategyFactory;
 
+    let usdAsBase: [boolean, boolean] = [true, true];
+
     let params = {
       operator: signers[0].address,
       feeTo: signers[1].address,
@@ -168,7 +166,7 @@ describe("StrategyManager", () => {
       performanceFee: "500000", // 0.5%
       limit: 0,
       pool: pool.address,
-      usdAsBase: [true, true],
+      usdAsBase: usdAsBase,
       ticks: [
         {
           amount0: 0,
@@ -301,10 +299,12 @@ describe("StrategyManager", () => {
       await strategyManager.changeFee(5000000);
       expect(await strategyManager.managementFee()).to.equal(5000000);
     });
-
+    it("should set fees to 25%", async () => {
+      await expect(strategyManager.changeFee(25000000)).to.be.reverted;
+    })
     it("should emit changeFee event", async () => {
       await expect(await strategyManager.changeFee(1000000))
-        .to.emit(strategyManager, "ChangeFee")
+        .to.emit(strategyManager, "FeeChanged")
         .withArgs(1000000);
     });
   });
@@ -318,13 +318,14 @@ describe("StrategyManager", () => {
       await strategyManager.changeFeeTo(signers[1].address);
       expect(await strategyManager.feeTo()).to.equal(signers[1].address);
     });
+    it("should emit changeFeeTo event", async () => {
+      await expect(await strategyManager.changeFeeTo(signers[1].address))
+        .to.emit(strategyManager, "FeeToChanged")
+        .withArgs(signers[1].address);
+    });
   });
 
   describe("#changeOperator", async () => {
-    it("should revert if new operator is address 0", async () => {
-      expect(strategyManager.changeOperator(constants.AddressZero)).to.be.reverted;
-    });
-
     it("should revert new operator and old operator is same", async () => {
       expect(strategyManager.changeOperator(signers[0].address)).to.be.reverted;
     });
@@ -332,6 +333,11 @@ describe("StrategyManager", () => {
     it("should set pending operator", async () => {
       await strategyManager.changeOperator(signers[1].address);
       expect(await strategyManager.pendingOperator()).to.be.equal(signers[1].address);
+    });
+    it("should emit changeOperator event", async () => {
+      await expect(await strategyManager.changeOperator(signers[1].address))
+        .to.emit(strategyManager, "OperatorProposed")
+        .withArgs(signers[1].address);
     });
   });
 
@@ -351,7 +357,7 @@ describe("StrategyManager", () => {
 
     it("should emit change operator function", async () => {
       await expect(await strategyManager.connect(signers[1]).acceptOperator())
-        .to.emit(strategyManager, "ChangeOperator")
+        .to.emit(strategyManager, "OperatorChanged")
         .withArgs(signers[1].address);
     });
   });
@@ -365,6 +371,11 @@ describe("StrategyManager", () => {
       await strategyManager.changeLimit(10);
       expect(await strategyManager.limit()).to.equal(10);
     });
+    it("should emit changeLimit function", async () => {
+      await expect(await strategyManager.changeLimit(10))
+        .to.emit(strategyManager, "LimitChanged")
+        .withArgs(10);
+    });
   });
 
   describe("#changeMaxSwapLimit", async () => {
@@ -375,6 +386,11 @@ describe("StrategyManager", () => {
     it("should update maxAllowedSwap", async () => {
       await strategyManager.changeMaxSwapLimit(10);
       expect(await strategyManager.maxAllowedSwap()).to.equal(10);
+    });
+    it("should emit changeLimit function", async () => {
+      await expect(await strategyManager.changeMaxSwapLimit(10))
+        .to.emit(strategyManager, "MaxSwapLimitChanged")
+        .withArgs(10);
     });
   });
 
@@ -405,7 +421,7 @@ describe("StrategyManager", () => {
 
     it("should emit changePerformanceFee event", async () => {
       await expect(await strategyManager.changePerformanceFee(1000000))
-        .to.emit(strategyManager, "ChangePerformanceFee")
+        .to.emit(strategyManager, "PerformanceFeeChanged")
         .withArgs(1000000);
     });
   });
@@ -418,6 +434,10 @@ describe("StrategyManager", () => {
     it("should set freezeEmergency to true", async () => {
       await strategyManager.freezeEmergencyFunctions();
       expect(await strategyManager.freezeEmergency()).to.equal(true);
+    });
+    it("should emit freezeEmergency event", async () => {
+      await expect(await strategyManager.freezeEmergencyFunctions())
+        .to.emit(strategyManager, "EmergencyActivated")
     });
   });
 
@@ -436,7 +456,7 @@ describe("StrategyManager", () => {
 
     it("should emit changeAllowedDeviation event", async () => {
       await expect(await strategyManager.changeAllowedDeviation(1000000))
-        .to.emit(strategyManager, "ChangeAllowedDeviation")
+        .to.emit(strategyManager, "AllowedDeviationChanged")
         .withArgs(1000000);
     });
   });
@@ -448,17 +468,14 @@ describe("StrategyManager", () => {
       );
     });
 
-    it("should revert if value is more then allowedDeviation", async () => {
-      await expect(await strategyManager.changeAllowedDeviation(10))
-
-      await expect(strategyManager.changeSwapDeviation(11)).to.be.revertedWith(
-        "ID"
-      );
-    });
-
     it("should set  correct deviation", async () => {
       await strategyManager.changeSwapDeviation("1000");
       expect(await strategyManager.allowedSwapDeviation()).to.equal("1000");
+    });
+    it("should emit changeSwapDeviation event", async () => {
+      await expect(await strategyManager.changeSwapDeviation(1000000))
+        .to.emit(strategyManager, "AllowedSwapDeviationChanged")
+        .withArgs(1000000);
     });
   });
 
@@ -498,7 +515,7 @@ describe("StrategyManager", () => {
 
       expect(await strategy.accPerformanceFee()).to.equal("53619");
 
-      await expect(burn).to.emit(strategy, "FeesClaimed").withArgs(strategy.address, "0", "1072391033");
+      await expect(burn).to.emit(strategy, "FeesClaim").withArgs(strategy.address, "0", "1072391033");
     });
   })
 });
