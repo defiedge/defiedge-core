@@ -1256,11 +1256,7 @@ describe("DeFiEdgeStrategy", () => {
         false
       );
 
-      console.log(await strategy.ticks(0));
-      console.log(await strategy.getTicks());
-
-      expect((await strategy.ticks(0)).amount0).to.eq("28966523836760275");
-      expect((await strategy.ticks(0)).amount1).to.eq("100000000000000000000");
+      await expect(strategy.ticks(0)).to.be.reverted;
     });
 
     it("should revert if contract have no balance left to mint liquidity", async () => {
@@ -1328,8 +1324,9 @@ describe("DeFiEdgeStrategy", () => {
         false
       );
 
-      expect((await strategy.ticks(0)).amount0).to.eq("999924402844964639");
-      expect((await strategy.ticks(0)).amount1).to.eq("3451999999999999999999");
+      expect((await strategy.ticks(0)).amount0).to.eq("999924402844964638");
+      expect((await strategy.ticks(0)).amount1).to.eq("3451999999999999999998");
+
     });
   });
 

@@ -254,11 +254,16 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         // redeploy the partial ticks
         if (_existingTicks.length > 0) {
             for (uint256 i = 0; i < _existingTicks.length; i++) {
-                Tick storage tick = ticks[_existingTicks[i].index];
+
+                Tick memory _tick = ticks[_existingTicks[i].index];
+
+                Tick storage tick;
 
                 if (_existingTicks[i].burn) {
                     // burn liquidity from range
                     burnLiquiditySingle(_existingTicks[i].index);
+                } else {
+                    tick = ticks[_existingTicks[i].index];
                 }
 
                 if (
@@ -267,16 +272,21 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                 ) {
                     // mint liquidity
                     (uint256 amount0, uint256 amount1) = mintLiquidity(
-                        tick.tickLower,
-                        tick.tickUpper,
+                        _tick.tickLower,
+                        _tick.tickUpper,
                         _existingTicks[i].amount0,
                         _existingTicks[i].amount1,
                         address(this)
                     );
 
-                    // update data in the tick
-                    tick.amount0 = tick.amount0.add(amount0);
-                    tick.amount1 = tick.amount1.add(amount1);
+                    if(_existingTicks[i].burn){
+                        // push to ticks array
+                        ticks.push(Tick(amount0, amount1, _tick.tickLower, _tick.tickUpper));
+                    } else {
+                        // update data in the tick
+                        tick.amount0 = tick.amount0.add(amount0);
+                        tick.amount1 = tick.amount1.add(amount1);
+                    }
                 }
             }
 

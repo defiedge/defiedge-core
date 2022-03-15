@@ -307,9 +307,9 @@ describe("StrategyBase", () => {
       );
     });
 
-    it("should revert if tick length is more than 5", async () => {
+    it("should revert if tick length is more than 30", async () => {
       const ticks = [];
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 31; i++) {
         const tick = {
           amount0: expandTo18Decimals(0.00001),
           amount1: expandTo18Decimals(0.00001),
