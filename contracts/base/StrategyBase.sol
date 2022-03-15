@@ -34,7 +34,7 @@ contract StrategyBase is ERC20, IStrategyBase {
 
     bool[2] public override usdAsBase; // for Chainlink oracle
 
-    uint256 internal MAX_TICK_LENGTH = 20;
+    uint256 public constant MAX_TICK_LENGTH = 20;
 
     // Modifiers
     modifier onlyOperator() {
