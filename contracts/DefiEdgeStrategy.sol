@@ -341,23 +341,4 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         TransferHelper.safeTransfer(_token, _to, _amount);
     }
 
-    // // TODO: Make this function work correctly
-    // function emergencyBurn(
-    //     int24 _tickLower,
-    //     int24 _tickUpper,
-    //     uint128 _liquidity,
-    //     address _to
-    // ) external onlyGovernance {
-    //     pool.burn(_tickLower, _tickUpper, _liquidity);
-    //     (, , , uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(
-    //         PositionKey.compute(address(this), _tickLower, _tickUpper)
-    //     );
-    //     pool.collect(
-    //         _to,
-    //         _tickLower,
-    //         _tickUpper,
-    //         uint128(tokensOwed0),
-    //         uint128(tokensOwed1)
-    //     );
-    // }
 }

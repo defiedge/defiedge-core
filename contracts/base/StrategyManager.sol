@@ -56,13 +56,13 @@ contract StrategyManager is AccessControl, IStrategyManager {
     uint256 public override limit;
 
     // number of times user can perform swap in a day
-    uint256 public maxAllowedSwap;
+    uint256 public maxAllowedSwap = 0;
 
     // current swap counter
-    uint256 public swapCounter;
+    uint256 public swapCounter = 0;
 
     // tracks timestamp of the last swap happened
-    uint256 public lastSwapTimestamp;
+    uint256 public lastSwapTimestamp = 0;
 
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE"); // can only rebalance and swap
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE"); // can control everything
