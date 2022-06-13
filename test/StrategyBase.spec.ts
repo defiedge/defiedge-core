@@ -107,11 +107,7 @@ describe("StrategyBase", () => {
       await OracleLibraryLibrary
     ).deploy()) as OracleLibrary;
 
-    const ShareHelperLibrary = ethers.getContractFactory("ShareHelper", {
-      libraries: {
-        OracleLibrary: oracleLibrary.address
-      }
-    });
+    const ShareHelperLibrary = ethers.getContractFactory("ShareHelper");
         
     // deploy sharehelper library
     shareHelper = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
@@ -162,6 +158,8 @@ describe("StrategyBase", () => {
       "10000000000000000"
     )) as DefiEdgeStrategyFactory;
 
+    let usdAsBase: [boolean, boolean] = [true, true];
+
     let params = {
       operator: signers[0].address,
       feeTo: signers[1].address,
@@ -169,7 +167,7 @@ describe("StrategyBase", () => {
       performanceFee: "500000", // 0.5%
       limit: 0,
       pool: pool.address,
-      usdAsBase: [true, true],
+      usdAsBase: usdAsBase,
       ticks: [
         {
           amount0: 0,
@@ -309,9 +307,9 @@ describe("StrategyBase", () => {
       );
     });
 
-    it("should revert if tick length is more than 5", async () => {
+    it("should revert if tick length is more than 30", async () => {
       const ticks = [];
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 31; i++) {
         const tick = {
           amount0: expandTo18Decimals(0.00001),
           amount1: expandTo18Decimals(0.00001),
@@ -342,7 +340,7 @@ describe("StrategyBase", () => {
     });
   });
 
-  describe("#hasDeviation modifier", async () => {
+  describe("#onlyHasDeviation modifier", async () => {
     beforeEach("add liquidity", async () => {
       
       await strategy.mint(
@@ -478,10 +476,6 @@ describe("StrategyBase", () => {
   });
 
   describe("#changeOperator", async () => {
-    it("should revert if new operator is address 0", async () => {
-      expect(strategyManager.changeOperator(constants.AddressZero)).to.be.reverted;
-    });
-
     it("should revert new operator and old operator is same", async () => {
       expect(strategyManager.changeOperator(signers[0].address)).to.be.reverted;
     });
@@ -508,7 +502,7 @@ describe("StrategyBase", () => {
 
     it("should emit change operator function", async () => {
       await expect(await strategyManager.connect(signers[1]).acceptOperator())
-        .to.emit(strategyManager, "ChangeOperator")
+        .to.emit(strategyManager, "OperatorChanged")
         .withArgs(signers[1].address);
     });
   });

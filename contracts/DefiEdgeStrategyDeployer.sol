@@ -1,20 +1,22 @@
 // SPDX-License-Identifier: BSL
 
-pragma solidity =0.7.6;
+pragma solidity ^0.7.6;
 pragma abicoder v2;
 
 import "./DefiEdgeStrategy.sol";
+import "./interfaces/IStrategyBase.sol";
+import "./interfaces/IDefiEdgeStrategyDeployer.sol";
 
-contract DefiEdgeStrategyDeployer {
+contract DefiEdgeStrategyDeployer is IDefiEdgeStrategyDeployer{
     function createStrategy(
-        address _factory,
-        address _pool,
-        address _swapRouter,
-        address _chainlinkRegistry,
-        address _manager,
-        bool[] memory _usdAsBase,
-        DefiEdgeStrategy.Tick[] memory _ticks
-    ) external returns (address strategy) {
+        IStrategyFactory _factory,
+        IUniswapV3Pool _pool,
+        IOneInchRouter _swapRouter,
+        FeedRegistryInterface _chainlinkRegistry,
+        IStrategyManager _manager,
+        bool[2] memory _usdAsBase,
+        IStrategyBase.Tick[] memory _ticks
+    ) external override returns (address strategy) {
         strategy = address(
             new DefiEdgeStrategy(
                 _factory,
@@ -26,5 +28,8 @@ contract DefiEdgeStrategyDeployer {
                 _ticks
             )
         );
+
+        emit StrategyDeployed(address(strategy));
+
     }
 }

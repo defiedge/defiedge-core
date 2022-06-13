@@ -1,10 +1,9 @@
 //SPDX-License-Identifier: BSL
-pragma solidity =0.7.6;
+pragma solidity ^0.7.6;
 
 // libraries
 import "../libraries/ShareHelper.sol";
 import "../libraries/OracleLibrary.sol";
-import "../libraries/DateTimeLibrary.sol";
 
 // interfaces
 import "../interfaces/IStrategyFactory.sol";
@@ -12,57 +11,65 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract StrategyManager is AccessControl {
+contract StrategyManager is AccessControl, IStrategyManager {
     using SafeMath for uint256;
 
-    event ChangeFee(uint256 tier);
-    event ChangeOperator(address indexed operator);
-    event ChangeLimit(uint256 limit);
-    event ChangeAllowedDeviation(uint256 deviation);
+    event FeeChanged(uint256 tier);
+    event FeeToChanged(address feeTo);
+    event OperatorProposed(address indexed operator);
+    event OperatorChanged(address indexed operator);
+    event LimitChanged(uint256 limit);
+    event AllowedDeviationChanged(uint256 deviation);
+    event AllowedSwapDeviationChanged(uint256 deviation);
+    event MaxSwapLimitChanged(uint256 limit);
     event ClaimFee(uint256 managerFee, uint256 protocolFee);
-    event ChangePerformanceFee(uint256 performanceFee);
+    event PerformanceFeeChanged(uint256 performanceFee);
+    event EmergencyActivated();
 
-    IStrategyFactory public factory;
-    address public operator;
+    uint256 public constant MIN_FEE = 20e6; // minimum 20%
+    uint256 public constant MIN_DEVIATION = 2e17; // minimum 20%
+
+    IStrategyFactory public override factory;
+    address public override operator;
     address public pendingOperator;
-    address public feeTo;
+    address public override feeTo;
 
     // when true emergency functions will be frozen forever
-    bool public freezeEmergency;
+    bool public override freezeEmergency;
 
     // allowed price difference for the oracle and the current price
     // 1e18 is 100%
-    uint256 public allowedDeviation;
+    uint256 public override allowedDeviation;
 
     // allowed swap price difference for the oracle and the current price to increase swap counter
     // 1e18 is 100%
-    uint256 public allowedSwapDeviation;
+    uint256 public override allowedSwapDeviation;
 
     // fee to take when user adds the liquidity
-    uint256 public managementFee;
+    uint256 public override managementFee; // 1e8 is 100%
 
     // fees for the manager
-    uint256 public performanceFee; // 1e8 is 100%
+    uint256 public override performanceFee; // 1e8 is 100%
 
     // max number of shares to be minted
     // if set 0, allows unlimited deposits
-    uint256 public limit;
+    uint256 public override limit;
 
     // number of times user can perform swap in a day
-    uint256 public maxAllowedSwap;
+    uint256 public maxAllowedSwap = 0;
 
     // current swap counter
-    uint256 public swapCounter;
+    uint256 public swapCounter = 0;
 
     // tracks timestamp of the last swap happened
-    uint256 public lastSwapTimestamp;
+    uint256 public lastSwapTimestamp = 0;
 
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE"); // can only rebalance and swap
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE"); // can control everything
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE"); /// only can burn the liquidity
 
     constructor(
-        address _factory,
+        IStrategyFactory _factory,
         address _operator,
         address _feeTo,
         uint256 _managementFee,
@@ -70,7 +77,11 @@ contract StrategyManager is AccessControl {
         uint256 _limit,
         uint256 _allowedDeviation
     ) {
-        factory = IStrategyFactory(_factory);
+        require(_managementFee <= MIN_FEE); // should be less than 20%
+        require(_performanceFee <= MIN_FEE); // should be less than 20%
+        require(_allowedDeviation <= MIN_DEVIATION); // should be less than 20%
+
+        factory = _factory;
         operator = _operator;
         feeTo = _feeTo;
 
@@ -103,24 +114,15 @@ contract StrategyManager is AccessControl {
         _;
     }
 
-    function isAllowedToManage(address _account) public view returns (bool) {
-        if (hasRole(ADMIN_ROLE, _account) || hasRole(MANAGER_ROLE, _account)) {
-            return true;
-        } else {
-            return false;
-        }
+    function isAllowedToManage(address _account) public view override returns (bool) {
+        return hasRole(ADMIN_ROLE, _account) || hasRole(MANAGER_ROLE, _account);
     }
 
-    function isAllowedToBurn(address _account) public view returns (bool) {
-        if (
-            hasRole(ADMIN_ROLE, _account) ||
-            hasRole(MANAGER_ROLE, _account) ||
-            hasRole(BURNER_ROLE, _account)
-        ) {
-            return true;
-        } else {
-            return false;
-        }
+    function isAllowedToBurn(address _account) public view override returns (bool) {
+        return 
+            hasRole(ADMIN_ROLE, _account) || 
+            hasRole (MANAGER_ROLE, _account) ||
+            hasRole (BURNER_ROLE, _account);
     }
 
     function strategy() public view returns (address) {
@@ -133,8 +135,9 @@ contract StrategyManager is AccessControl {
      * @param _fee Fee tier from indexes 0 to 2
      */
     function changeFee(uint256 _fee) public onlyOperator {
+        require(_fee <= MIN_FEE); // should be less than 20%
         managementFee = _fee;
-        emit ChangeFee(managementFee);
+        emit FeeChanged(managementFee);
     }
 
     /**
@@ -143,6 +146,7 @@ contract StrategyManager is AccessControl {
      */
     function changeFeeTo(address _newFeeTo) external onlyOperator {
         feeTo = _newFeeTo;
+        emit FeeToChanged(feeTo);
     }
 
     /**
@@ -150,9 +154,9 @@ contract StrategyManager is AccessControl {
      * @param _operator Address of the new operator
      */
     function changeOperator(address _operator) external onlyOperator {
-        require(_operator != address(0));
         require(_operator != operator);
         pendingOperator = _operator;
+        emit OperatorProposed(pendingOperator);
     }
 
     /**
@@ -162,7 +166,7 @@ contract StrategyManager is AccessControl {
         require(msg.sender == pendingOperator);
         operator = pendingOperator;
         pendingOperator = address(0);
-        emit ChangeOperator(operator);
+        emit OperatorChanged(operator);
     }
 
     /**
@@ -171,6 +175,7 @@ contract StrategyManager is AccessControl {
      */
     function changeLimit(uint256 _limit) external onlyOperator {
         limit = _limit;
+        emit LimitChanged(limit);
     }
 
     /**
@@ -181,9 +186,9 @@ contract StrategyManager is AccessControl {
         external
         onlyOperator
     {
-        require(_performanceFee <= 20 * 1e6);
+        require(_performanceFee <= MIN_FEE); // should be less than 20%
         performanceFee = _performanceFee;
-        emit ChangePerformanceFee(_performanceFee);
+        emit PerformanceFeeChanged(_performanceFee);
     }
 
     /**
@@ -191,6 +196,7 @@ contract StrategyManager is AccessControl {
      */
     function freezeEmergencyFunctions() external onlyGovernance {
         freezeEmergency = true;
+        emit EmergencyActivated();
     }
 
     /**
@@ -201,8 +207,9 @@ contract StrategyManager is AccessControl {
         external
         onlyGovernance
     {
+        require(_allowedDeviation <= MIN_DEVIATION, "ID"); // should be less than 20%
         allowedDeviation = _allowedDeviation;
-        emit ChangeAllowedDeviation(_allowedDeviation);
+        emit AllowedDeviationChanged(_allowedDeviation);
     }
 
     /**
@@ -213,28 +220,20 @@ contract StrategyManager is AccessControl {
         external
         onlyGovernance
     {
-        require(_allowedSwapDeviation < allowedDeviation, "ID");
+        require(_allowedSwapDeviation <= MIN_DEVIATION, "ID");// should be less than 20%
         allowedSwapDeviation = _allowedSwapDeviation;
+        emit AllowedSwapDeviationChanged(allowedSwapDeviation);
     }
 
     /**
      * @notice Track total swap performed in a day and revert if maximum swap limit reached.
      *         Can only be called by strategy contract
      */
-    function increamentSwapCounter() external onlyStrategy returns (bool) {
-        (
-            uint256 currentYear,
-            uint256 currentMonth,
-            uint256 currentDay
-        ) = DateTimeLibrary.timestampToDate(block.timestamp);
-        (uint256 swapYear, uint256 swapMonth, uint256 swapDay) = DateTimeLibrary
-            .timestampToDate(lastSwapTimestamp);
+    function increamentSwapCounter() external override onlyStrategy {
+        uint256 currentDay = block.timestamp /  1 days;
+        uint256 swapDay = lastSwapTimestamp /  1 days;
 
-        if (
-            currentYear == swapYear &&
-            currentMonth == swapMonth &&
-            currentDay == swapDay
-        ) {
+        if (currentDay == swapDay) {
             // last swap happened on same day
             uint256 _counter = swapCounter;
 
@@ -242,13 +241,11 @@ contract StrategyManager is AccessControl {
 
             lastSwapTimestamp = block.timestamp;
             swapCounter = _counter + 1;
-
-            return true;
+            
         } else {
             // last swap happened on other day
             swapCounter = 1;
             lastSwapTimestamp = block.timestamp;
-            return true;
         }
     }
 
@@ -258,5 +255,6 @@ contract StrategyManager is AccessControl {
      */
     function changeMaxSwapLimit(uint256 _limit) external onlyGovernance {
         maxAllowedSwap = _limit;
+        emit MaxSwapLimitChanged(maxAllowedSwap);
     }
 }

@@ -1,69 +1,49 @@
 // SPDX-License-Identifier: BSL
 
-pragma solidity =0.7.6;
+pragma solidity ^0.7.6;
 pragma abicoder v2;
 
 import "./DefiEdgeStrategy.sol";
 import "./base/StrategyManager.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-interface IDefiEdgeStrategyDeployer {
-    function createStrategy(
-        address _factory,
-        address _pool,
-        address _swapRouter,
-        address _chainlinkRegistry,
-        address _manager,
-        bool[] memory _usdAsBase,
-        DefiEdgeStrategy.Tick[] memory _ticks
-    ) external returns (address);
-}
+import "./interfaces/IDefiEdgeStrategyDeployer.sol";
+import "./interfaces/IStrategyBase.sol";
 
-contract DefiEdgeStrategyFactory {
+contract DefiEdgeStrategyFactory is IStrategyFactory{
     using SafeMath for uint256;
 
-    event NewStrategy(address indexed strategy, address indexed creater);
+    mapping(uint256 => address) public override strategyByIndex; // map strategies by index
+    mapping(address => bool) public override isValidStrategy; // make strategy valid when deployed
 
-    mapping(uint256 => address) public strategyByIndex; // map strategies by index
-    mapping(address => bool) public isValid; // make strategy valid when deployed
-
-    mapping(address => address) public strategyByManager; // strategy manager contracts linked with strategies
+    mapping(address => address) public override strategyByManager; // strategy manager contracts linked with strategies
 
     // total number of strategies
-    uint256 public totalIndex;
+    uint256 public override totalIndex;
 
-    uint256 public PROTOCOL_FEE; // 1e8 means 100%
-    uint256 public allowedDeviation; // 1e18 means 1%
-    uint256 public allowedSlippage; // 1e18 means 1%
+    uint256 public override protocolFee; // 1e8 means 100%
+    uint256 public override allowedDeviation; // 1e18 means 100%
+    uint256 public override allowedSlippage; // 1e18 means 100%
+
+    uint256 public constant MAX_DECIMAL = 18; // pool token decimal should be less then 18
 
     // governance address
-    address public governance;
+    address public override governance;
 
     // pending governance
-    address public pendingGovernance;
+    address public override pendingGovernance;
 
     // protocol fee
-    address public feeTo; // receive protocol fees here
+    address public override feeTo; // receive protocol fees here
 
-    address public deployerProxy;
-    address public uniswapV3Factory; // Uniswap V3 pool factory
-    address public chainlinkRegistry; // Chainlink registry
-    // address public swapRouter; // Uniswap V3 Swap Router
-    address public oneInchRouter;
+    IDefiEdgeStrategyDeployer public override deployerProxy;
+    IUniswapV3Factory public override uniswapV3Factory; // Uniswap V3 pool factory
+    FeedRegistryInterface public override chainlinkRegistry; // Chainlink registry
+    // Interface public swapRouter; // Uniswap V3 Swap Router
+    IOneInchRouter public override oneInchRouter;
 
     // mapping of blacklisted strategies
-    mapping(address => bool) public denied;
-
-    struct CreateStrategyParams {
-        address operator;
-        address feeTo;
-        uint256 managementFee;
-        uint256 performanceFee;
-        uint256 limit;
-        address pool;
-        bool[] usdAsBase;
-        DefiEdgeStrategy.Tick[] ticks;
-    }
+    mapping(address => bool) public override denied;
 
     // Modifiers
     modifier onlyGovernance() {
@@ -73,18 +53,19 @@ contract DefiEdgeStrategyFactory {
 
     constructor(
         address _governance,
-        address _deployerProxy,
-        address _chainlinkRegistry,
-        address _uniswapV3factory,
-        address _oneInchRouter,
+        IDefiEdgeStrategyDeployer _deployerProxy,
+        FeedRegistryInterface _chainlinkRegistry,
+        IUniswapV3Factory _uniswapV3factory,
+        IOneInchRouter _oneInchRouter,
         uint256 _allowedSlippage,
         uint256 _allowedDeviation
     ) {
+        require(_allowedSlippage <= 1e17); // should be <= 10%
+        require(_allowedDeviation <= 1e17); // should be <= 10%
         governance = _governance;
         deployerProxy = _deployerProxy;
         uniswapV3Factory = _uniswapV3factory;
         chainlinkRegistry = _chainlinkRegistry;
-        // swapRouter = _swapRouter;
         allowedSlippage = _allowedSlippage;
         allowedDeviation = _allowedDeviation;
         oneInchRouter = _oneInchRouter;
@@ -96,16 +77,16 @@ contract DefiEdgeStrategyFactory {
     //  * @param _operator Address of the operator
     //  * @param _ticks Array of the ticks
     //  */
-    function createStrategy(CreateStrategyParams calldata params) external {
+    function createStrategy(CreateStrategyParams calldata params) external override{
         IUniswapV3Pool pool = IUniswapV3Pool(params.pool);
 
         require(
-            IERC20Minimal(pool.token0()).decimals() <= 18 &&
-                IERC20Minimal(pool.token1()).decimals() <= 18,
+            IERC20Minimal(pool.token0()).decimals() <= MAX_DECIMAL &&
+                IERC20Minimal(pool.token1()).decimals() <= MAX_DECIMAL,
             "ID"
         );
 
-        address poolAddress = IUniswapV3Factory(uniswapV3Factory).getPool(
+        address poolAddress = uniswapV3Factory.getPool(
             pool.token0(),
             pool.token1(),
             pool.fee()
@@ -118,7 +99,7 @@ contract DefiEdgeStrategyFactory {
 
         address manager = address(
             new StrategyManager(
-                address(this),
+                IStrategyFactory(address(this)),
                 params.operator,
                 params.feeTo,
                 params.managementFee,
@@ -128,13 +109,13 @@ contract DefiEdgeStrategyFactory {
             )
         );
 
-        address strategy = IDefiEdgeStrategyDeployer(deployerProxy)
-            .createStrategy(
-                address(this),
+        address strategy = deployerProxy.createStrategy
+            (
+                IStrategyFactory(address(this)),
                 params.pool,
                 oneInchRouter,
                 chainlinkRegistry,
-                manager,
+                IStrategyManager(manager),
                 params.usdAsBase,
                 params.ticks
             );
@@ -145,7 +126,7 @@ contract DefiEdgeStrategyFactory {
 
         strategyByIndex[totalIndex] = strategy;
 
-        isValid[strategy] = true;
+        isValidStrategy[strategy] = true;
         emit NewStrategy(strategy, msg.sender);
     }
 
@@ -153,14 +134,18 @@ contract DefiEdgeStrategyFactory {
         external
         onlyGovernance
     {
+        require(_allowedDeviation <= 1e17, "IA"); // should be less than 10%
         allowedDeviation = _allowedDeviation;
+        emit ChangeDeviation(allowedDeviation);
     }
 
     function changeAllowedSlippage(uint256 _allowedSlippage)
         external
         onlyGovernance
     {
+        require(_allowedSlippage <= 1e17, "IA"); // should be less than 10%
         allowedSlippage = _allowedSlippage;
+        emit ChangeSlippage(allowedSlippage);
     }
 
     /**
@@ -168,7 +153,9 @@ contract DefiEdgeStrategyFactory {
      * @param _fee New fee in 1e8 format
      */
     function changeFee(uint256 _fee) external onlyGovernance {
-        PROTOCOL_FEE = _fee;
+        require(_fee <= 1e7, "IA"); // should be less than 10%
+        protocolFee = _fee;
+        emit ChangeProtocolFee(protocolFee);
     }
 
     /**
@@ -184,7 +171,6 @@ contract DefiEdgeStrategyFactory {
      * @param _governance Address of the new governance
      */
     function changeGovernance(address _governance) external onlyGovernance {
-        require(_governance != address(0));
         pendingGovernance = _governance;
     }
 
@@ -200,11 +186,8 @@ contract DefiEdgeStrategyFactory {
      * @notice Adds strategy to Denylist, rebalance and add liquidity will be stopped
      * @param _strategy Address of the strategy
      */
-    function deny(address _strategy) external onlyGovernance {
-        if (denied[_strategy]) {
-            denied[_strategy] = false;
-        } else {
-            denied[_strategy] = true;
-        }
+    function deny(address _strategy, bool _status) external onlyGovernance {
+        denied[_strategy] = _status;
+        emit StrategyStatusChanged(_status);
     }
 }

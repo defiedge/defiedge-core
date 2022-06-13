@@ -118,11 +118,7 @@ describe("Share Simulations", () => {
       "100000000"
     );    
 
-    const ShareHelperLibrary = ethers.getContractFactory("ShareHelper", {
-      libraries: {
-        OracleLibrary: oracleLibrary.address
-      }
-    });
+    const ShareHelperLibrary = ethers.getContractFactory("ShareHelper");
 
     shareHelper = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
 
@@ -162,6 +158,8 @@ describe("Share Simulations", () => {
       "10000000000000000"
     )) as DefiEdgeStrategyFactory;
 
+    let usdAsBase: [boolean, boolean] = [true, true];
+
     let params = {
       operator: signers[0].address,
       feeTo: signers[1].address,
@@ -169,7 +167,7 @@ describe("Share Simulations", () => {
       performanceFee: "500000", // 0.5%
       limit: 0,
       pool: pool.address,
-      usdAsBase: [true, true],
+      usdAsBase: usdAsBase,
       ticks: [
         {
           amount0: 0,

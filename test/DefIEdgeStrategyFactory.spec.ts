@@ -107,11 +107,7 @@ describe("DefiEdgeStrategyFactory", () => {
       await OracleLibraryLibrary
     ).deploy()) as OracleLibrary;
 
-    const ShareHelperLibrary = ethers.getContractFactory("ShareHelper", {
-      libraries: {
-        OracleLibrary: oracleLibrary.address
-      }
-    });
+    const ShareHelperLibrary = ethers.getContractFactory("ShareHelper");
     
     // deploy sharehelper library
     shareHelper = (await (await ShareHelperLibrary).deploy()) as ShareHelper;
@@ -163,6 +159,8 @@ describe("DefiEdgeStrategyFactory", () => {
       "10000000000000000"
     )) as DefiEdgeStrategyFactory;
 
+    let usdAsBase: [boolean, boolean] = [true, true];
+
     let params = {
       operator: signers[0].address,
       feeTo: signers[1].address,
@@ -170,7 +168,7 @@ describe("DefiEdgeStrategyFactory", () => {
       performanceFee: "500000", // 0.5%
       limit: 0,
       pool: pool.address,
-      usdAsBase: [true, true],
+      usdAsBase: usdAsBase,
       ticks: [
         {
           amount0: 0,
@@ -282,6 +280,8 @@ describe("DefiEdgeStrategyFactory", () => {
       
       let poolAddress = await uniswapV3Factory.getPool(token00.address, token01.address, "3000")
 
+      let usdAsBase: [boolean, boolean] = [true, true];
+
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
@@ -289,7 +289,7 @@ describe("DefiEdgeStrategyFactory", () => {
         performanceFee: "500000", // 0.5%
         limit: 0,
         pool: poolAddress,
-        usdAsBase: [true, true],
+        usdAsBase: usdAsBase,
         ticks: [
           {
             amount0: 0,
@@ -314,6 +314,8 @@ describe("DefiEdgeStrategyFactory", () => {
       
       let poolAddress = await uniswapV3Factory.getPool(token00.address, token01.address, "3000")
 
+      let usdAsBase: [boolean, boolean] = [true, true];
+
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
@@ -321,7 +323,7 @@ describe("DefiEdgeStrategyFactory", () => {
         performanceFee: "500000", // 0.5%
         limit: 0,
         pool: poolAddress,
-        usdAsBase: [true, true],
+        usdAsBase: usdAsBase,
         ticks: [
           {
             amount0: 0,
@@ -338,6 +340,8 @@ describe("DefiEdgeStrategyFactory", () => {
 
     it("should revert if pool address is invalid", async () => {
 
+      let usdAsBase: [boolean, boolean] = [true, true];
+
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
@@ -345,7 +349,7 @@ describe("DefiEdgeStrategyFactory", () => {
         performanceFee: "500000", // 0.5%
         limit: 0,
         pool: strategyManager.address,
-        usdAsBase: [true, true],
+        usdAsBase: usdAsBase,
         ticks: [
           {
             amount0: 0,
@@ -362,6 +366,8 @@ describe("DefiEdgeStrategyFactory", () => {
 
     it("should revert if pool address is zero address(pool is not available)", async () => {
 
+      let usdAsBase: [boolean, boolean] = [true, true];
+
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
@@ -369,7 +375,7 @@ describe("DefiEdgeStrategyFactory", () => {
         performanceFee: "500000", // 0.5%
         limit: 0,
         pool: constants.AddressZero,
-        usdAsBase: [true, true],
+        usdAsBase: usdAsBase,
         ticks: [
           {
             amount0: 0,
@@ -386,6 +392,8 @@ describe("DefiEdgeStrategyFactory", () => {
 
     it("should create strategy manager contract", async () => {
 
+      let usdAsBase: [boolean, boolean] = [true, true];
+
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
@@ -393,7 +401,7 @@ describe("DefiEdgeStrategyFactory", () => {
         performanceFee: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
-        usdAsBase: [true, true],
+        usdAsBase: usdAsBase,
         ticks: [
           {
             amount0: 0,
@@ -419,6 +427,8 @@ describe("DefiEdgeStrategyFactory", () => {
 
     it("should create strategy contract", async () => {
 
+      let usdAsBase: [boolean, boolean] = [true, true];
+
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
@@ -426,7 +436,7 @@ describe("DefiEdgeStrategyFactory", () => {
         performanceFee: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
-        usdAsBase: [true, true],
+        usdAsBase: usdAsBase,
         ticks: [
           {
             amount0: 0,
@@ -450,6 +460,8 @@ describe("DefiEdgeStrategyFactory", () => {
 
     it("should retrieve address by manager address", async () => {
 
+      let usdAsBase: [boolean, boolean] = [true, true];
+
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
@@ -457,7 +469,7 @@ describe("DefiEdgeStrategyFactory", () => {
         performanceFee: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
-        usdAsBase: [true, true],
+        usdAsBase: usdAsBase,
         ticks: [
           {
             amount0: 0,
@@ -483,6 +495,8 @@ describe("DefiEdgeStrategyFactory", () => {
 
     it("should retrieve strategy address by index", async () => {
 
+      let usdAsBase: [boolean, boolean] = [true, true];
+
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
@@ -490,7 +504,7 @@ describe("DefiEdgeStrategyFactory", () => {
         performanceFee: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
-        usdAsBase: [true, true],
+        usdAsBase: usdAsBase,
         ticks: [
           {
             amount0: 0,
@@ -513,6 +527,8 @@ describe("DefiEdgeStrategyFactory", () => {
 
     it("should increase total index", async () => {
 
+      let usdAsBase: [boolean, boolean] = [true, true];
+
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
@@ -520,7 +536,7 @@ describe("DefiEdgeStrategyFactory", () => {
         performanceFee: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
-        usdAsBase: [true, true],
+        usdAsBase: usdAsBase,
         ticks: [
           {
             amount0: 0,
@@ -541,6 +557,8 @@ describe("DefiEdgeStrategyFactory", () => {
 
     it("should make strategy valid", async () => {
 
+      let usdAsBase: [boolean, boolean] = [true, true];
+
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
@@ -548,7 +566,7 @@ describe("DefiEdgeStrategyFactory", () => {
         performanceFee: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
-        usdAsBase: [true, true],
+        usdAsBase: usdAsBase,
         ticks: [
           {
             amount0: 0,
@@ -563,11 +581,13 @@ describe("DefiEdgeStrategyFactory", () => {
 
       let strategy = await factory.strategyByIndex(await factory.totalIndex())
 
-      expect(await factory.isValid(strategy)).to.eq(true)
+      expect(await factory.isValidStrategy(strategy)).to.eq(true)
 
     })
 
     it("should emit new strategy event", async () => {
+
+      let usdAsBase: [boolean, boolean] = [true, true];
 
       let params = {
         operator: signers[0].address,
@@ -576,7 +596,7 @@ describe("DefiEdgeStrategyFactory", () => {
         performanceFee: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
-        usdAsBase: [true, true],
+        usdAsBase: usdAsBase,
         ticks: [
           {
             amount0: 0,
@@ -601,30 +621,51 @@ describe("DefiEdgeStrategyFactory", () => {
     it("should be called by governance only", async () => {
       await expect(factory.connect(signers[1]).changeDefaultAllowedDeviation(10000000)).to.be.revertedWith("NO");
     });
+    it("should revert if deviation is higher", async () => {
+      await expect(factory.changeDefaultAllowedDeviation("200000000000000000")).to.be.revertedWith("IA");
+    });
     it("should change deviation", async () => {
       await factory.changeDefaultAllowedDeviation(1000000);
       expect(await factory.allowedDeviation()).to.equal(1000000);
     });
+    it("should emit changeDefaultAllowedDeviation event", async () => {
+      expect(await factory.changeDefaultAllowedDeviation("1000000"))
+        .to.emit(factory, "ChangeDeviation").withArgs("1000000")
+    })
   });
 
   describe("#changeAllowedSlippage", async () => {
     it("should be called by governance only", async () => {
       await expect(factory.connect(signers[1]).changeAllowedSlippage(10000000)).to.be.revertedWith("NO");
     });
+    it("should revert if slippage is higher", async () => {
+      await expect(factory.changeAllowedSlippage("200000000000000000")).to.be.revertedWith("IA");
+    });
     it("should change slippage", async () => {
       await factory.changeAllowedSlippage(1000000);
       expect(await factory.allowedSlippage()).to.equal(1000000);
     });
+    it("should emit changeAllowedSlippage event", async () => {
+      expect(await factory.changeAllowedSlippage("1000000"))
+        .to.emit(factory, "ChangeSlippage").withArgs("1000000")
+    })
   });
 
   describe("#changeFee", async () => {
     it("should be called by governance only", async () => {
       await expect(factory.connect(signers[1]).changeFee(10000000)).to.be.revertedWith("NO");
     });
+    it("should revert if fee is higher", async () => {
+      await expect(factory.changeFee("20000000")).to.be.revertedWith("IA");
+    });
     it("should change the protocol fee", async () => {
       await factory.changeFee(1000000);
-      expect(await factory.PROTOCOL_FEE()).to.equal(1000000);
+      expect(await factory.protocolFee()).to.equal(1000000);
     });
+    it("should emit changeFee event", async () => {
+      expect(await factory.changeFee("1000000"))
+        .to.emit(factory, "ChangeProtocolFee").withArgs("1000000")
+    })
   });
 
   describe("#changeFeeTo", async () => {
@@ -639,15 +680,16 @@ describe("DefiEdgeStrategyFactory", () => {
   });
 
   describe("#changeGovernance", async () => {
-    it("should revert if new governance address is zero", async () => {
-      expect(factory.changeGovernance(constants.AddressZero)).to.be.reverted;
-    });
     it("should be called by governance only", async () => {
       await expect(factory.connect(signers[1]).changeGovernance(signers[2].address)).to.be.revertedWith("NO");
     });
     it("should set pending governance as new governance address", async () => {
       await factory.changeGovernance(signers[1].address);
       expect(await factory.pendingGovernance()).to.equal(signers[1].address);
+    });
+    it("should set pending governance as new governance address", async () => {
+      await factory.changeGovernance(constants.AddressZero);
+      expect(await factory.pendingGovernance()).to.equal(constants.AddressZero);
     });
   });
 
@@ -663,18 +705,24 @@ describe("DefiEdgeStrategyFactory", () => {
 
   describe("#deny", async () => {
     it("should be called by governance only", async () => {
-      expect(factory.connect(signers[1]).deny(strategy.address)).to.be.reverted;
+      expect(factory.connect(signers[1]).deny(strategy.address, true)).to.be.reverted;
     });
     it("should set boolean to true in denied mapping", async () => {
-      await factory.deny(strategy.address);
+      await factory.deny(strategy.address, true);
       expect(await factory.denied(strategy.address)).to.equal(true);
     });
     it("should set boolean to false in denied mapping", async () => {
-      await factory.deny(strategy.address);
+      await factory.deny(strategy.address, true);
       expect(await factory.denied(strategy.address)).to.equal(true);
-      await factory.deny(strategy.address);
+      await factory.deny(strategy.address, false);
       expect(await factory.denied(strategy.address)).to.equal(false);
     });
+    it("should emit proper event", async () => {
+      expect(await factory.deny(strategy.address, true))
+        .to.emit(factory, "StrategyStatusChanged").withArgs(true);
+      expect(await factory.deny(strategy.address, false))
+        .to.emit(factory, "StrategyStatusChanged").withArgs(false);
+    })
   });
 
   // describe("#allowAgain", async () => {

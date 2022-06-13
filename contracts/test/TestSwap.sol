@@ -1,4 +1,4 @@
-pragma solidity =0.7.6;
+pragma solidity ^0.7.6;
 pragma abicoder v2;
 
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
@@ -43,7 +43,7 @@ contract Periphery is IUniswapV3SwapCallback, IUniswapV3MintCallback {
         IUniswapV3Pool pool = IUniswapV3Pool(_pool);
 
         uint128 liquidity = LiquidityHelper.getLiquidityForAmounts(
-            address(pool),
+            pool,
             _tickLower,
             _tickUpper,
             _amount0,
