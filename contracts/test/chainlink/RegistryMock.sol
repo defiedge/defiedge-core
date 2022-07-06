@@ -35,14 +35,16 @@ contract ChainlinkRegistryMock {
             uint80 answeredInRound
         )
     {
-        if(base == token1 && quote == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE){
-            answer = (token1Answer * 10**8 )/ token0Answer;
-        }
-        else if (base == token0) {
+        if (
+            base == token1 &&
+            quote == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
+        ) {
+            answer = (token1Answer * 10**8) / token0Answer;
+        } else if (base == token0) {
             answer = token0Answer;
         } else if (base == token1) {
             answer = token1Answer;
-        } else if (base == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE){
+        } else if (base == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
             // answer = 99 * 10e5;
             answer = token0Answer;
         } else {

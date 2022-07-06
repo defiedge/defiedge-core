@@ -67,10 +67,10 @@ library OracleLibrary {
 
         // normalise the price to 18 decimals
 
-        if(token0Decimals == token1Decimals){
+        if (token0Decimals == token1Decimals) {
             return price;
         }
-        
+
         if (decimalCheck) {
             price = price.mul(CommonMath.safePower(10, decimalsDelta));
         } else {
@@ -122,10 +122,14 @@ library OracleLibrary {
             price = getChainlinkPrice(_registry, _token, Denominations.ETH);
 
             price = FullMath.mulDiv(
-                        price, 
-                        getChainlinkPrice(_registry, Denominations.ETH, Denominations.USD),
-                        BASE
-                    );
+                price,
+                getChainlinkPrice(
+                    _registry,
+                    Denominations.ETH,
+                    Denominations.USD
+                ),
+                BASE
+            );
         }
     }
 
@@ -163,8 +167,10 @@ library OracleLibrary {
         uint256 _allowedDeviation = IStrategyManager(_manager)
             .allowedDeviation();
 
-        // check if the price is above deviation and return 
-        return diff > BASE.add (_allowedDeviation) || diff < BASE.sub (_allowedDeviation);
+        // check if the price is above deviation and return
+        return
+            diff > BASE.add(_allowedDeviation) ||
+            diff < BASE.sub(_allowedDeviation);
     }
 
     /**
@@ -191,27 +197,19 @@ library OracleLibrary {
         _amountIn = normalise(_tokenIn, _amountIn);
         _amountOut = normalise(_tokenOut, _amountOut);
 
-        (bool usdAsBaseAmountIn, bool usdAsBaseAmountOut) = 
-            _pool.token0() == _tokenIn ? 
-            (_usdAsBase[0], _usdAsBase[1]) : 
-            (_usdAsBase[1], _usdAsBase[0]);
+        (bool usdAsBaseAmountIn, bool usdAsBaseAmountOut) = _pool.token0() ==
+            _tokenIn
+            ? (_usdAsBase[0], _usdAsBase[1])
+            : (_usdAsBase[1], _usdAsBase[0]);
 
         // get tokenIn prce in USD fron chainlink
         uint256 amountInUSD = _amountIn.mul(
-            getPriceInUSD(
-                _registry,
-                _tokenIn,
-                usdAsBaseAmountIn
-            )
+            getPriceInUSD(_registry, _tokenIn, usdAsBaseAmountIn)
         );
 
         // get tokenout prce in USD fron chainlink
         uint256 amountOutUSD = _amountOut.mul(
-            getPriceInUSD(
-                _registry,
-                _tokenOut,
-                usdAsBaseAmountOut
-            )
+            getPriceInUSD(_registry, _tokenOut, usdAsBaseAmountOut)
         );
 
         uint256 diff;
@@ -255,10 +253,10 @@ library OracleLibrary {
         _amountIn = normalise(_tokenIn, _amountIn);
         _amountOut = normalise(_tokenOut, _amountOut);
 
-        (bool usdAsBaseAmountIn, bool usdAsBaseAmountOut) = 
-            _pool.token0() == _tokenIn ? 
-            (_isBase[0], _isBase[1]) : 
-            (_isBase[1], _isBase[0]);
+        (bool usdAsBaseAmountIn, bool usdAsBaseAmountOut) = _pool.token0() ==
+            _tokenIn
+            ? (_isBase[0], _isBase[1])
+            : (_isBase[1], _isBase[0]);
 
         // get price of token0 Uniswap and convert it to USD
         uint256 amountInUSD = _amountIn.mul(

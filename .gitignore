@@ -10,3 +10,5 @@ artifacts
 
 crytic-export/
 typechain/
+
+typechain-types/
