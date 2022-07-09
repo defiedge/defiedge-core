@@ -19,7 +19,7 @@ import "../libraries/OracleLibrary.sol";
  * which price we should be able to get into
  */
 
-contract IUniswapV3Twap {
+contract UniswapV3Twap {
     using SafeMath for uint256;
     uint256 public constant BASE = 1e18;
 
@@ -56,23 +56,33 @@ contract IUniswapV3Twap {
         )
     {
         // price of token0 denominated in token1
-        uint256 price = consult(address(pool), period);
-
-        // if priceOf is token0, multiply the price by chainlink price of token1
-        uint256 token1ChainlinkPrice = OracleLibrary.getPriceInUSD(
-            chainlinkRegistry,
-            pool.token1(),
-            true
-        );
-
-        // price of token0 in USD
-        answer = int256(price.mul(token1ChainlinkPrice).div(BASE));
+        uint256 price = consult(address(pool), uint32(period));
 
         // if priceOf is token1, convert the `price` reverse the price
         if (priceOf == pool.token1()) {
-            answer = 1e36 / answer;
+            price = 1e36 / price;
+
+            // if priceOf is token1, multiply the price by chainlink price of token0
+            uint256 token0ChainlinkPrice = OracleLibrary.getPriceInUSD(
+                chainlinkRegistry,
+                pool.token0(),
+                true
+            );
+
+            // price of token1 in USD
+            answer = int256(price.mul(token0ChainlinkPrice).div(BASE));
+
         } else {
-            answer = answer;
+
+            // if priceOf is token0, multiply the price by chainlink price of token1
+            uint256 token1ChainlinkPrice = OracleLibrary.getPriceInUSD(
+                chainlinkRegistry,
+                pool.token1(),
+                true
+            );
+
+            // price of token0 in USD
+            answer = int256(price.mul(token1ChainlinkPrice).div(BASE));
         }
     }
 
