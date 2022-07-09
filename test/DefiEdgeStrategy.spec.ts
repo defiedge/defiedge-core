@@ -482,6 +482,71 @@ describe("DeFiEdgeStrategy", () => {
         .to.emit(token0A, "Transfer")
         .withArgs(signers[0].address, strategy.address, expandTo18Decimals(1));
     });
+
+    it("issue different amount of share when performanceFee is non-zero", async () => {
+
+      // when performance fees is zero
+      expect(await strategy.accPerformanceFee()).to.eq(0)
+      
+      expect(await strategy.totalSupply()).to.eq(0)
+
+      await mint(signers[0])
+
+      expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030683443")
+
+      const shareTobeBurned = (await strategy.balanceOf(signers[0].address)).toString();
+  
+      // swap tokens
+      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
+
+      const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9;
+      await periphery.swap(
+        pool.address,
+        false,
+        "10000000000000000000",
+        expandToString(sqrtPriceLimitX96)
+      );
+
+      expect(await strategy.accPerformanceFee()).to.equal(0);
+
+      await strategy.connect(signers[0]).burn(shareTobeBurned, 0, 0)
+
+      // performance fees non-zero
+      expect(await strategy.accPerformanceFee()).to.equal("53619");
+
+      expect(await strategy.balanceOf(signers[0].address)).to.eq("0")
+
+      await mint(signers[0])
+
+      expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996767509459938")
+
+      await strategy.claimFee()
+
+      expect(await strategy.accPerformanceFee()).to.equal("0");
+
+    })
+
+    it("issue different amount of share when performanceFee is zero", async () => {
+        // performance fees is zero
+        expect(await strategy.accPerformanceFee()).to.eq(0)
+        
+        expect(await strategy.totalSupply()).to.eq(0)
+  
+        await mint(signers[0])
+  
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030683443")
+  
+        const shareTobeBurned = (await strategy.balanceOf(signers[0].address)).toString();
+    
+        await strategy.connect(signers[0]).burn(shareTobeBurned, 0, 0)
+  
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("0")
+  
+        await mint(signers[0])
+  
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030689403")
+  
+    })
   });
 
   describe("#Burn", async () => {
@@ -1144,6 +1209,123 @@ describe("DeFiEdgeStrategy", () => {
           totalAmount1
         );
     });
+    
+      it("burn 100% - should calculate correct amount performance fees and return correct amount on totalSupply", async () => {
+        await approve(strategy.address, signers[0]);
+        await strategy.mint(expandTo18Decimals(0.1), 0, 0, 0, 0);
+        await strategy.mint(0, expandTo18Decimals(100), 0, 0, 0);
+    
+        await approve(strategy.address, signers[0]);
+        await strategy.mint(
+          expandTo18Decimals(1000),
+          expandTo18Decimals(1000),
+          0,
+          0,
+          0
+        );
+    
+        await factory.changeFee("1000000");
+        await factory.changeFeeTo(signers[3].address);
+
+        const shares = (await strategy.balanceOf(signers[0].address)).toString();
+        const shareTotalSupply = (await strategy.totalSupply()).toString();
+  
+        let shareTobeBurned = new bn(shares).multipliedBy(1).toFixed(0);
+  
+        // swap tokens
+        const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
+
+        const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9;
+        await periphery.swap(
+          pool.address,
+          false,
+          "10000000000000000000",
+          expandToString(sqrtPriceLimitX96)
+        );
+
+        expect(await strategy.accPerformanceFee()).to.equal(0);
+
+        await strategy.connect(signers[0]).burn(shareTobeBurned, 0, 0)
+
+        expect(await strategy.accPerformanceFee()).to.equal("69151");
+
+        let expectedSupply = new bn(shareTotalSupply).minus(shareTobeBurned).plus("69151").toFixed()
+        console.log('expectedSupply: '+ expectedSupply)
+
+        expect(await strategy.totalSupply()).to.eq(expectedSupply);
+    
+      })
+
+      it("burn different amount when performanceFee is non-zero", async () => {
+
+        // when performance fees is zero
+        expect(await strategy.accPerformanceFee()).to.eq(0)
+            
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030683443")
+  
+        const shareTobeBurned1 = (await strategy.balanceOf(signers[0].address)).toString();
+    
+        // swap tokens
+        const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
+  
+        const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9;
+        await periphery.swap(
+          pool.address,
+          false,
+          "10000000000000000000",
+          expandToString(sqrtPriceLimitX96)
+        );
+  
+        expect(await strategy.accPerformanceFee()).to.equal(0);
+  
+        await strategy.connect(signers[0]).burn(shareTobeBurned1, 0, 0)
+  
+        // performance fees non-zero
+        expect(await strategy.accPerformanceFee()).to.equal("53619");
+    
+        await mint(signers[0])
+  
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996767509459938")
+
+        await expect(strategy.connect(signers[0]).burn("60000000000000000000", 0, 0))
+          .to.emit(strategy, "Burn")
+          .withArgs(
+            signers[0].address,
+            "60000000000000000000",
+            "929906588877015244",
+            "3210280233568471039977"
+          );
+  
+      })
+
+      it("burn different amount when performanceFee is zero", async () => {
+
+        // when performance fees is zero
+        expect(await strategy.accPerformanceFee()).to.eq(0)
+            
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030683443")
+  
+        const shareTobeBurned1 = (await strategy.balanceOf(signers[0].address)).toString();
+      
+        await strategy.connect(signers[0]).burn(shareTobeBurned1, 0, 0)
+  
+        // performance fees zero
+        expect(await strategy.accPerformanceFee()).to.equal("0");
+    
+        await mint(signers[0])
+  
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030689403")
+
+        await expect(strategy.connect(signers[0]).burn("60000000000000000000", 0, 0))
+          .to.emit(strategy, "Burn")
+          .withArgs(
+            signers[0].address,
+            "60000000000000000000",
+            "929906588956526429",
+            "3210280233130420156483"
+          );
+  
+      })
   });
 
   describe("#Rebalance - Hold", async () => {

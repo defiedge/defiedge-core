@@ -135,7 +135,7 @@ contract StrategyBase is ERC20, IStrategyBase {
     }
 
     function totalSupply() public view override returns (uint256) {
-        return _totalSupply.add(accManagementFee);
+        return _totalSupply.add(accManagementFee).add(accPerformanceFee);
     }
 
     /**
