@@ -241,6 +241,11 @@ describe("DeFiEdgeStrategy", () => {
       "10000000000000000000",
       expandToString(sqrtPriceLimitX96)
     );
+
+    // whitelist user 1 address
+    let userWhiteListRole = await strategyManager.USER_WHITELIST_ROLE();
+    await strategyManager.grantRole(userWhiteListRole, signers[1].address)
+
   });
 
   describe("#Constants", async () => {
@@ -354,6 +359,12 @@ describe("DeFiEdgeStrategy", () => {
     //   .to.be.revertedWith("H")
 
     // });
+    it("should revert if caller have no access to strategy", async () => {
+      await expect(
+            strategy.connect(signers[3]).mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0)
+        ).to.be.revertedWith("UA")
+    })
+
     it("should mint to the primary ticks", async () => {
       await expect(await mint(signers[1]))
         .to.emit(pool, "Mint")
@@ -553,6 +564,12 @@ describe("DeFiEdgeStrategy", () => {
     beforeEach("add liquidity", async () => {
       await mint(signers[0]);
     });
+
+    it("should revert if caller have no access to strategy", async () => {
+      await expect(
+            strategy.connect(signers[3]).burn(expandTo18Decimals(3000), 0, 0)
+        ).to.be.revertedWith("UA")
+    })
 
     it("should revert if msg.sender has no balance", async () => {
       expect(

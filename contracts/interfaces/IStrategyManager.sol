@@ -4,6 +4,9 @@ pragma solidity ^0.7.6;
 import "./IStrategyFactory.sol";
 
 interface IStrategyManager {
+
+    function isUserWhiteListed(address _account) external view returns (bool);
+
     function isAllowedToManage(address) external view returns (bool);
 
     function isAllowedToBurn(address) external view returns (bool);

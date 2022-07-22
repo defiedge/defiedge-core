@@ -241,6 +241,11 @@ describe("UniswapV3LiquidityManager", () => {
       "10000000000000000000",
       expandToString(sqrtPriceLimitX96)
     );
+
+    // whitelist user 1 address
+    let userWhiteListRole = await strategyManager.USER_WHITELIST_ROLE();
+    await strategyManager.grantRole(userWhiteListRole, signers[1].address)
+
   });
 
   describe("#mintLiquidity", async () => {

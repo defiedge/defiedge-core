@@ -240,6 +240,11 @@ describe("StrategyBase", () => {
 
     // approve tokens
     await approve(strategy.address, signers[0]);
+
+    // whitelist user 1 address
+    let userWhiteListRole = await strategyManager.USER_WHITELIST_ROLE();
+    await strategyManager.grantRole(userWhiteListRole, signers[1].address)
+
   });
 
   describe("#Constants", async () => {

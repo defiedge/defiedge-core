@@ -85,6 +85,8 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             uint256 share
         )
     {
+        require(manager.isUserWhiteListed(msg.sender), "UA");
+
         // get total amounts with fees
         (uint256 totalAmount0, uint256 totalAmount1, , ) = this
             .getAUMWithFees();
@@ -162,6 +164,9 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         uint256 _amount0Min,
         uint256 _amount1Min
     ) external returns (uint256 collect0, uint256 collect1) {
+        
+        require(manager.isUserWhiteListed(msg.sender), "UA");
+
         // check if the user has sufficient shares
         require(balanceOf(msg.sender) >= _shares && _shares != 0, "INS");
 

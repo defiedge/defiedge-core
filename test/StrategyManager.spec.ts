@@ -239,6 +239,11 @@ describe("StrategyManager", () => {
 
     // approve tokens
     await approve(strategy.address, signers[0]);
+
+    // whitelist user 1 address
+    let userWhiteListRole = await strategyManager.USER_WHITELIST_ROLE();
+    await strategyManager.grantRole(userWhiteListRole, signers[1].address)
+
   });
 
   describe("#Constants", async () => {
@@ -271,6 +276,52 @@ describe("StrategyManager", () => {
       expect(await strategyManager.allowedDeviation()).to.equal("10000000000000000");
     });
   });
+
+  describe("#grantRole", async () => {
+
+    it("should revert if not called by manager", async () => {
+      let userWhiteListRole = await strategyManager.USER_WHITELIST_ROLE();
+
+      await expect(strategyManager.connect(signers[1]).grantRole(userWhiteListRole, signers[2].address))
+        .to.be.revertedWith("AccessControl: sender must be an admin to grant");
+    });
+
+    it("should whitelist user address", async () => {
+      let userWhiteListRole = await strategyManager.USER_WHITELIST_ROLE();
+
+      expect(await strategyManager.hasRole(userWhiteListRole, signers[2].address)).to.eq(false)
+
+      await strategyManager.grantRole(userWhiteListRole, signers[2].address)
+
+      expect(await strategyManager.hasRole(userWhiteListRole, signers[2].address)).to.eq(true)
+    })
+
+  })
+
+  describe("#revokeRole", async () => {
+
+    it("should revert if not called by manager", async () => {
+      let userWhiteListRole = await strategyManager.USER_WHITELIST_ROLE();
+
+      await expect(strategyManager.connect(signers[1]).revokeRole(userWhiteListRole, signers[2].address))
+        .to.be.revertedWith("AccessControl: sender must be an admin to revoke");
+    });
+
+    it("should remove user from whitelist ", async () => {
+      let userWhiteListRole = await strategyManager.USER_WHITELIST_ROLE();
+
+      expect(await strategyManager.hasRole(userWhiteListRole, signers[2].address)).to.eq(false)
+
+      await strategyManager.grantRole(userWhiteListRole, signers[2].address)
+
+      expect(await strategyManager.hasRole(userWhiteListRole, signers[2].address)).to.eq(true)
+
+      await strategyManager.revokeRole(userWhiteListRole, signers[2].address)
+
+      expect(await strategyManager.hasRole(userWhiteListRole, signers[2].address)).to.eq(false)
+
+    })
+  })
 
   describe("#strategy", async () => {
     it("should return correct strategy address", async () => {

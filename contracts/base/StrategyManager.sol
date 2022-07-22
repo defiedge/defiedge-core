@@ -68,6 +68,8 @@ contract StrategyManager is AccessControl, IStrategyManager {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE"); // can control everything
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE"); /// only can burn the liquidity
 
+    bytes32 public constant USER_WHITELIST_ROLE = keccak256("USER_WHITELIST_ROLE"); /// user have access to strategy - mint & burn
+
     constructor(
         IStrategyFactory _factory,
         address _operator,
@@ -93,8 +95,11 @@ contract StrategyManager is AccessControl, IStrategyManager {
         allowedSwapDeviation = _allowedDeviation.div(2);
 
         _setupRole(ADMIN_ROLE, _operator);
+        _setupRole(USER_WHITELIST_ROLE, _operator);
         _setRoleAdmin(MANAGER_ROLE, ADMIN_ROLE);
         _setRoleAdmin(BURNER_ROLE, ADMIN_ROLE);
+        _setRoleAdmin(USER_WHITELIST_ROLE, ADMIN_ROLE);
+
     }
 
     // Modifiers
@@ -112,6 +117,10 @@ contract StrategyManager is AccessControl, IStrategyManager {
     modifier onlyStrategy() {
         require(msg.sender == strategy(), "N");
         _;
+    }
+
+    function isUserWhiteListed(address _account) public view override returns (bool) {
+        return hasRole(USER_WHITELIST_ROLE, _account);
     }
 
     function isAllowedToManage(address _account) public view override returns (bool) {
