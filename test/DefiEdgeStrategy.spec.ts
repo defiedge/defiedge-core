@@ -158,6 +158,8 @@ describe("DeFiEdgeStrategy", () => {
       "10000000000000000"
     )) as DefiEdgeStrategyFactory;
 
+    await factory.changeProtocolPerformanceFee("500000");
+
     let usdAsBase: [boolean, boolean] = [true, true];
     
     let params = {
@@ -523,13 +525,13 @@ describe("DeFiEdgeStrategy", () => {
       await strategy.connect(signers[0]).burn(shareTobeBurned, 0, 0)
 
       // performance fees non-zero
-      expect(await strategy.accPerformanceFee()).to.equal("53619");
+      expect(await strategy.accPerformanceFee()).to.equal("107239");
 
       expect(await strategy.balanceOf(signers[0].address)).to.eq("0")
 
       await mint(signers[0])
 
-      expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996767509459938")
+      expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996767520130318")
 
       await strategy.claimFee()
 
@@ -1264,9 +1266,9 @@ describe("DeFiEdgeStrategy", () => {
 
         await strategy.connect(signers[0]).burn(shareTobeBurned, 0, 0)
 
-        expect(await strategy.accPerformanceFee()).to.equal("69151");
+        expect(await strategy.accPerformanceFee()).to.equal("138302");
 
-        let expectedSupply = new bn(shareTotalSupply).minus(shareTobeBurned).plus("69151").toFixed()
+        let expectedSupply = new bn(shareTotalSupply).minus(shareTobeBurned).plus("138302").toFixed()
         console.log('expectedSupply: '+ expectedSupply)
 
         expect(await strategy.totalSupply()).to.eq(expectedSupply);
@@ -1298,19 +1300,19 @@ describe("DeFiEdgeStrategy", () => {
         await strategy.connect(signers[0]).burn(shareTobeBurned1, 0, 0)
   
         // performance fees non-zero
-        expect(await strategy.accPerformanceFee()).to.equal("53619");
+        expect(await strategy.accPerformanceFee()).to.equal("107239");
     
         await mint(signers[0])
   
-        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996767509459938")
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996767520130318")
 
         await expect(strategy.connect(signers[0]).burn("60000000000000000000", 0, 0))
           .to.emit(strategy, "Burn")
           .withArgs(
             signers[0].address,
             "60000000000000000000",
-            "929906588877015244",
-            "3210280233568471039977"
+            "929906588876860688",
+            "3210280233567937474374"
           );
   
       })

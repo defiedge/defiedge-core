@@ -161,6 +161,8 @@ describe("DefiEdgeStrategyFactory", () => {
 
     let usdAsBase: [boolean, boolean] = [true, true];
 
+    await factory.changeProtocolPerformanceFee("500000");
+
     let params = {
       operator: signers[0].address,
       feeTo: signers[1].address,
@@ -670,6 +672,23 @@ describe("DefiEdgeStrategyFactory", () => {
     it("should emit changeFee event", async () => {
       expect(await factory.changeFee("1000000"))
         .to.emit(factory, "ChangeProtocolFee").withArgs("1000000")
+    })
+  });
+
+  describe("#changeProtocolPerformanceFee", async () => {
+    it("should be called by governance only", async () => {
+      await expect(factory.connect(signers[1]).changeProtocolPerformanceFee(10000000)).to.be.revertedWith("NO");
+    });
+    it("should revert if fee is higher", async () => {
+      await expect(factory.changeProtocolPerformanceFee("20000001")).to.be.revertedWith("IA");
+    });
+    it("should change the protocol fee", async () => {
+      await factory.changeProtocolPerformanceFee(1000000);
+      expect(await factory.protocolPerformanceFee()).to.equal(1000000);
+    });
+    it("should emit changeFee event", async () => {
+      expect(await factory.changeProtocolPerformanceFee("1000000"))
+        .to.emit(factory, "ChangeProtocolPerformanceFee").withArgs("1000000")
     })
   });
 

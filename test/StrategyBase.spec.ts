@@ -178,6 +178,8 @@ describe("StrategyBase", () => {
       ]
     }
 
+    await factory.changeProtocolPerformanceFee("500000");
+
     // create strategy
     await factory.createStrategy(params);
     // get strategy
@@ -613,7 +615,7 @@ describe("StrategyBase", () => {
         "645226098110861140"
       );
       expect(await strategy.accPerformanceFee()).to.equal(
-        "53619"
+        "107239"
       );
 
       await strategy.claimFee();

@@ -21,6 +21,9 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
     // total number of strategies
     uint256 public override totalIndex;
 
+    uint256 public constant MAX_PROTOCOL_PERFORMANCE_FEES = 20e6; // maximum 20%
+    uint256 public override protocolPerformanceFee; // 1e8 means 100%
+
     uint256 public override protocolFee; // 1e8 means 100%
     uint256 public override allowedDeviation; // 1e18 means 100%
     uint256 public override allowedSlippage; // 1e18 means 100%
@@ -103,7 +106,7 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
                 params.operator,
                 params.feeTo,
                 params.managementFee,
-                params.performanceFee,
+                protocolPerformanceFee.add(params.performanceFee),
                 params.limit,
                 allowedDeviation
             )
@@ -156,6 +159,16 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
         require(_fee <= 1e7, "IA"); // should be less than 10%
         protocolFee = _fee;
         emit ChangeProtocolFee(protocolFee);
+    }
+
+    /**
+     * @notice Changes protocol performance fees
+     * @param _fee New fee in 1e8 format
+     */
+    function changeProtocolPerformanceFee(uint256 _fee) external onlyGovernance {
+        require(_fee <= MAX_PROTOCOL_PERFORMANCE_FEES, "IA"); // should be less than 20%
+        protocolPerformanceFee = _fee;
+        emit ChangeProtocolPerformanceFee(protocolPerformanceFee);
     }
 
     /**

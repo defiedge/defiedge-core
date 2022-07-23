@@ -160,6 +160,8 @@ describe("UniswapV3LiquidityManager", () => {
 
     let usdAsBase: [boolean, boolean] = [true, true];
 
+    await factory.changeProtocolPerformanceFee("500000");
+
     let params = {
       operator: signers[0].address,
       feeTo: signers[1].address,
@@ -301,10 +303,22 @@ describe("UniswapV3LiquidityManager", () => {
     });
 
     it("should emit fees claimed event with correct values - strategy contract", async () => {
+
+      // swap tokens
+      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
+
+      const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9;
+      await periphery.swap(
+        pool.address,
+        false,
+        "10000000000000000000",
+        expandToString(sqrtPriceLimitX96)
+      );
+
       const shares = "64199996762030683443";
       await expect(strategy.connect(signers[0]).burn(shares, 0, 0))
         .to.emit(strategy, "FeesClaim")
-        .withArgs(strategy.address, "0", "0");
+        .withArgs(strategy.address, "0","1072391033");
     });
 
     it("should emit burn event with correct values - uniswap pool contract", async () => {
@@ -356,9 +370,20 @@ describe("UniswapV3LiquidityManager", () => {
     });
 
     it("should emit fees claimed event with correct values - strategy contract", async () => {
+      // swap tokens
+      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
+
+      const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9;
+      await periphery.swap(
+        pool.address,
+        false,
+        "10000000000000000000",
+        expandToString(sqrtPriceLimitX96)
+      );
+
       expect(await strategy.rebalance("0x", [], [], true))
         .to.emit(strategy, "FeesClaim")
-        .withArgs(strategy.address, "0", "0");
+        .withArgs(strategy.address, "0", "1072391033");
     });
 
     it("should emit collect event with correct values - uniswap pool contract", async () => {

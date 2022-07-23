@@ -40,6 +40,8 @@ interface IStrategyFactory {
 
     function protocolFee() external view returns (uint256);  // 1e8 means 100%
 
+    function protocolPerformanceFee() external view returns (uint256);  // 1e8 means 100%
+
     function governance() external view returns (address);
 
     function pendingGovernance() external view returns (address);
@@ -58,6 +60,7 @@ interface IStrategyFactory {
     event ChangeDeviation (uint256 deviation);
     event ChangeSlippage (uint256 slippage);
     event ChangeProtocolFee (uint256 fee);
+    event ChangeProtocolPerformanceFee (uint256 fee);
     event StrategyStatusChanged (bool status);
 
 }
