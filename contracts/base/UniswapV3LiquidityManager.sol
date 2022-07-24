@@ -152,7 +152,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
         // get total amounts with fees
         (uint256 totalAmount0, uint256 totalAmount1, , ) = this
-            .getAUMWithFees();
+            .getAUMWithFees(false);
 
         accPerformanceFee = accPerformanceFee.add(
             ShareHelper.calculateShares(
@@ -370,7 +370,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
     /**
      * @notice Get's assets under management with realtime fees
      */
-    function getAUMWithFees()
+    function getAUMWithFees(bool _claimFee)
         external
         returns (
             uint256 amount0,
@@ -427,6 +427,19 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
                 amount0 = amount0.add(position0);
                 amount1 = amount1.add(position1);
             }
+
+            // collect fees
+            if(_claimFee){
+                (uint256 collect0, uint256 collect1) = pool.collect(
+                    address(this),
+                    tick.tickLower,
+                    tick.tickUpper,
+                    type(uint128).max,
+                    type(uint128).max
+                );
+                emit FeesClaim(address(this), collect0, collect1);
+            }
+
         }
 
         amount0 = amount0.add(totalFee0);

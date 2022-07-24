@@ -439,6 +439,37 @@ describe("UniswapV3LiquidityManager", () => {
       expect(positionAfter.tokensOwed1.toString()).to.equal("1072391033");
     });
 
+    it("should withdraw performance fees from Uniswap pool", async () => {
+
+      await mint(signers[0]);
+
+      let _token0 = await ethers.getContractAt("TestERC20", await pool.token0())
+      let _token1 = await ethers.getContractAt("TestERC20", await pool.token1())
+
+      let strategyBalanceBefore0 = (await _token0.balanceOf(strategy.address)).toString()
+      let strategyBalanceBefore1 = (await _token1.balanceOf(strategy.address)).toString()
+
+      // swap tokens
+      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
+
+      const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9;
+      await periphery.swap(
+        pool.address,
+        false,
+        "10000000000000000000",
+        expandToString(sqrtPriceLimitX96)
+      );
+
+      let claim = await strategy.getAUMWithFees(true);
+      await expect(claim).to.emit(strategy, "FeesClaim").withArgs(strategy.address, "0", "2144781989")
+
+      let expectedBalAfter0 = new bn(strategyBalanceBefore0).plus("0").toFixed()
+      let expectedBalAfter1 = new bn(strategyBalanceBefore1).plus("2144781989").toFixed()
+
+      expect(await _token0.balanceOf(strategy.address)).to.eq(expectedBalAfter0)
+      expect(await _token1.balanceOf(strategy.address)).to.eq(expectedBalAfter1)
+    })
+
     it("should update liquidity amount", async () => {
       const positionKey = getPositionKey(
         strategy.address,
