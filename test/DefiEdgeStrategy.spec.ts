@@ -362,9 +362,25 @@ describe("DeFiEdgeStrategy", () => {
 
     // });
     it("should revert if caller have no access to strategy", async () => {
+      await strategyManager.updateStrategyMode(true);
+
       await expect(
             strategy.connect(signers[3]).mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0)
         ).to.be.revertedWith("UA")
+    })
+
+    it("should not revert if strategy is public", async () => {
+
+      // transfer tokens to third user for testing
+      await token0.transfer(signers[3].address, expandTo18Decimals(1500000));
+      await token1.transfer(signers[3].address, expandTo18Decimals(1500000));
+
+      await strategyManager.updateStrategyMode(false);
+
+      await approve(strategy.address, signers[3])
+      await expect(
+            strategy.connect(signers[3]).mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0)
+        ).to.be.not.reverted;
     })
 
     it("should mint to the primary ticks", async () => {
@@ -568,9 +584,25 @@ describe("DeFiEdgeStrategy", () => {
     });
 
     it("should revert if caller have no access to strategy", async () => {
+      await strategyManager.updateStrategyMode(true);
+
       await expect(
             strategy.connect(signers[3]).burn(expandTo18Decimals(3000), 0, 0)
         ).to.be.revertedWith("UA")
+    })
+
+
+    it("should not revert if strategy is public", async () => {
+      let userWhiteListRole = await strategyManager.USER_WHITELIST_ROLE();
+      await strategyManager.revokeRole(userWhiteListRole, signers[0].address)
+
+      const shares = (await strategy.balanceOf(signers[0].address)).toString();
+
+      await strategyManager.updateStrategyMode(false);
+
+      await expect(
+            strategy.connect(signers[0]).burn(shares, 0, 0)
+        ).to.be.not.reverted;
     })
 
     it("should revert if msg.sender has no balance", async () => {

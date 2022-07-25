@@ -448,6 +448,26 @@ describe("StrategyManager", () => {
     });
   });
 
+  describe("#updateStrategyMode", async () => {
+    it("should revert if operator is not calling", async () => {
+      expect(strategyManager.connect(signers[1]).updateStrategyMode(true)).to.be.revertedWith("N");
+    });
+
+    it("should update strategy mode", async () => {
+      expect(await strategyManager.isStrategyPrivate()).to.eq(false)
+      
+      await strategyManager.updateStrategyMode(true);
+
+      expect(await strategyManager.isStrategyPrivate()).to.eq(true)
+    })
+
+    it("should emit StrategyModeUpdated event", async () => {
+      await expect(await strategyManager.updateStrategyMode(true))
+        .to.emit(strategyManager, "StrategyModeUpdated")
+        .withArgs(true);
+    });
+  })
+
   describe("#changePerformanceFee", async () => {
     it("should revert if operator is not calling", async () => {
       await expect(strategyManager.connect(signers[1]).changePerformanceFee(1)).to.be.revertedWith(

@@ -24,6 +24,7 @@ contract StrategyManager is AccessControl, IStrategyManager {
     event MaxSwapLimitChanged(uint256 limit);
     event ClaimFee(uint256 managerFee, uint256 protocolFee);
     event PerformanceFeeChanged(uint256 performanceFee);
+    event StrategyModeUpdated(bool status); // true - private, false - public
     event EmergencyActivated();
 
     uint256 public constant MIN_FEE = 20e6; // minimum 20%
@@ -63,6 +64,8 @@ contract StrategyManager is AccessControl, IStrategyManager {
 
     // tracks timestamp of the last swap happened
     uint256 public lastSwapTimestamp = 0;
+
+    bool public isStrategyPrivate = false; // if strategy is private or public
 
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE"); // can only rebalance and swap
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE"); // can control everything
@@ -120,7 +123,7 @@ contract StrategyManager is AccessControl, IStrategyManager {
     }
 
     function isUserWhiteListed(address _account) public view override returns (bool) {
-        return hasRole(USER_WHITELIST_ROLE, _account);
+        return isStrategyPrivate ? hasRole(USER_WHITELIST_ROLE, _account) : true;
     }
 
     function isAllowedToManage(address _account) public view override returns (bool) {
@@ -199,6 +202,18 @@ contract StrategyManager is AccessControl, IStrategyManager {
         uint256 protocolPerformanceFees = factory.protocolPerformanceFee();
         performanceFee = protocolPerformanceFees.add(_performanceFee);
         emit PerformanceFeeChanged(performanceFee);
+    }
+
+    /**
+     * @notice Manager can update strategy mode -  public, private
+     * @param _isPrivate true - private strategy, false - public strategy
+     */
+    function updateStrategyMode(bool _isPrivate)
+        external
+        onlyOperator
+    {
+        isStrategyPrivate = _isPrivate;
+        emit StrategyModeUpdated(isStrategyPrivate);
     }
 
     /**
