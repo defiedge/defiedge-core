@@ -20,6 +20,7 @@ contract StrategyBase is ERC20, IStrategyBase {
 
     uint256 public override accManagementFee;
     uint256 public accPerformanceFee;
+    uint256 public accProtocolPerformanceFee;
 
     IStrategyFactory public override factory; // instance of the strategy factory
     IUniswapV3Pool public override pool; // instance of the Uniswap V3 pool
@@ -135,7 +136,7 @@ contract StrategyBase is ERC20, IStrategyBase {
     }
 
     function totalSupply() public view override returns (uint256) {
-        return _totalSupply.add(accManagementFee).add(accPerformanceFee);
+        return _totalSupply.add(accManagementFee).add(accPerformanceFee).add(accProtocolPerformanceFee);
     }
 
     /**
@@ -152,7 +153,8 @@ contract StrategyBase is ERC20, IStrategyBase {
                 factory,
                 manager,
                 accManagementFee,
-                accPerformanceFee
+                accPerformanceFee,
+                accProtocolPerformanceFee
             );
 
         if (managerShare > 0) {
@@ -166,6 +168,7 @@ contract StrategyBase is ERC20, IStrategyBase {
         // set the variables to 0
         accManagementFee = 0;
         accPerformanceFee = 0;
+        accProtocolPerformanceFee = 0;
 
         emit ClaimFee(managerShare, protocolShare);
     }

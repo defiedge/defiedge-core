@@ -516,6 +516,7 @@ describe("DeFiEdgeStrategy", () => {
 
       // when performance fees is zero
       expect(await strategy.accPerformanceFee()).to.eq(0)
+      expect(await strategy.accProtocolPerformanceFee()).to.eq(0)
       
       expect(await strategy.totalSupply()).to.eq(0)
 
@@ -537,27 +538,31 @@ describe("DeFiEdgeStrategy", () => {
       );
 
       expect(await strategy.accPerformanceFee()).to.equal(0);
+      expect(await strategy.accProtocolPerformanceFee()).to.eq(0)
 
       await strategy.connect(signers[0]).burn(shareTobeBurned, 0, 0)
 
       // performance fees non-zero
-      expect(await strategy.accPerformanceFee()).to.equal("107239");
+      expect(await strategy.accPerformanceFee()).to.equal("53619");
+      expect(await strategy.accProtocolPerformanceFee()).to.eq("53619")
 
       expect(await strategy.balanceOf(signers[0].address)).to.eq("0")
 
       await mint(signers[0])
 
-      expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996767520130318")
+      expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996767520130119")
 
       await strategy.claimFee()
 
       expect(await strategy.accPerformanceFee()).to.equal("0");
+      expect(await strategy.accProtocolPerformanceFee()).to.eq("0")
 
     })
 
     it("issue different amount of share when performanceFee is zero", async () => {
         // performance fees is zero
         expect(await strategy.accPerformanceFee()).to.eq(0)
+        expect(await strategy.accProtocolPerformanceFee()).to.eq(0)
         
         expect(await strategy.totalSupply()).to.eq(0)
   
@@ -1295,12 +1300,14 @@ describe("DeFiEdgeStrategy", () => {
         );
 
         expect(await strategy.accPerformanceFee()).to.equal(0);
+        expect(await strategy.accProtocolPerformanceFee()).to.equal(0);
 
         await strategy.connect(signers[0]).burn(shareTobeBurned, 0, 0)
 
-        expect(await strategy.accPerformanceFee()).to.equal("138302");
+        expect(await strategy.accPerformanceFee()).to.equal("69151");
+        expect(await strategy.accProtocolPerformanceFee()).to.equal("69151");
 
-        let expectedSupply = new bn(shareTotalSupply).minus(shareTobeBurned).plus("138302").toFixed()
+        let expectedSupply = new bn(shareTotalSupply).minus(shareTobeBurned).plus("69151").plus("69151").toFixed()
         console.log('expectedSupply: '+ expectedSupply)
 
         expect(await strategy.totalSupply()).to.eq(expectedSupply);
@@ -1311,6 +1318,7 @@ describe("DeFiEdgeStrategy", () => {
 
         // when performance fees is zero
         expect(await strategy.accPerformanceFee()).to.eq(0)
+        expect(await strategy.accProtocolPerformanceFee()).to.eq(0)
             
         expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030683443")
   
@@ -1328,23 +1336,25 @@ describe("DeFiEdgeStrategy", () => {
         );
   
         expect(await strategy.accPerformanceFee()).to.equal(0);
+        expect(await strategy.accProtocolPerformanceFee()).to.eq(0)
   
         await strategy.connect(signers[0]).burn(shareTobeBurned1, 0, 0)
   
         // performance fees non-zero
-        expect(await strategy.accPerformanceFee()).to.equal("107239");
+        expect(await strategy.accPerformanceFee()).to.equal("53619");
+        expect(await strategy.accProtocolPerformanceFee()).to.eq("53619")
     
         await mint(signers[0])
   
-        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996767520130318")
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996767520130119")
 
         await expect(strategy.connect(signers[0]).burn("60000000000000000000", 0, 0))
           .to.emit(strategy, "Burn")
           .withArgs(
             signers[0].address,
             "60000000000000000000",
-            "929906588876860688",
-            "3210280233567937474374"
+            "929906588876860691",
+            "3210280233567937484323"
           );
   
       })
@@ -1353,6 +1363,7 @@ describe("DeFiEdgeStrategy", () => {
 
         // when performance fees is zero
         expect(await strategy.accPerformanceFee()).to.eq(0)
+        expect(await strategy.accProtocolPerformanceFee()).to.eq(0)
             
         expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030683443")
   
@@ -1362,6 +1373,7 @@ describe("DeFiEdgeStrategy", () => {
   
         // performance fees zero
         expect(await strategy.accPerformanceFee()).to.equal("0");
+        expect(await strategy.accProtocolPerformanceFee()).to.eq("0")
     
         await mint(signers[0])
   

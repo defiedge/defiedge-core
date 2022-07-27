@@ -74,12 +74,14 @@ library ShareHelper {
      * @param _manager Strategy manager contract address
      * @param _accManagementFee Accumulated management fees in terms of shares, decimal 18
      * @param _accPerformanceFee Accumulated performance fee in terms of shares, decimal 18
+     * @param _accProtocolPerformanceFee Accumulated performance fee in terms of shares, decimal 18
      */
     function calculateFeeShares(
         IStrategyFactory _factory,
         IStrategyManager _manager,
         uint256 _accManagementFee,
-        uint256 _accPerformanceFee
+        uint256 _accPerformanceFee,
+        uint256 _accProtocolPerformanceFee
     )
         public
         view
@@ -117,7 +119,7 @@ library ShareHelper {
         }
 
         managerShare = managementManagerShare.add(managerShare);
-        protocolShare = managementProtocolShare.add(protocolShare);
+        protocolShare = managementProtocolShare.add(protocolShare).add(_accProtocolPerformanceFee);
 
         // moved here for saving bytecode
         managerFeeTo = _manager.feeTo();

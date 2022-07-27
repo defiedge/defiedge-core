@@ -106,7 +106,7 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
                 params.operator,
                 params.feeTo,
                 params.managementFee,
-                protocolPerformanceFee.add(params.performanceFee),
+                params.performanceFee,
                 params.limit,
                 allowedDeviation
             )

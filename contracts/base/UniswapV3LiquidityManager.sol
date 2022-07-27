@@ -167,6 +167,22 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             )
         );
 
+        // protocol performance fee 
+        uint256 _protocolPerformanceFee = factory.protocolPerformanceFee();
+
+        accProtocolPerformanceFee = accProtocolPerformanceFee.add(
+            ShareHelper.calculateShares(
+                chainlinkRegistry,
+                pool,
+                usdAsBase,
+                FullMath.mulDiv(_fee0, _protocolPerformanceFee, FEE_PRECISION),
+                FullMath.mulDiv(_fee1, _protocolPerformanceFee, FEE_PRECISION),
+                totalAmount0,
+                totalAmount1,
+                totalSupply()
+            )
+        );
+
         emit FeesClaim(address(this), _fee0, _fee1);
     }
 

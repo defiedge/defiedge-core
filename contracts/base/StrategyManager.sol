@@ -199,8 +199,7 @@ contract StrategyManager is AccessControl, IStrategyManager {
         onlyOperator
     {
         require(_performanceFee <= MIN_FEE); // should be less than 20%
-        uint256 protocolPerformanceFees = factory.protocolPerformanceFee();
-        performanceFee = protocolPerformanceFees.add(_performanceFee);
+        performanceFee = _performanceFee;
         emit PerformanceFeeChanged(performanceFee);
     }
 

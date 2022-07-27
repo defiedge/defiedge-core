@@ -267,8 +267,7 @@ describe("StrategyManager", () => {
     });
 
     it("should set the performanceFee address correctly", async () => {
-      let protocolPerFee = (await factory.protocolPerformanceFee()).toString()
-      expect(await strategyManager.performanceFee()).to.equal(Number(protocolPerFee) + 500000);
+      expect(await strategyManager.performanceFee()).to.equal(500000);
     });
 
     it("should set the limit address correctly", async () => {
@@ -479,32 +478,24 @@ describe("StrategyManager", () => {
     });
 
     it("should set fees to 1%", async () => {
-      let protocolPerFee = (await factory.protocolPerformanceFee()).toString()
-
       await strategyManager.changePerformanceFee(1000000);
-      expect(await strategyManager.performanceFee()).to.equal(Number(protocolPerFee) + 1000000);
+      expect(await strategyManager.performanceFee()).to.equal(1000000);
     });
 
     it("should set fees to 2%", async () => {
-      let protocolPerFee = (await factory.protocolPerformanceFee()).toString()
-
       await strategyManager.changePerformanceFee(2000000);
-      expect(await strategyManager.performanceFee()).to.equal(Number(protocolPerFee) + 2000000);
+      expect(await strategyManager.performanceFee()).to.equal(2000000);
     });
 
     it("should set fees to 5%", async () => {
-      let protocolPerFee = (await factory.protocolPerformanceFee()).toString()
-
       await strategyManager.changePerformanceFee(5000000);
-      expect(await strategyManager.performanceFee()).to.equal(Number(protocolPerFee) + 5000000);
+      expect(await strategyManager.performanceFee()).to.equal(5000000);
     });
 
     it("should emit changePerformanceFee event", async () => {
-      let protocolPerFee = (await factory.protocolPerformanceFee()).toString()
-
       await expect(await strategyManager.changePerformanceFee(1000000))
         .to.emit(strategyManager, "PerformanceFeeChanged")
-        .withArgs(Number(protocolPerFee) + 1000000);
+        .withArgs(1000000);
     });
   });
 
@@ -595,7 +586,35 @@ describe("StrategyManager", () => {
 
       let burn = await strategy.burn(shares, 0, 0)
 
-      expect(await strategy.accPerformanceFee()).to.equal("107239");
+      expect(await strategy.accPerformanceFee()).to.equal("53619");
+
+      await expect(burn).to.emit(strategy, "FeesClaim").withArgs(strategy.address, "0", "1072391033");
+    });
+  })
+
+  describe("#accProtocolPerformanceFee", async () => {
+    it("should increase accProtocolPerformanceFee while burnLiquidity", async () => {
+      
+      await mint(signers[0])
+
+      // swap tokens
+      const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
+
+      const sqrtPriceLimitX96 = Number(sqrtRatioX96) + Number(sqrtRatioX96) * 0.9;
+      await periphery.swap(
+        pool.address,
+        false,
+        "10000000000000000000",
+        expandToString(sqrtPriceLimitX96)
+      );
+
+      expect(await strategy.accProtocolPerformanceFee()).to.equal(0);
+
+      const shares = "64199996762030683443";
+
+      let burn = await strategy.burn(shares, 0, 0)
+
+      expect(await strategy.accProtocolPerformanceFee()).to.equal("53619");
 
       await expect(burn).to.emit(strategy, "FeesClaim").withArgs(strategy.address, "0", "1072391033");
     });
