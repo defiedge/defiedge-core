@@ -24,6 +24,8 @@ interface IStrategyFactory {
 
     function totalIndex() external view returns (uint256);
 
+    function strategyCreationFee() external view returns (uint256); // fee for strategy creation in native token
+
     function allowedDeviation() external view returns (uint256); // 1e18 means 100%
 
     function allowedSlippage() external view returns (uint256); // 1e18 means 100%
@@ -54,7 +56,7 @@ interface IStrategyFactory {
 
     function oneInchRouter() external view returns (IOneInchRouter);
 
-    function createStrategy(CreateStrategyParams calldata params) external;
+    function createStrategy(CreateStrategyParams calldata params) external payable;
 
     event NewStrategy (address indexed strategy, address indexed creater);
     event ChangeDeviation (uint256 deviation);
@@ -62,5 +64,7 @@ interface IStrategyFactory {
     event ChangeProtocolFee (uint256 fee);
     event ChangeProtocolPerformanceFee (uint256 fee);
     event StrategyStatusChanged (bool status);
+    event ChangeStrategyCreationFee (uint256 amount);
+    event ClaimFees (address to, uint256 amount);
 
 }

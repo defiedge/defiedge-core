@@ -277,6 +277,34 @@ describe("DefiEdgeStrategyFactory", () => {
 
   describe("#createStrategy", async () => {
 
+    it("should revert if fee is not sufficient to create strategy", async () => {
+
+      await factory.changeFeeForStrategyCreation(expandTo18Decimals(1));
+
+      let usdAsBase: [boolean, boolean] = [true, true];
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: usdAsBase,
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ],
+        useTwapForToken0: true,
+      }
+
+      await expect(factory.createStrategy(params)).to.be.revertedWith("INSUFFICIENT_FEES");
+    })
+
     it("should revert if token0 of pool have is more than 18 decimal", async () => {
 
       // deploy tokens
@@ -395,6 +423,34 @@ describe("DefiEdgeStrategyFactory", () => {
 
       await expect(factory.createStrategy(params)).to.be.reverted;
 
+    })
+
+    it("should create strategy if proper fee paid", async () => {
+
+      await factory.changeFeeForStrategyCreation(expandTo18Decimals(1));
+
+      let usdAsBase: [boolean, boolean] = [true, true];
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: usdAsBase,
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ],
+        useTwapForToken0: true,
+      }
+
+      await expect(factory.createStrategy(params, { value: expandTo18Decimals(1)})).to.be.not.reverted;
     })
 
     it("should create strategy manager contract", async () => {
@@ -748,6 +804,70 @@ describe("DefiEdgeStrategyFactory", () => {
         .to.emit(factory, "StrategyStatusChanged").withArgs(false);
     })
   });
+
+  describe("#changeFeeForStrategyCreation", async () => {
+    it("should be called by governance only", async () => {
+      await expect(factory.connect(signers[1]).changeFeeForStrategyCreation(expandTo18Decimals(0.1))).to.be.revertedWith("NO");
+    });
+    it("should change the strategyCreationFee fee", async () => {
+      await factory.changeFeeForStrategyCreation(expandTo18Decimals(0.1));
+      expect(await factory.strategyCreationFee()).to.equal(expandTo18Decimals(0.1));
+    });
+    it("should emit changeFeeForStrategyCreation event", async () => {
+      expect(await factory.changeFeeForStrategyCreation(expandTo18Decimals(0.1)))
+        .to.emit(factory, "ChangeStrategyCreationFee").withArgs(expandTo18Decimals(0.1))
+    })
+  });
+
+  describe("#claimFees", async () => {
+    it("should be called by governance only", async () => {
+      await expect(factory.connect(signers[1]).claimFees(signers[1].address)).to.be.revertedWith("NO");
+    });
+
+    it("should claim available fees and emit event", async () => {
+      await factory.changeFeeForStrategyCreation(expandTo18Decimals(1));
+      let usdAsBase: [boolean, boolean] = [true, true];
+
+      let params = {
+        operator: signers[0].address,
+        feeTo: signers[1].address,
+        managementFee: "500000", // 0.5%
+        performanceFee: "500000", // 0.5%
+        limit: 0,
+        pool: pool.address,
+        usdAsBase: usdAsBase,
+        ticks: [
+          {
+            amount0: 0,
+            amount1: 0,
+            tickLower: calculateTick(2500, 60),
+            tickUpper: calculateTick(3500, 60),
+          },
+        ],
+        useTwapForToken0: true,
+      }
+
+      await factory.createStrategy(params, { value: expandTo18Decimals(1)})
+
+      const balanceETHBefore = await ethers.provider.getBalance(signers[1].address);
+
+      // available fees in startegy = 1 ETH
+      await expect(factory.claimFees(signers[1].address))
+          .to.emit(factory, "ClaimFees").withArgs(signers[1].address, expandTo18Decimals(1))
+
+      expect(await ethers.provider.getBalance(signers[1].address)).to.eq(balanceETHBefore.add(expandTo18Decimals(1)))
+
+      await factory.createStrategy(params, { value: expandTo18Decimals(1)})
+      await factory.createStrategy(params, { value: expandTo18Decimals(1)})
+
+      // available fees in strategy = 2 ETH
+      await expect(factory.claimFees(signers[1].address))
+        .to.emit(factory, "ClaimFees").withArgs(signers[1].address, expandTo18Decimals(2))
+
+      expect(await ethers.provider.getBalance(signers[1].address)).to.eq(balanceETHBefore.add(expandTo18Decimals(3)))
+
+    })
+  })
 
   // describe("#allowAgain", async () => {
   //   it("should be called by governance only", async () => {

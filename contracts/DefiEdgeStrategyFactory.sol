@@ -39,6 +39,8 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
     // protocol fee
     address public override feeTo; // receive protocol fees here
 
+    uint256 public override strategyCreationFee; // fee for strategy creation in native blockchain token
+
     IDefiEdgeStrategyDeployer public override deployerProxy;
     IUniswapV3Factory public override uniswapV3Factory; // Uniswap V3 pool factory
     FeedRegistryInterface public override chainlinkRegistry; // Chainlink registry
@@ -80,7 +82,9 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
     //  * @param _operator Address of the operator
     //  * @param _ticks Array of the ticks
     //  */
-    function createStrategy(CreateStrategyParams calldata params) external override{
+    function createStrategy(CreateStrategyParams calldata params) external payable override{
+        require(msg.value == strategyCreationFee, "INSUFFICIENT_FEES"); 
+
         IUniswapV3Pool pool = IUniswapV3Pool(params.pool);
 
         require(
@@ -202,5 +206,25 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
     function deny(address _strategy, bool _status) external onlyGovernance {
         denied[_strategy] = _status;
         emit StrategyStatusChanged(_status);
+    }
+
+    /**
+     * @notice Changes strategy creation fees
+     * @param _fee New fee in 1e18 format
+     */
+    function changeFeeForStrategyCreation(uint256 _fee) external onlyGovernance {
+        strategyCreationFee = _fee;
+        emit ChangeStrategyCreationFee(strategyCreationFee);
+    }
+
+    /**
+     * @notice Governance claims fees received from strategy creation
+     */
+    function claimFees(address _to) external onlyGovernance {
+        uint256 balance = address(this).balance;
+        if(balance > 0){
+            payable(_to).transfer(balance);
+            emit ClaimFees(_to, balance);
+        }
     }
 }
