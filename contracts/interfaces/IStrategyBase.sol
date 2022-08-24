@@ -20,7 +20,11 @@ interface IStrategyBase {
 
     function onHold() external view returns (bool);
 
-    function accManagementFee() external view returns (uint256);
+    function accManagementFeeShares() external view returns (uint256);
+
+    function accPerformanceFeeShares() external view returns (uint256);
+    
+    function accProtocolPerformanceFeeShares() external view returns (uint256);
 
     function factory() external view returns (IStrategyFactory);
 

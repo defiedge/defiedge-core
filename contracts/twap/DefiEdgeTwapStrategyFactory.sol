@@ -21,10 +21,10 @@ contract DefiEdgeTwapStrategyFactory is ITwapStrategyFactory{
     // total number of strategies
     uint256 public override totalIndex;
 
-    uint256 public constant MAX_PROTOCOL_PERFORMANCE_FEES = 20e6; // maximum 20%
-    uint256 public override protocolPerformanceFee; // 1e8 means 100%
+    uint256 public constant MAX_PROTOCOL_PERFORMANCE_FEES_RATE = 20e6; // maximum 20%
+    uint256 public override protocolPerformanceFeeRate; // 1e8 means 100%
 
-    uint256 public override protocolFee; // 1e8 means 100%
+    uint256 public override protocolFeeRate; // 1e8 means 100%
     uint256 public override allowedDeviation; // 1e18 means 100%
     uint256 public override allowedSlippage; // 1e18 means 100%
 
@@ -109,8 +109,8 @@ contract DefiEdgeTwapStrategyFactory is ITwapStrategyFactory{
                 ITwapStrategyFactory(address(this)),
                 params.operator,
                 params.feeTo,
-                params.managementFee,
-                params.performanceFee,
+                params.managementFeeRate,
+                params.performanceFeeRate,
                 params.limit,
                 allowedDeviation
             )
@@ -159,20 +159,20 @@ contract DefiEdgeTwapStrategyFactory is ITwapStrategyFactory{
      * @notice Changes protocol fees
      * @param _fee New fee in 1e8 format
      */
-    function changeFee(uint256 _fee) external onlyGovernance {
+    function changeProtocolFeeRate(uint256 _fee) external onlyGovernance {
         require(_fee <= 1e7, "IA"); // should be less than 10%
-        protocolFee = _fee;
-        emit ChangeProtocolFee(protocolFee);
+        protocolFeeRate = _fee;
+        emit ChangeProtocolFee(protocolFeeRate);
     }
 
     /**
      * @notice Changes protocol performance fees
-     * @param _fee New fee in 1e8 format
+     * @param _feeRate New fee in 1e8 format
      */
-    function changeProtocolPerformanceFee(uint256 _fee) external onlyGovernance {
-        require(_fee <= MAX_PROTOCOL_PERFORMANCE_FEES, "IA"); // should be less than 20%
-        protocolPerformanceFee = _fee;
-        emit ChangeProtocolPerformanceFee(protocolPerformanceFee);
+    function changeProtocolPerformanceFeeRate(uint256 _feeRate) external onlyGovernance {
+        require(_feeRate <= MAX_PROTOCOL_PERFORMANCE_FEES_RATE, "IA"); // should be less than 20%
+        protocolPerformanceFeeRate = _feeRate;
+        emit ChangeProtocolPerformanceFee(protocolPerformanceFeeRate);
     }
 
     /**

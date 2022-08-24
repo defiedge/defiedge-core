@@ -23,7 +23,7 @@ contract StrategyManager is AccessControl, IStrategyManager {
     event AllowedSwapDeviationChanged(uint256 deviation);
     event MaxSwapLimitChanged(uint256 limit);
     event ClaimFee(uint256 managerFee, uint256 protocolFee);
-    event PerformanceFeeChanged(uint256 performanceFee);
+    event PerformanceFeeChanged(uint256 performanceFeeRate);
     event StrategyModeUpdated(bool status); // true - private, false - public
     event EmergencyActivated();
 
@@ -47,10 +47,10 @@ contract StrategyManager is AccessControl, IStrategyManager {
     uint256 public override allowedSwapDeviation;
 
     // fee to take when user adds the liquidity
-    uint256 public override managementFee; // 1e8 is 100%
+    uint256 public override managementFeeRate; // 1e8 is 100%
 
     // fees for the manager
-    uint256 public override performanceFee; // 1e8 is 100%
+    uint256 public override performanceFeeRate; // 1e8 is 100%
 
     // max number of shares to be minted
     // if set 0, allows unlimited deposits
@@ -77,21 +77,21 @@ contract StrategyManager is AccessControl, IStrategyManager {
         IStrategyFactory _factory,
         address _operator,
         address _feeTo,
-        uint256 _managementFee,
-        uint256 _performanceFee,
+        uint256 _managementFeeRate,
+        uint256 _performanceFeeRate,
         uint256 _limit,
         uint256 _allowedDeviation
     ) {
-        require(_managementFee <= MIN_FEE); // should be less than 20%
-        require(_performanceFee <= MIN_FEE); // should be less than 20%
+        require(_managementFeeRate <= MIN_FEE); // should be less than 20%
+        require(_performanceFeeRate <= MIN_FEE); // should be less than 20%
         require(_allowedDeviation <= MIN_DEVIATION); // should be less than 20%
 
         factory = _factory;
         operator = _operator;
         feeTo = _feeTo;
 
-        managementFee = _managementFee;
-        performanceFee = _performanceFee;
+        managementFeeRate = _managementFeeRate;
+        performanceFeeRate = _performanceFeeRate;
         limit = _limit;
 
         allowedDeviation = _allowedDeviation;
@@ -146,10 +146,10 @@ contract StrategyManager is AccessControl, IStrategyManager {
      * @dev 1000000 is 1%
      * @param _fee Fee tier from indexes 0 to 2
      */
-    function changeFee(uint256 _fee) public onlyOperator {
+    function changeManagementFeeRate(uint256 _fee) public onlyOperator {
         require(_fee <= MIN_FEE); // should be less than 20%
-        managementFee = _fee;
-        emit FeeChanged(managementFee);
+        managementFeeRate = _fee;
+        emit FeeChanged(managementFeeRate);
     }
 
     /**
@@ -192,15 +192,15 @@ contract StrategyManager is AccessControl, IStrategyManager {
 
     /**
      * @notice Manager can set the performance fee
-     * @param _performanceFee New performance fee, should not be more than 20%
+     * @param _performanceFeeRate New performance fee, should not be more than 20%
      */
-    function changePerformanceFee(uint256 _performanceFee)
+    function changePerformanceFeeRate(uint256 _performanceFeeRate)
         external
         onlyOperator
     {
-        require(_performanceFee <= MIN_FEE); // should be less than 20%
-        performanceFee = _performanceFee;
-        emit PerformanceFeeChanged(performanceFee);
+        require(_performanceFeeRate <= MIN_FEE); // should be less than 20%
+        performanceFeeRate = _performanceFeeRate;
+        emit PerformanceFeeChanged(performanceFeeRate);
     }
 
     /**

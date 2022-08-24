@@ -15,10 +15,13 @@ contract TwapStrategyBase is ERC20, ITwapStrategyBase {
     uint256 public constant FEE_PRECISION = 1e8;
     bool public override onHold;
 
+    uint256 public constant MIN_SHARE = 1e16;
+    uint256 public constant MINIMUM_LIQUIDITY = 1000;
+
     // store ticks
     Tick[] public ticks;
 
-    uint256 public override accManagementFee;
+    uint256 public override accManagementFeeShares;
 
     ITwapStrategyFactory public override factory; // instance of the strategy factory
     IUniswapV3Pool public override pool; // instance of the Uniswap V3 pool
@@ -91,6 +94,9 @@ contract TwapStrategyBase is ERC20, ITwapStrategyBase {
         uint256 _totalAmount1,
         address _user
     ) internal returns (uint256 share) {
+
+        uint256 _shareTotalSupply = totalSupply();
+
         // calculate number of shares
         share = TwapShareHelper.calculateShares(
             chainlinkRegistry,
@@ -101,25 +107,32 @@ contract TwapStrategyBase is ERC20, ITwapStrategyBase {
             _amount1,
             _totalAmount0,
             _totalAmount1,
-            totalSupply()
+            _shareTotalSupply
         );
 
-        require(share > 0, "IS");
+        require(share > MIN_SHARE, "IS");
 
         uint256 managerShare;
-        uint256 managementFee = manager.managementFee();
+        uint256 managementFeeRate = manager.managementFeeRate();
+
+        if(_shareTotalSupply == 0){
+            share = share.sub(MINIMUM_LIQUIDITY);
+            _mint(address(0), MINIMUM_LIQUIDITY);
+        }
+
         // strategy owner fees
-        if (managementFee > 0) {
-            managerShare = share.mul(managementFee).div(FEE_PRECISION);
-            accManagementFee = accManagementFee.add(managerShare);
+        if (managementFeeRate > 0) {
+            managerShare = share.mul(managementFeeRate).div(FEE_PRECISION);
+            accManagementFeeShares = accManagementFeeShares.add(managerShare);
+            share = share.sub(managerShare);
         }
 
         // issue shares
-        _mint(_user, share.sub(managerShare));
+        _mint(_user, share);
     }
 
     function totalSupply() public view override returns (uint256) {
-        return _totalSupply.add(accManagementFee);
+        return _totalSupply.add(accManagementFeeShares);
     }
 
     /**
@@ -135,7 +148,7 @@ contract TwapStrategyBase is ERC20, ITwapStrategyBase {
         ) = TwapShareHelper.calculateFeeShares(
                 factory,
                 manager,
-                accManagementFee
+                accManagementFeeShares
             );
 
         if (managerShare > 0) {
@@ -147,7 +160,7 @@ contract TwapStrategyBase is ERC20, ITwapStrategyBase {
         }
 
         // set the variables to 0
-        accManagementFee = 0;
+        accManagementFeeShares = 0;
 
         emit ClaimFee(managerShare, protocolShare);
     }

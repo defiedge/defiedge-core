@@ -15,12 +15,15 @@ contract StrategyBase is ERC20, IStrategyBase {
     uint256 public constant FEE_PRECISION = 1e8;
     bool public override onHold;
 
+    uint256 public constant MIN_SHARE = 1e16;
+    uint256 public constant MINIMUM_LIQUIDITY = 1000;
+
     // store ticks
     Tick[] public ticks;
 
-    uint256 public override accManagementFee;
-    uint256 public accPerformanceFee;
-    uint256 public accProtocolPerformanceFee;
+    uint256 public override accManagementFeeShares;
+    uint256 public override accPerformanceFeeShares;
+    uint256 public override accProtocolPerformanceFeeShares;
 
     IStrategyFactory public override factory; // instance of the strategy factory
     IUniswapV3Pool public override pool; // instance of the Uniswap V3 pool
@@ -109,6 +112,8 @@ contract StrategyBase is ERC20, IStrategyBase {
         uint256 _totalAmount1,
         address _user
     ) internal returns (uint256 share) {
+
+        uint256 _shareTotalSupply = totalSupply();
         // calculate number of shares
         share = ShareHelper.calculateShares(
             chainlinkRegistry,
@@ -118,25 +123,32 @@ contract StrategyBase is ERC20, IStrategyBase {
             _amount1,
             _totalAmount0,
             _totalAmount1,
-            totalSupply()
+            _shareTotalSupply
         );
 
-        require(share > 0, "IS");
+        require(share > MIN_SHARE, "IS");
 
         uint256 managerShare;
-        uint256 managementFee = manager.managementFee();
+        uint256 managementFeeRate = manager.managementFeeRate();
+        
+        if(_shareTotalSupply == 0){
+            share = share.sub(MINIMUM_LIQUIDITY);
+            _mint(address(0), MINIMUM_LIQUIDITY);
+        }
+
         // strategy owner fees
-        if (managementFee > 0) {
-            managerShare = share.mul(managementFee).div(FEE_PRECISION);
-            accManagementFee = accManagementFee.add(managerShare);
+        if (managementFeeRate > 0) {
+            managerShare = share.mul(managementFeeRate).div(FEE_PRECISION);
+            accManagementFeeShares = accManagementFeeShares.add(managerShare);
+            share = share.sub(managerShare);
         }
 
         // issue shares
-        _mint(_user, share.sub(managerShare));
+        _mint(_user, share);
     }
 
     function totalSupply() public view override returns (uint256) {
-        return _totalSupply.add(accManagementFee).add(accPerformanceFee).add(accProtocolPerformanceFee);
+        return _totalSupply.add(accManagementFeeShares).add(accPerformanceFeeShares).add(accProtocolPerformanceFeeShares);
     }
 
     /**
@@ -152,9 +164,9 @@ contract StrategyBase is ERC20, IStrategyBase {
         ) = ShareHelper.calculateFeeShares(
                 factory,
                 manager,
-                accManagementFee,
-                accPerformanceFee,
-                accProtocolPerformanceFee
+                accManagementFeeShares,
+                accPerformanceFeeShares,
+                accProtocolPerformanceFeeShares
             );
 
         if (managerShare > 0) {
@@ -166,9 +178,9 @@ contract StrategyBase is ERC20, IStrategyBase {
         }
 
         // set the variables to 0
-        accManagementFee = 0;
-        accPerformanceFee = 0;
-        accProtocolPerformanceFee = 0;
+        accManagementFeeShares = 0;
+        accPerformanceFeeShares = 0;
+        accProtocolPerformanceFeeShares = 0;
 
         emit ClaimFee(managerShare, protocolShare);
     }

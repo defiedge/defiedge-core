@@ -314,7 +314,7 @@ contract UniswapV3PersonalLiquidityManager is
      * @notice Swap the fudns to 1Inch
      * @param data Swap data to perform exchange from 1inch
      */
-    function swap(bytes calldata data) external onlyOperator {
+    function swap(bytes calldata data) public onlyOperator {
         (IERC20 srcToken, IERC20 dstToken, uint256 amount) = OneInchHelper
             .decodeData(IERC20(token0), IERC20(token1), data);
 

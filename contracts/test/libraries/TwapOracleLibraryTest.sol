@@ -340,10 +340,14 @@ contract TwapOracleLibraryTest {
 
         uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(tick);
 
-        uint256 ratioX192 = uint256(sqrtRatioX96).mul(sqrtRatioX96);
-
-        // return price from TWAP in 1e18
-        price = FullMath.mulDiv(ratioX192, BASE, 1 << 192);
+        // Calculate price with better precision if it doesn't overflow when multiplied by itself
+        if (sqrtRatioX96 <= type(uint128).max) {
+            uint256 ratioX192 = uint256(sqrtRatioX96).mul(sqrtRatioX96);
+            price = FullMath.mulDiv(ratioX192, BASE, 1 << 192);
+        } else {
+            uint256 ratioX128 = FullMath.mulDiv(sqrtRatioX96, sqrtRatioX96, 1 << 64);
+            price = FullMath.mulDiv(ratioX128, BASE, 1 << 128);
+        }
 
         uint256 token0Decimals = IERC20Minimal(IUniswapV3Pool(_pool).token0()).decimals();
         uint256 token1Decimals = IERC20Minimal(IUniswapV3Pool(_pool).token1()).decimals();

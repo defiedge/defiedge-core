@@ -127,9 +127,6 @@ library TwapOracleLibrary {
         )
     {
         uint256 _period = _manager.twapPricePeriod();
-        
-        // price of token0 denominated in token1
-        uint256 _price = consult(address(_pool), uint32(_period));
  
         if(_useTwap[0]){
             // token0 - twap , token1 - chainlink
@@ -138,6 +135,8 @@ library TwapOracleLibrary {
             if (_priceOf == _pool.token1()) {
                 price = token1ChainlinkPrice;
             } else {
+                // price of token0 denominated in token1
+                uint256 _price = consult(address(_pool), uint32(_period));
                 price = _price.mul(token1ChainlinkPrice).div(BASE);
             }
 
@@ -150,6 +149,8 @@ library TwapOracleLibrary {
             if (_priceOf == _pool.token0()) {
                 price = token0ChainlinkPrice;
             } else {
+                // price of token0 denominated in token1
+                uint256 _price = consult(address(_pool), uint32(_period));
                 _price = 1e36 / _price;
                 price = _price.mul(token0ChainlinkPrice).div(BASE);
             }
@@ -326,10 +327,14 @@ library TwapOracleLibrary {
 
         uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(tick);
 
-        uint256 ratioX192 = uint256(sqrtRatioX96).mul(sqrtRatioX96);
-
-        // return price from TWAP in 1e18
-        price = FullMath.mulDiv(ratioX192, BASE, 1 << 192);
+        // Calculate price with better precision if it doesn't overflow when multiplied by itself
+        if (sqrtRatioX96 <= type(uint128).max) {
+            uint256 ratioX192 = uint256(sqrtRatioX96).mul(sqrtRatioX96);
+            price = FullMath.mulDiv(ratioX192, BASE, 1 << 192);
+        } else {
+            uint256 ratioX128 = FullMath.mulDiv(sqrtRatioX96, sqrtRatioX96, 1 << 64);
+            price = FullMath.mulDiv(ratioX128, BASE, 1 << 128);
+        }
 
         uint256 token0Decimals = IERC20Minimal(IUniswapV3Pool(_pool).token0()).decimals();
         uint256 token1Decimals = IERC20Minimal(IUniswapV3Pool(_pool).token1()).decimals();
