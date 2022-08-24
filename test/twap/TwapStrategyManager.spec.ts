@@ -162,8 +162,8 @@ describe("TwapStrategyManager", () => {
     let params = {
       operator: signers[0].address,
       feeTo: signers[1].address,
-      managementFee: "500000", // 0.5%
-      performanceFee: "500000", // 0.5%
+      managementFeeRate: "500000", // 0.5%
+      performanceFeeRate: "500000", // 0.5%
       limit: 0,
       pool: pool.address,
       useTwap: useTwap,
@@ -177,7 +177,7 @@ describe("TwapStrategyManager", () => {
       ]
     }
 
-    await factory.changeProtocolPerformanceFee("500000");
+    await factory.changeProtocolPerformanceFeeRate("500000");
 
     // create strategy
     await factory.createStrategy(params);
@@ -262,12 +262,12 @@ describe("TwapStrategyManager", () => {
       expect(await strategyManager.feeTo()).to.equal(signers[1].address);
     });
 
-    it("should set the managementFee address correctly", async () => {
-      expect(await strategyManager.managementFee()).to.equal("500000");
+    it("should set the managementFeeRate address correctly", async () => {
+      expect(await strategyManager.managementFeeRate()).to.equal("500000");
     });
 
-    it("should set the performanceFee address correctly", async () => {
-      expect(await strategyManager.performanceFee()).to.equal(500000);
+    it("should set the performanceFeeRate address correctly", async () => {
+      expect(await strategyManager.performanceFeeRate()).to.equal(500000);
     });
 
     it("should set the limit address correctly", async () => {
@@ -331,32 +331,32 @@ describe("TwapStrategyManager", () => {
     });
   })
   
-  describe("#changeFee", async () => {
+  describe("#changeManagementFeeRate", async () => {
     it("should revert if operator is not calling", async () => {
-      await expect(strategyManager.connect(signers[1]).changeFee(1)).to.be.revertedWith(
+      await expect(strategyManager.connect(signers[1]).changeManagementFeeRate(1)).to.be.revertedWith(
         "N"
       );
     });
 
     it("should set fees to 1%", async () => {
-      await strategyManager.changeFee(1000000);
-      expect(await strategyManager.managementFee()).to.equal(1000000);
+      await strategyManager.changeManagementFeeRate(1000000);
+      expect(await strategyManager.managementFeeRate()).to.equal(1000000);
     });
 
     it("should set fees to 2%", async () => {
-      await strategyManager.changeFee(2000000);
-      expect(await strategyManager.managementFee()).to.equal(2000000);
+      await strategyManager.changeManagementFeeRate(2000000);
+      expect(await strategyManager.managementFeeRate()).to.equal(2000000);
     });
 
     it("should set fees to 5%", async () => {
-      await strategyManager.changeFee(5000000);
-      expect(await strategyManager.managementFee()).to.equal(5000000);
+      await strategyManager.changeManagementFeeRate(5000000);
+      expect(await strategyManager.managementFeeRate()).to.equal(5000000);
     });
     it("should set fees to 25%", async () => {
-      await expect(strategyManager.changeFee(25000000)).to.be.reverted;
+      await expect(strategyManager.changeManagementFeeRate(25000000)).to.be.reverted;
     })
-    it("should emit changeFee event", async () => {
-      await expect(await strategyManager.changeFee(1000000))
+    it("should emit changeManagementFeeRate event", async () => {
+      await expect(await strategyManager.changeManagementFeeRate(1000000))
         .to.emit(strategyManager, "FeeChanged")
         .withArgs(1000000);
     });
@@ -364,7 +364,7 @@ describe("TwapStrategyManager", () => {
 
   describe("#changeFeeTo", async () => {
     it("should revert if operator is not calling", async () => {
-      expect(strategyManager.connect(signers[1]).changeFee(1)).to.be.revertedWith("N");
+      expect(strategyManager.connect(signers[1]).changeFeeTo(signers[1].address)).to.be.revertedWith("N");
     });
 
     it("should update feeTo", async () => {
@@ -483,33 +483,33 @@ describe("TwapStrategyManager", () => {
     });
   })
 
-  describe("#changePerformanceFee", async () => {
+  describe("#changePerformanceFeeRate", async () => {
     it("should revert if operator is not calling", async () => {
-      await expect(strategyManager.connect(signers[1]).changePerformanceFee(1)).to.be.revertedWith(
+      await expect(strategyManager.connect(signers[1]).changePerformanceFeeRate(1)).to.be.revertedWith(
         "N"
       );
     });
-    it("should revert if performanceFee is more than 20%", async () => {
-      await expect(strategyManager.changePerformanceFee(20000001)).to.be.reverted;
+    it("should revert if performanceFeeRate is more than 20%", async () => {
+      await expect(strategyManager.changePerformanceFeeRate(20000001)).to.be.reverted;
     });
 
     it("should set fees to 1%", async () => {
-      await strategyManager.changePerformanceFee(1000000);
-      expect(await strategyManager.performanceFee()).to.equal(1000000);
+      await strategyManager.changePerformanceFeeRate(1000000);
+      expect(await strategyManager.performanceFeeRate()).to.equal(1000000);
     });
 
     it("should set fees to 2%", async () => {
-      await strategyManager.changePerformanceFee(2000000);
-      expect(await strategyManager.performanceFee()).to.equal(2000000);
+      await strategyManager.changePerformanceFeeRate(2000000);
+      expect(await strategyManager.performanceFeeRate()).to.equal(2000000);
     });
 
     it("should set fees to 5%", async () => {
-      await strategyManager.changePerformanceFee(5000000);
-      expect(await strategyManager.performanceFee()).to.equal(5000000);
+      await strategyManager.changePerformanceFeeRate(5000000);
+      expect(await strategyManager.performanceFeeRate()).to.equal(5000000);
     });
 
-    it("should emit changePerformanceFee event", async () => {
-      await expect(await strategyManager.changePerformanceFee(1000000))
+    it("should emit changePerformanceFeeRate event", async () => {
+      await expect(await strategyManager.changePerformanceFeeRate(1000000))
         .to.emit(strategyManager, "PerformanceFeeChanged")
         .withArgs(1000000);
     });
@@ -568,20 +568,20 @@ describe("TwapStrategyManager", () => {
     });
   });
 
-  describe("#managementFee", async () => {
+  describe("#managementFeeRate", async () => {
     it("should mint share for manager while mint", async () => {
       
-      expect(await strategy.accManagementFee()).to.equal(0);
+      expect(await strategy.accManagementFeeShares()).to.equal(0);
 
       await mint(signers[0])
 
-      expect(await strategy.accManagementFee()).to.equal("324989818951040922");
+      expect(await strategy.accManagementFeeShares()).to.equal("324989818951040917");
 
     });
   })
 
-  describe("#performanceFee", async () => {
-    it("should increase accPerformanceFee while burnLiquidity", async () => {
+  describe("#performanceFeeRate", async () => {
+    it("should increase accPerformanceFeeShares while burnLiquidity", async () => {
       await factory.changeFeeTo(signers[3].address);
 
       await mint(signers[0])
@@ -610,20 +610,20 @@ describe("TwapStrategyManager", () => {
         expandToString(sqrtPriceLimitX96)
       );
 
-      // expect(await strategy.accPerformanceFee()).to.equal(0);
+      // expect(await strategy.accPerformanceFeeShares()).to.equal(0);
 
       const shares = (await strategy.balanceOf(signers[0].address)).toString();
 
       let burn = await strategy.burn(shares, 0, 0)
 
-      // expect(await strategy.accPerformanceFee()).to.equal("53619");
+      // expect(await strategy.accPerformanceFeeShares()).to.equal("53619");
 
       await expect(burn).to.emit(strategy, "FeesClaim").withArgs(strategy.address, "0", "507080974");
     });
   })
 
-  describe("#accProtocolPerformanceFee", async () => {
-    it("should increase accProtocolPerformanceFee while burnLiquidity", async () => {
+  describe("#accProtocolPerformanceFeeShares", async () => {
+    it("should increase accProtocolPerformanceFeeShares while burnLiquidity", async () => {
       await factory.changeFeeTo(signers[3].address);
       
       await mint(signers[0])
@@ -651,13 +651,13 @@ describe("TwapStrategyManager", () => {
         expandToString(sqrtPriceLimitX96)
       );
 
-      // expect(await strategy.accProtocolPerformanceFee()).to.equal(0);
+      // expect(await strategy.accProtocolPerformanceFeeShares()).to.equal(0);
 
       const shares = (await strategy.balanceOf(signers[0].address)).toString();
 
       let burn = await strategy.burn(shares, 0, 0)
 
-      // expect(await strategy.accProtocolPerformanceFee()).to.equal("53619");
+      // expect(await strategy.accProtocolPerformanceFeeShares()).to.equal("53619");
 
       await expect(burn).to.emit(strategy, "FeesClaim").withArgs(strategy.address, "0", "507080974");
     });

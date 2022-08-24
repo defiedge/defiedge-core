@@ -35,6 +35,7 @@ contract ChainlinkRegistryMock {
             uint80 answeredInRound
         )
     {
+        updatedAt = block.timestamp;
         if (
             base == token1 &&
             quote == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE

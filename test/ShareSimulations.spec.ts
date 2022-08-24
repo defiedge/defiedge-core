@@ -163,8 +163,8 @@ describe("Share Simulations", () => {
     let params = {
       operator: signers[0].address,
       feeTo: signers[1].address,
-      managementFee: "500000", // 0.5%
-      performanceFee: "500000", // 0.5%
+      managementFeeRate: "500000", // 0.5%
+      performanceFeeRate: "500000", // 0.5%
       limit: 0,
       pool: pool.address,
       usdAsBase: usdAsBase,

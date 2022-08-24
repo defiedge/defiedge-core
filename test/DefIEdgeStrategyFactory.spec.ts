@@ -161,13 +161,13 @@ describe("DefiEdgeStrategyFactory", () => {
 
     let usdAsBase: [boolean, boolean] = [true, true];
 
-    await factory.changeProtocolPerformanceFee("500000");
+    await factory.changeProtocolPerformanceFeeRate("500000");
 
     let params = {
       operator: signers[0].address,
       feeTo: signers[1].address,
-      managementFee: "500000", // 0.5%
-      performanceFee: "500000", // 0.5%
+      managementFeeRate: "500000", // 0.5%
+      performanceFeeRate: "500000", // 0.5%
       limit: 0,
       pool: pool.address,
       usdAsBase: usdAsBase,
@@ -286,8 +286,8 @@ describe("DefiEdgeStrategyFactory", () => {
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
-        managementFee: "500000", // 0.5%
-        performanceFee: "500000", // 0.5%
+        managementFeeRate: "500000", // 0.5%
+        performanceFeeRate: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
         usdAsBase: usdAsBase,
@@ -320,8 +320,8 @@ describe("DefiEdgeStrategyFactory", () => {
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
-        managementFee: "500000", // 0.5%
-        performanceFee: "500000", // 0.5%
+        managementFeeRate: "500000", // 0.5%
+        performanceFeeRate: "500000", // 0.5%
         limit: 0,
         pool: poolAddress,
         usdAsBase: usdAsBase,
@@ -354,8 +354,8 @@ describe("DefiEdgeStrategyFactory", () => {
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
-        managementFee: "500000", // 0.5%
-        performanceFee: "500000", // 0.5%
+        managementFeeRate: "500000", // 0.5%
+        performanceFeeRate: "500000", // 0.5%
         limit: 0,
         pool: poolAddress,
         usdAsBase: usdAsBase,
@@ -380,8 +380,8 @@ describe("DefiEdgeStrategyFactory", () => {
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
-        managementFee: "500000", // 0.5%
-        performanceFee: "500000", // 0.5%
+        managementFeeRate: "500000", // 0.5%
+        performanceFeeRate: "500000", // 0.5%
         limit: 0,
         pool: strategyManager.address,
         usdAsBase: usdAsBase,
@@ -406,8 +406,8 @@ describe("DefiEdgeStrategyFactory", () => {
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
-        managementFee: "500000", // 0.5%
-        performanceFee: "500000", // 0.5%
+        managementFeeRate: "500000", // 0.5%
+        performanceFeeRate: "500000", // 0.5%
         limit: 0,
         pool: constants.AddressZero,
         usdAsBase: usdAsBase,
@@ -434,8 +434,8 @@ describe("DefiEdgeStrategyFactory", () => {
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
-        managementFee: "500000", // 0.5%
-        performanceFee: "500000", // 0.5%
+        managementFeeRate: "500000", // 0.5%
+        performanceFeeRate: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
         usdAsBase: usdAsBase,
@@ -460,8 +460,8 @@ describe("DefiEdgeStrategyFactory", () => {
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
-        managementFee: "500000", // 0.5%
-        performanceFee: "500000", // 0.5%
+        managementFeeRate: "500000", // 0.5%
+        performanceFeeRate: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
         usdAsBase: usdAsBase,
@@ -495,8 +495,8 @@ describe("DefiEdgeStrategyFactory", () => {
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
-        managementFee: "500000", // 0.5%
-        performanceFee: "500000", // 0.5%
+        managementFeeRate: "500000", // 0.5%
+        performanceFeeRate: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
         usdAsBase: usdAsBase,
@@ -528,8 +528,8 @@ describe("DefiEdgeStrategyFactory", () => {
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
-        managementFee: "500000", // 0.5%
-        performanceFee: "500000", // 0.5%
+        managementFeeRate: "500000", // 0.5%
+        performanceFeeRate: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
         usdAsBase: usdAsBase,
@@ -563,8 +563,8 @@ describe("DefiEdgeStrategyFactory", () => {
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
-        managementFee: "500000", // 0.5%
-        performanceFee: "500000", // 0.5%
+        managementFeeRate: "500000", // 0.5%
+        performanceFeeRate: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
         usdAsBase: usdAsBase,
@@ -595,8 +595,8 @@ describe("DefiEdgeStrategyFactory", () => {
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
-        managementFee: "500000", // 0.5%
-        performanceFee: "500000", // 0.5%
+        managementFeeRate: "500000", // 0.5%
+        performanceFeeRate: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
         usdAsBase: usdAsBase,
@@ -625,8 +625,8 @@ describe("DefiEdgeStrategyFactory", () => {
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
-        managementFee: "500000", // 0.5%
-        performanceFee: "500000", // 0.5%
+        managementFeeRate: "500000", // 0.5%
+        performanceFeeRate: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
         usdAsBase: usdAsBase,
@@ -655,8 +655,8 @@ describe("DefiEdgeStrategyFactory", () => {
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
-        managementFee: "500000", // 0.5%
-        performanceFee: "500000", // 0.5%
+        managementFeeRate: "500000", // 0.5%
+        performanceFeeRate: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
         usdAsBase: usdAsBase,
@@ -714,36 +714,36 @@ describe("DefiEdgeStrategyFactory", () => {
     })
   });
 
-  describe("#changeFee", async () => {
+  describe("#changeProtocolFeeRate", async () => {
     it("should be called by governance only", async () => {
-      await expect(factory.connect(signers[1]).changeFee(10000000)).to.be.revertedWith("NO");
+      await expect(factory.connect(signers[1]).changeProtocolFeeRate(10000000)).to.be.revertedWith("NO");
     });
     it("should revert if fee is higher", async () => {
-      await expect(factory.changeFee("20000000")).to.be.revertedWith("IA");
+      await expect(factory.changeProtocolFeeRate("20000000")).to.be.revertedWith("IA");
     });
     it("should change the protocol fee", async () => {
-      await factory.changeFee(1000000);
-      expect(await factory.protocolFee()).to.equal(1000000);
+      await factory.changeProtocolFeeRate(1000000);
+      expect(await factory.protocolFeeRate()).to.equal(1000000);
     });
-    it("should emit changeFee event", async () => {
-      expect(await factory.changeFee("1000000"))
+    it("should emit changeProtocolFeeRate event", async () => {
+      expect(await factory.changeProtocolFeeRate("1000000"))
         .to.emit(factory, "ChangeProtocolFee").withArgs("1000000")
     })
   });
 
-  describe("#changeProtocolPerformanceFee", async () => {
+  describe("#changeProtocolPerformanceFeeRate", async () => {
     it("should be called by governance only", async () => {
-      await expect(factory.connect(signers[1]).changeProtocolPerformanceFee(10000000)).to.be.revertedWith("NO");
+      await expect(factory.connect(signers[1]).changeProtocolPerformanceFeeRate(10000000)).to.be.revertedWith("NO");
     });
     it("should revert if fee is higher", async () => {
-      await expect(factory.changeProtocolPerformanceFee("20000001")).to.be.revertedWith("IA");
+      await expect(factory.changeProtocolPerformanceFeeRate("20000001")).to.be.revertedWith("IA");
     });
     it("should change the protocol fee", async () => {
-      await factory.changeProtocolPerformanceFee(1000000);
-      expect(await factory.protocolPerformanceFee()).to.equal(1000000);
+      await factory.changeProtocolPerformanceFeeRate(1000000);
+      expect(await factory.protocolPerformanceFeeRate()).to.equal(1000000);
     });
     it("should emit changeFee event", async () => {
-      expect(await factory.changeProtocolPerformanceFee("1000000"))
+      expect(await factory.changeProtocolPerformanceFeeRate("1000000"))
         .to.emit(factory, "ChangeProtocolPerformanceFee").withArgs("1000000")
     })
   });
@@ -831,8 +831,8 @@ describe("DefiEdgeStrategyFactory", () => {
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
-        managementFee: "500000", // 0.5%
-        performanceFee: "500000", // 0.5%
+        managementFeeRate: "500000", // 0.5%
+        performanceFeeRate: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
         usdAsBase: usdAsBase,
@@ -869,6 +869,53 @@ describe("DefiEdgeStrategyFactory", () => {
     })
   })
 
+
+  describe("#setMinHeartbeat", async () => {
+    it("should be called by governance only", async () => {
+      await expect(factory.connect(signers[1]).setMinHeartbeat(token0.address, token1.address, 10)).to.be.revertedWith("NO");
+    });
+
+    it("should set heartBeat", async () => {
+
+      expect(await factory.getHeartBeat(token0.address, token1.address)).to.eq(3600) // default
+      expect(await factory.getHeartBeat(token1.address, token0.address)).to.eq(3600) // default
+
+      await factory.setMinHeartbeat(token0.address, token1.address, 180);
+
+      expect(await factory.getHeartBeat(token0.address, token1.address)).to.eq(180)
+      expect(await factory.getHeartBeat(token1.address, token0.address)).to.eq(180)
+    })
+  })
+
+
+  describe("#getHeartBeat", async () => {
+
+    it("should return correct heartbeat", async () => {
+
+      expect(await factory.getHeartBeat(token0.address, token1.address)).to.eq(3600) // default
+      expect(await factory.getHeartBeat(token1.address, token0.address)).to.eq(3600) // default
+
+      await factory.setMinHeartbeat(token0.address, token1.address, 180);
+
+      expect(await factory.getHeartBeat(token0.address, token1.address)).to.eq(180)
+      expect(await factory.getHeartBeat(token1.address, token0.address)).to.eq(180)
+
+      await factory.setMinHeartbeat(token0.address, token1.address, 4000);
+
+      expect(await factory.getHeartBeat(token0.address, token1.address)).to.eq(4000)
+      expect(await factory.getHeartBeat(token1.address, token0.address)).to.eq(4000)
+
+      await factory.setMinHeartbeat(token0.address, token1.address, 1);
+
+      expect(await factory.getHeartBeat(token0.address, token1.address)).to.eq(1)
+      expect(await factory.getHeartBeat(token1.address, token0.address)).to.eq(1)
+
+      await factory.setMinHeartbeat(token0.address, token1.address, 0);
+
+      expect(await factory.getHeartBeat(token0.address, token1.address)).to.eq(3600)
+      expect(await factory.getHeartBeat(token1.address, token0.address)).to.eq(3600)
+    })
+  })
   // describe("#allowAgain", async () => {
   //   it("should be called by governance only", async () => {
   //     expect(factory.connect(signers[1]).allowAgain(strategy.address)).to.be

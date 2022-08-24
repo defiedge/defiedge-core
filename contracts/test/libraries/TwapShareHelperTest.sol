@@ -80,6 +80,7 @@ contract TwapShareHelperTest {
      * @param _totalShares Total Number of shares
      */
     function calculateShares(
+        address _factory,
         address _registry,
         address _pool,
         address _manager,
@@ -94,14 +95,12 @@ contract TwapShareHelperTest {
         require(_amount0 > 0 && _amount1 > 0, 'INSUFFICIENT_AMOUNT');
 
         IUniswapV3Pool pool = IUniswapV3Pool(_pool);
-        FeedRegistryInterface registry = FeedRegistryInterface(_registry);
 
         _amount0 = TwapOracleLibrary.normalise(pool.token0(), _amount0);
         _amount1 = TwapOracleLibrary.normalise(pool.token1(), _amount1);
         _totalAmount0 = TwapOracleLibrary.normalise(pool.token0(), _totalAmount0);
         _totalAmount1 = TwapOracleLibrary.normalise(pool.token1(), _totalAmount1);
 
-        (uint256 token0Price, uint256 token1Price) = _getPrice(pool, registry, _useTwap, _manager);
 
         if (_totalShares > 0) {
             
@@ -112,6 +111,8 @@ contract TwapShareHelperTest {
             }
 
         } else {
+
+            (uint256 token0Price, uint256 token1Price) = _getPrice(ITwapStrategyFactory(_factory), pool, FeedRegistryInterface(_registry), _useTwap, _manager);
 
             share = ((token0Price.mul(_amount0)).add(token1Price.mul(_amount1)))
                 .div(DIVISOR);
@@ -154,6 +155,7 @@ contract TwapShareHelperTest {
 
     // to resolve stack too deep error
     function _getPrice(
+        ITwapStrategyFactory _factroy,
         IUniswapV3Pool _pool,
         FeedRegistryInterface _registry,
         bool[2] memory _useTwap,
@@ -168,6 +170,7 @@ contract TwapShareHelperTest {
     {
         // price in USD
         token0Price = TwapOracleLibrary.getPriceInUSD(
+            _factroy,
             _pool,
             _registry,
             _pool.token0(),
@@ -176,6 +179,7 @@ contract TwapShareHelperTest {
         );
 
         token1Price = TwapOracleLibrary.getPriceInUSD(
+            _factroy,
             _pool,
             _registry,
             _pool.token1(),

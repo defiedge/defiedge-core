@@ -158,15 +158,15 @@ describe("DeFiEdgeStrategy", () => {
       "10000000000000000"
     )) as DefiEdgeStrategyFactory;
 
-    await factory.changeProtocolPerformanceFee("500000");
+    await factory.changeProtocolPerformanceFeeRate("500000");
 
     let usdAsBase: [boolean, boolean] = [true, true];
     
     let params = {
       operator: signers[0].address,
       feeTo: signers[1].address,
-      managementFee: "500000", // 0.5%
-      performanceFee: "500000", // 0.5%
+      managementFeeRate: "500000", // 0.5%
+      performanceFeeRate: "500000", // 0.5%
       limit: 0,
       pool: pool.address,
       usdAsBase: usdAsBase,
@@ -303,8 +303,8 @@ describe("DeFiEdgeStrategy", () => {
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
-        managementFee: "500000", // 0.5%
-        performanceFee: "500000", // 0.5%
+        managementFeeRate: "500000", // 0.5%
+        performanceFeeRate: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
         usdAsBase: usdAsBase,
@@ -319,8 +319,8 @@ describe("DeFiEdgeStrategy", () => {
       let params = {
         operator: signers[0].address,
         feeTo: signers[1].address,
-        managementFee: "500000", // 0.5%
-        performanceFee: "500000", // 0.5%
+        managementFeeRate: "500000", // 0.5%
+        performanceFeeRate: "500000", // 0.5%
         limit: 0,
         pool: pool.address,
         usdAsBase: usdAsBase,
@@ -474,7 +474,7 @@ describe("DeFiEdgeStrategy", () => {
         .to.emit(strategy, "Mint")
         .withArgs(
           signers[1].address,
-          "64522609811086114013",
+          "64199996762030682448",
           expandTo18Decimals(1),
           "3452260981108611401314"
         );
@@ -512,17 +512,17 @@ describe("DeFiEdgeStrategy", () => {
         .withArgs(signers[0].address, strategy.address, expandTo18Decimals(1));
     });
 
-    it("issue different amount of share when performanceFee is non-zero", async () => {
+    it("issue different amount of share when performanceFeeRate is non-zero", async () => {
 
       // when performance fees is zero
-      expect(await strategy.accPerformanceFee()).to.eq(0)
-      expect(await strategy.accProtocolPerformanceFee()).to.eq(0)
+      expect(await strategy.accPerformanceFeeShares()).to.eq(0)
+      expect(await strategy.accProtocolPerformanceFeeShares()).to.eq(0)
       
       expect(await strategy.totalSupply()).to.eq(0)
 
       await mint(signers[0])
 
-      expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030683443")
+      expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030682448")
 
       const shareTobeBurned = (await strategy.balanceOf(signers[0].address)).toString();
   
@@ -537,38 +537,38 @@ describe("DeFiEdgeStrategy", () => {
         expandToString(sqrtPriceLimitX96)
       );
 
-      expect(await strategy.accPerformanceFee()).to.equal(0);
-      expect(await strategy.accProtocolPerformanceFee()).to.eq(0)
+      expect(await strategy.accPerformanceFeeShares()).to.equal(0);
+      expect(await strategy.accProtocolPerformanceFeeShares()).to.eq(0)
 
       await strategy.connect(signers[0]).burn(shareTobeBurned, 0, 0)
 
       // performance fees non-zero
-      expect(await strategy.accPerformanceFee()).to.equal("53619");
-      expect(await strategy.accProtocolPerformanceFee()).to.eq("53619")
+      expect(await strategy.accPerformanceFeeShares()).to.equal("53619");
+      expect(await strategy.accProtocolPerformanceFeeShares()).to.eq("53619")
 
       expect(await strategy.balanceOf(signers[0].address)).to.eq("0")
 
       await mint(signers[0])
 
-      expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996767520130119")
+      expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996769643520498")
 
       await strategy.claimFee()
 
-      expect(await strategy.accPerformanceFee()).to.equal("0");
-      expect(await strategy.accProtocolPerformanceFee()).to.eq("0")
+      expect(await strategy.accPerformanceFeeShares()).to.equal("0");
+      expect(await strategy.accProtocolPerformanceFeeShares()).to.eq("0")
 
     })
 
-    it("issue different amount of share when performanceFee is zero", async () => {
+    it("issue different amount of share when performanceFeeRate is zero", async () => {
         // performance fees is zero
-        expect(await strategy.accPerformanceFee()).to.eq(0)
-        expect(await strategy.accProtocolPerformanceFee()).to.eq(0)
+        expect(await strategy.accPerformanceFeeShares()).to.eq(0)
+        expect(await strategy.accProtocolPerformanceFeeShares()).to.eq(0)
         
         expect(await strategy.totalSupply()).to.eq(0)
   
         await mint(signers[0])
   
-        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030683443")
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030682448")
   
         const shareTobeBurned = (await strategy.balanceOf(signers[0].address)).toString();
     
@@ -578,7 +578,7 @@ describe("DeFiEdgeStrategy", () => {
   
         await mint(signers[0])
   
-        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030689403")
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030685949")
   
     })
   });
@@ -588,13 +588,13 @@ describe("DeFiEdgeStrategy", () => {
       await mint(signers[0]);
     });
 
-    it("should revert if caller have no access to strategy", async () => {
-      await strategyManager.updateStrategyMode(true);
+    // it("should revert if caller have no access to strategy", async () => {
+    //   await strategyManager.updateStrategyMode(true);
 
-      await expect(
-            strategy.connect(signers[3]).burn(expandTo18Decimals(3000), 0, 0)
-        ).to.be.revertedWith("UA")
-    })
+    //   await expect(
+    //         strategy.connect(signers[3]).burn(expandTo18Decimals(3000), 0, 0)
+    //     ).to.be.revertedWith("UA")
+    // })
 
 
     it("should not revert if strategy is public", async () => {
@@ -643,9 +643,9 @@ describe("DeFiEdgeStrategy", () => {
         .to.emit(strategy, "Burn")
         .withArgs(
           signers[0].address,
-          "67444996753935760153",
-          "1096987500000000000",
-          "3453537175393576015189"
+          "67444996753935759158",
+          "1096987499999999983",
+          "3453537175393575964238"
         );
     });
 
@@ -687,9 +687,9 @@ describe("DeFiEdgeStrategy", () => {
           strategy.address,
           calculateTick(2500, 60),
           calculateTick(3500, 60),
-          "727510375048865599114",
-          "994999999999999999",
-          "3434999676203068344308"
+          "727510375048865587839",
+          "994999999999999984",
+          "3434999676203068291072"
         );
     });
 
@@ -754,9 +754,9 @@ describe("DeFiEdgeStrategy", () => {
         .to.emit(strategy, "Burn")
         .withArgs(
           signers[0].address,
-          "117926706797723864562",
-          "1625057001189772697",
-          "6917499676203068344311"
+          "117926706797723863567",
+          "1625057001189772683",
+          "6917499676203068285952"
         );
     });
 
@@ -795,9 +795,9 @@ describe("DeFiEdgeStrategy", () => {
           strategy.address,
           calculateTick(2500, 60),
           calculateTick(3500, 60),
-          "727510375048865599114",
-          "994999999999999999",
-          "3434999676203068344308"
+          "727510375048865587839",
+          "994999999999999984",
+          "3434999676203068291072"
         );
 
       await factory.changeFeeTo(signers[3].address);
@@ -806,7 +806,7 @@ describe("DeFiEdgeStrategy", () => {
 
       await expect(claimFee)
         .to.emit(strategy, "ClaimFee")
-        .withArgs("322613049055430570", "0");
+        .withArgs("322613049055430565", "0");
 
       const sharesFeeto = (
         await strategy.balanceOf(signers[1].address)
@@ -820,9 +820,9 @@ describe("DeFiEdgeStrategy", () => {
           strategy.address,
           calculateTick(2500, 60),
           calculateTick(3500, 60),
-          "3655831030396309543",
+          "3655831030396309486",
           "4999999999999999",
-          "17261304905543057005"
+          "17261304905543056736"
         );
     });
 
@@ -837,7 +837,13 @@ describe("DeFiEdgeStrategy", () => {
           parseInt(tick.amount1.toString()) - 3452260981108611401313
         ),
       };
-      await strategy.connect(signers[0]).burn("64199996762030683443", 0, 0);
+
+
+      const shares = (await strategy.balanceOf(signers[0].address)).toString();
+      // const shares = "64199996762030683443";
+      console.log("shares balance: " + shares);
+
+      await strategy.connect(signers[0]).burn(shares, 0, 0);
       tick = await strategy.ticks(0);
       const after = {
         amount0: "0",
@@ -859,46 +865,50 @@ describe("DeFiEdgeStrategy", () => {
     });
 
     it("should decrease the total supply (burn shares)", async () => {
-      const totalSupplyBefore = parseInt(
-        (await strategy.balanceOf(signers[0].address)).toString()
-      );
-      await strategy.connect(signers[0]).burn("64199996762030683443", 0, 0);
-      const totalSupplyAfter = parseInt(
-        (await strategy.balanceOf(signers[0].address)).toString()
-      );
+      const totalSupplyBefore = await strategy.totalSupply();
 
-      expect(0).to.equal(totalSupplyAfter);
+      const shares = await strategy.balanceOf(signers[0].address);
+
+      await strategy.connect(signers[0]).burn(shares, 0, 0);
+      const totalSupplyAfter = await strategy.totalSupply();
+    
+
+      expect(shares).to.equal(totalSupplyBefore.sub(totalSupplyAfter));
     });
 
     it("should transfer amount0 back to the user", async () => {
-      await strategy.connect(signers[0]).burn("64199996762030683443", 0, 0);
+      const shares = await strategy.balanceOf(signers[0].address);
+
+      await strategy.connect(signers[0]).burn(shares, 0, 0);
       let token0A = await ethers.getContractAt(
         "TestERC20",
         await pool.token0()
       );
       const balanceAfter = await token0A.balanceOf(signers[0].address);
-      expect("948499999994999999999999999").to.equal(balanceAfter.toString());
+      expect("948499999994999999999999984").to.equal(balanceAfter.toString());
     });
 
     it("should transfer amount1 back to the user", async () => {
-      await strategy.connect(signers[0]).burn("64199996762030683443", 0, 0);
+      const shares = await strategy.balanceOf(signers[0].address);
+
+      await strategy.connect(signers[0]).burn(shares, 0, 0);
       let token1A = await ethers.getContractAt(
         "TestERC20",
         await pool.token1()
       );
       const balanceAfter = await token1A.balanceOf(signers[0].address);
-      expect("998499972738695094456942994").to.equal(balanceAfter.toString());
+      expect("998499972738695094456889758").to.equal(balanceAfter.toString());
     });
 
     it("should emit burn event", async () => {
-      const shares = "64199996762030683443";
+      const shares = await strategy.balanceOf(signers[0].address);
       await expect(strategy.connect(signers[0]).burn(shares, 0, 0))
         .to.emit(strategy, "Burn")
         .withArgs(
           signers[0].address,
           shares,
-          "994999999999999999",
-          "3434999676203068344308"
+          "994999999999999984",
+          "3434999676203068291072"
         );
     });
 
@@ -974,10 +984,11 @@ describe("DeFiEdgeStrategy", () => {
 
       let totalAmount0 = new bn(unusedReturnAmount0)
         .plus(returnAmount0)
+        .minus(1)
         .toFixed(0);
       let totalAmount1 = new bn(unusedReturnAmount1)
         .plus(returnAmount1)
-        .minus(2)
+        .minus(5)
         .toFixed(0);
 
       // console.log('totalAmount0: ' + totalAmount0)
@@ -1065,10 +1076,11 @@ describe("DeFiEdgeStrategy", () => {
 
       let totalAmount0 = new bn(unusedReturnAmount0)
         .plus(returnAmount0)
+        .minus(1)
         .toFixed(0);
       let totalAmount1 = new bn(unusedReturnAmount1)
         .plus(returnAmount1)
-        .minus(2)
+        .minus(4)
         .toFixed(0);
 
       // console.log('totalAmount0: ' + totalAmount0)
@@ -1162,8 +1174,8 @@ describe("DeFiEdgeStrategy", () => {
         .minus(4)
         .toFixed(0);
 
-      // console.log('totalAmount0: ' + totalAmount0)
-      // console.log('totalAmount1: ' + totalAmount1)
+      console.log('totalAmount0: ' + totalAmount0)
+      console.log('totalAmount1: ' + totalAmount1)
 
       await expect(strategy.connect(signers[0]).burn(shareTobeBurned, 0, 0))
         .to.emit(strategy, "Burn")
@@ -1247,14 +1259,15 @@ describe("DeFiEdgeStrategy", () => {
 
       let totalAmount0 = new bn(unusedReturnAmount0)
         .plus(returnAmount0)
+        .minus(2)
         .toFixed(0);
       let totalAmount1 = new bn(unusedReturnAmount1)
         .plus(returnAmount1)
-        .minus(4)
+        .minus(3)
         .toFixed(0);
 
-      // console.log('totalAmount0: ' + totalAmount0)
-      // console.log('totalAmount1: ' + totalAmount1)
+      console.log('totalAmount0: ' + totalAmount0)
+      console.log('totalAmount1: ' + totalAmount1)
 
       await expect(strategy.connect(signers[0]).burn(shareTobeBurned, 0, 0))
         .to.emit(strategy, "Burn")
@@ -1280,7 +1293,7 @@ describe("DeFiEdgeStrategy", () => {
           0
         );
     
-        await factory.changeFee("1000000");
+        await factory.changeProtocolFeeRate("1000000");
         await factory.changeFeeTo(signers[3].address);
 
         const shares = (await strategy.balanceOf(signers[0].address)).toString();
@@ -1299,13 +1312,13 @@ describe("DeFiEdgeStrategy", () => {
           expandToString(sqrtPriceLimitX96)
         );
 
-        expect(await strategy.accPerformanceFee()).to.equal(0);
-        expect(await strategy.accProtocolPerformanceFee()).to.equal(0);
+        expect(await strategy.accPerformanceFeeShares()).to.equal(0);
+        expect(await strategy.accProtocolPerformanceFeeShares()).to.equal(0);
 
         await strategy.connect(signers[0]).burn(shareTobeBurned, 0, 0)
 
-        expect(await strategy.accPerformanceFee()).to.equal("69151");
-        expect(await strategy.accProtocolPerformanceFee()).to.equal("69151");
+        expect(await strategy.accPerformanceFeeShares()).to.equal("69151");
+        expect(await strategy.accProtocolPerformanceFeeShares()).to.equal("69151");
 
         let expectedSupply = new bn(shareTotalSupply).minus(shareTobeBurned).plus("69151").plus("69151").toFixed()
         console.log('expectedSupply: '+ expectedSupply)
@@ -1314,13 +1327,13 @@ describe("DeFiEdgeStrategy", () => {
     
       })
 
-      it("burn different amount when performanceFee is non-zero", async () => {
+      it("burn different amount when performanceFeeRate is non-zero", async () => {
 
         // when performance fees is zero
-        expect(await strategy.accPerformanceFee()).to.eq(0)
-        expect(await strategy.accProtocolPerformanceFee()).to.eq(0)
+        expect(await strategy.accPerformanceFeeShares()).to.eq(0)
+        expect(await strategy.accProtocolPerformanceFeeShares()).to.eq(0)
             
-        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030683443")
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030682448")
   
         const shareTobeBurned1 = (await strategy.balanceOf(signers[0].address)).toString();
     
@@ -1335,57 +1348,57 @@ describe("DeFiEdgeStrategy", () => {
           expandToString(sqrtPriceLimitX96)
         );
   
-        expect(await strategy.accPerformanceFee()).to.equal(0);
-        expect(await strategy.accProtocolPerformanceFee()).to.eq(0)
+        expect(await strategy.accPerformanceFeeShares()).to.equal(0);
+        expect(await strategy.accProtocolPerformanceFeeShares()).to.eq(0)
   
         await strategy.connect(signers[0]).burn(shareTobeBurned1, 0, 0)
   
         // performance fees non-zero
-        expect(await strategy.accPerformanceFee()).to.equal("53619");
-        expect(await strategy.accProtocolPerformanceFee()).to.eq("53619")
+        expect(await strategy.accPerformanceFeeShares()).to.equal("53619");
+        expect(await strategy.accProtocolPerformanceFeeShares()).to.eq("53619")
     
         await mint(signers[0])
   
-        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996767520130119")
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996769643520498")
 
         await expect(strategy.connect(signers[0]).burn("60000000000000000000", 0, 0))
           .to.emit(strategy, "Burn")
           .withArgs(
             signers[0].address,
             "60000000000000000000",
-            "929906588876860691",
-            "3210280233567937484323"
+            "929906588846257402",
+            "3210280233461299643267"
           );
   
       })
 
-      it("burn different amount when performanceFee is zero", async () => {
+      it("burn different amount when performanceFeeRate is zero", async () => {
 
         // when performance fees is zero
-        expect(await strategy.accPerformanceFee()).to.eq(0)
-        expect(await strategy.accProtocolPerformanceFee()).to.eq(0)
+        expect(await strategy.accPerformanceFeeShares()).to.eq(0)
+        expect(await strategy.accProtocolPerformanceFeeShares()).to.eq(0)
             
-        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030683443")
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030682448")
   
         const shareTobeBurned1 = (await strategy.balanceOf(signers[0].address)).toString();
       
         await strategy.connect(signers[0]).burn(shareTobeBurned1, 0, 0)
   
         // performance fees zero
-        expect(await strategy.accPerformanceFee()).to.equal("0");
-        expect(await strategy.accProtocolPerformanceFee()).to.eq("0")
+        expect(await strategy.accPerformanceFeeShares()).to.equal("0");
+        expect(await strategy.accProtocolPerformanceFeeShares()).to.eq("0")
     
         await mint(signers[0])
   
-        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030689403")
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64199996762030685949")
 
         await expect(strategy.connect(signers[0]).burn("60000000000000000000", 0, 0))
           .to.emit(strategy, "Burn")
           .withArgs(
             signers[0].address,
             "60000000000000000000",
-            "929906588956526429",
-            "3210280233130420156483"
+            "929906588956526479",
+            "3210280233130420328368"
           );
   
       })
