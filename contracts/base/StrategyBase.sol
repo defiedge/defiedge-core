@@ -87,6 +87,7 @@ contract StrategyBase is ERC20, IStrategyBase {
     modifier onlyHasDeviation() {
         require(
             !OracleLibrary.hasDeviation(
+                factory,
                 pool,
                 chainlinkRegistry,
                 usdAsBase,
@@ -116,6 +117,7 @@ contract StrategyBase is ERC20, IStrategyBase {
         uint256 _shareTotalSupply = totalSupply();
         // calculate number of shares
         share = ShareHelper.calculateShares(
+            factory,
             chainlinkRegistry,
             pool,
             usdAsBase,

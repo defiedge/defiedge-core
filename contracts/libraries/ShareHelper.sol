@@ -25,6 +25,7 @@ library ShareHelper {
      * @param _totalShares Total Number of shares
      */
     function calculateShares(
+        IStrategyFactory _factory,
         FeedRegistryInterface _registry,
         IUniswapV3Pool _pool,
         bool[2] memory _isBase,
@@ -45,12 +46,14 @@ library ShareHelper {
 
         // price in USD
         uint256 token0Price = OracleLibrary.getPriceInUSD(
+            _factory,
             _registry,
             _token0,
             _isBase[0]
         );
 
         uint256 token1Price = OracleLibrary.getPriceInUSD(
+            _factory,
             _registry,
             _token1,
             _isBase[1]

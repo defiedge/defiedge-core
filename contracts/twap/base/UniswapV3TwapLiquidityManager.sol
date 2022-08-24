@@ -329,6 +329,7 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, IUniswapV3MintCallba
         // check if swap exceed allowed deviation and revert if maximum swap limits reached
         if (
             TwapOracleLibrary.isSwapExceedDeviation(
+                factory,
                 pool,
                 chainlinkRegistry,
                 amountIn,

@@ -56,6 +56,8 @@ interface ITwapStrategyFactory {
 
     function oneInchRouter() external view returns (IOneInchRouter);
 
+    function getHeartBeat(address _base, address _quote) external view returns(uint256);
+
     function createStrategy(CreateStrategyParams calldata params) external payable;
 
     event NewStrategy (address indexed strategy, address indexed creater);

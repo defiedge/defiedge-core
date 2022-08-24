@@ -87,9 +87,16 @@ library OracleLibrary {
     function getChainlinkPrice(
         FeedRegistryInterface _registry,
         address _base,
-        address _quote
+        address _quote,
+        uint256 _validPeriod
     ) internal view returns (uint256 price) {
-        (, int256 _price, , , ) = _registry.latestRoundData(_base, _quote);
+        (, int256 _price, , uint256 updatedAt, ) = _registry.latestRoundData(_base, _quote);
+
+        require(block.timestamp.sub(updatedAt) < _validPeriod, "OLD_PRICE");
+
+        if (_price <= 0) {
+            return 0;
+        }
 
         // normalise the price to 18 decimals
         uint256 _decimals = _registry.decimals(_base, _quote);
@@ -112,21 +119,24 @@ library OracleLibrary {
      * @param _isBase if the token supports base as USD or requires conversion from ETH
      */
     function getPriceInUSD(
+        IStrategyFactory _factory,
         FeedRegistryInterface _registry,
         address _token,
         bool _isBase
     ) internal view returns (uint256 price) {
+
         if (_isBase) {
-            price = getChainlinkPrice(_registry, _token, Denominations.USD);
+            price = getChainlinkPrice(_registry, _token, Denominations.USD, _factory.getHeartBeat(_token, Denominations.USD));
         } else {
-            price = getChainlinkPrice(_registry, _token, Denominations.ETH);
+            price = getChainlinkPrice(_registry, _token, Denominations.ETH, _factory.getHeartBeat(_token, Denominations.ETH));
 
             price = FullMath.mulDiv(
                 price,
                 getChainlinkPrice(
                     _registry,
                     Denominations.ETH,
-                    Denominations.USD
+                    Denominations.USD,
+                    _factory.getHeartBeat(Denominations.ETH, Denominations.USD)
                 ),
                 BASE
             );
@@ -141,6 +151,7 @@ library OracleLibrary {
      * @param _manager Manager contract address to check allowed deviation
      */
     function hasDeviation(
+        IStrategyFactory _factory,
         IUniswapV3Pool _pool,
         FeedRegistryInterface _registry,
         bool[2] memory _usdAsBase,
@@ -149,12 +160,13 @@ library OracleLibrary {
         // get price of token0 Uniswap and convert it to USD
         uint256 uniswapPriceInUSD = FullMath.mulDiv(
             getUniswapPrice(_pool),
-            getPriceInUSD(_registry, _pool.token1(), _usdAsBase[1]),
+            getPriceInUSD(_factory, _registry, _pool.token1(), _usdAsBase[1]),
             BASE
         );
 
         // get price of token0 from Chainlink in USD
         uint256 chainlinkPriceInUSD = getPriceInUSD(
+            _factory,
             _registry,
             _pool.token0(),
             _usdAsBase[0]
@@ -185,6 +197,7 @@ library OracleLibrary {
      * @param _manager Manager contract address to check allowed deviation
      */
     function isSwapExceedDeviation(
+        IStrategyFactory _factory,
         IUniswapV3Pool _pool,
         FeedRegistryInterface _registry,
         uint256 _amountIn,
@@ -204,12 +217,12 @@ library OracleLibrary {
 
         // get tokenIn prce in USD fron chainlink
         uint256 amountInUSD = _amountIn.mul(
-            getPriceInUSD(_registry, _tokenIn, usdAsBaseAmountIn)
+            getPriceInUSD(_factory, _registry, _tokenIn, usdAsBaseAmountIn)
         );
 
         // get tokenout prce in USD fron chainlink
         uint256 amountOutUSD = _amountOut.mul(
-            getPriceInUSD(_registry, _tokenOut, usdAsBaseAmountOut)
+            getPriceInUSD(_factory, _registry, _tokenOut, usdAsBaseAmountOut)
         );
 
         uint256 diff;
@@ -261,6 +274,7 @@ library OracleLibrary {
         // get price of token0 Uniswap and convert it to USD
         uint256 amountInUSD = _amountIn.mul(
             getPriceInUSD(
+                _factory,
                 FeedRegistryInterface(_factory.chainlinkRegistry()),
                 _tokenIn,
                 usdAsBaseAmountIn
@@ -270,6 +284,7 @@ library OracleLibrary {
         // get price of token0 Uniswap and convert it to USD
         uint256 amountOutUSD = _amountOut.mul(
             getPriceInUSD(
+                _factory,
                 FeedRegistryInterface(_factory.chainlinkRegistry()),
                 _tokenOut,
                 usdAsBaseAmountOut

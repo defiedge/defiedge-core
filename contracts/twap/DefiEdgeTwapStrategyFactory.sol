@@ -18,6 +18,8 @@ contract DefiEdgeTwapStrategyFactory is ITwapStrategyFactory{
 
     mapping(address => address) public override strategyByManager; // strategy manager contracts linked with strategies
 
+    mapping(address => mapping(address => uint256)) internal _heartBeat; // map heartBeat for base and quote token
+
     // total number of strategies
     uint256 public override totalIndex;
 
@@ -225,6 +227,30 @@ contract DefiEdgeTwapStrategyFactory is ITwapStrategyFactory{
         if(balance > 0){
             payable(_to).transfer(balance);
             emit ClaimFees(_to, balance);
+        }
+    }
+    
+    /**
+     * @notice Update heartBeat for specific feeds
+     * @param _base base token address
+     * @param _quote quote token address
+     * @param _period heartbeat in seconds
+     */
+    function setMinHeartbeat(address _base, address _quote, uint256 _period) external onlyGovernance {
+        _heartBeat[_base][_quote] = _period;
+        _heartBeat[_quote][_base] = _period;
+    }
+
+    /**
+     * @notice Fetch heartBeat for specific feeds, if hearbeat is 0 then it will return 3600 seconds by default
+     * @param _base base token address
+     * @param _quote quote token address
+     */
+    function getHeartBeat(address _base, address _quote) external override view returns(uint256){
+        if(_heartBeat[_base][_quote] == 0){
+            return 3600;
+        } else {
+            return _heartBeat[_base][_quote];
         }
     }
 }

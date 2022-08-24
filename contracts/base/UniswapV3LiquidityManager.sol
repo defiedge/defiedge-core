@@ -158,6 +158,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
         accPerformanceFeeShares = accPerformanceFeeShares.add(
             ShareHelper.calculateShares(
+                factory,
                 chainlinkRegistry,
                 pool,
                 usdAsBase,
@@ -174,6 +175,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
         accProtocolPerformanceFeeShares = accProtocolPerformanceFeeShares.add(
             ShareHelper.calculateShares(
+                factory,
                 chainlinkRegistry,
                 pool,
                 usdAsBase,
@@ -318,6 +320,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         // check if swap exceed allowed deviation and revert if maximum swap limits reached
         if (
             OracleLibrary.isSwapExceedDeviation(
+                factory,
                 pool,
                 chainlinkRegistry,
                 amountIn,

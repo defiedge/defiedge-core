@@ -207,6 +207,7 @@ library TwapShareHelper {
     {
         // price in USD
         token0Price = TwapOracleLibrary.getPriceInUSD(
+            _manager.factory(),
             _pool,
             _registry,
             _pool.token0(),
@@ -215,6 +216,7 @@ library TwapShareHelper {
         );
 
         token1Price = TwapOracleLibrary.getPriceInUSD(
+            _manager.factory(),
             _pool,
             _registry,
             _pool.token1(),
