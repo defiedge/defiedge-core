@@ -408,8 +408,9 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, IUniswapV3MintCallba
 
     /**
      * @notice Get's assets under management with realtime fees
+     * @param _includeFee Whether to include pool fees in AUM or not. (passing true will also collect fees from pool)
      */
-    function getAUMWithFees(bool _claimFee)
+    function getAUMWithFees(bool _includeFee)
         external
         returns (
             uint256 amount0,
@@ -450,7 +451,7 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, IUniswapV3MintCallba
             }
 
             // collect fees
-            if (_claimFee && currentLiquidity > 0) {
+            if (_includeFee && currentLiquidity > 0) {
 
                 // update fees earned in Uniswap pool
                 // Uniswap recalculates the fees and updates the variables when amount is passed as 0
