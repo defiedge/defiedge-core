@@ -436,7 +436,7 @@ describe("UniswapV3LiquidityManager", () => {
       expect(positionAfter.feeGrowthInside1LastX128.toString()).to.equal(
         "499087288263231916915033707"
       );
-      expect(positionAfter.tokensOwed1.toString()).to.equal("1072391033");
+      expect(positionAfter.tokensOwed1.toString()).to.equal("0");
     });
 
     it("should withdraw performance fees from Uniswap pool", async () => {

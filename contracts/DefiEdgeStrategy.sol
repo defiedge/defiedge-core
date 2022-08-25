@@ -88,8 +88,8 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         require(manager.isUserWhiteListed(msg.sender), "UA");
 
         // get total amounts with fees
-        (uint256 totalAmount0, uint256 totalAmount1) = this
-            .getAUMWithFees(false);
+        (uint256 totalAmount0, uint256 totalAmount1, ,) = this
+            .getAUMWithFees(true);
 
         if (_amount0 > 0 && _amount1 > 0 && ticks.length > 0) {
 

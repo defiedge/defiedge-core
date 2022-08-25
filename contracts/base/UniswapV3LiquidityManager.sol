@@ -153,7 +153,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         // address feeTo = manager.feeTo();
 
         // get total amounts with fees
-        (uint256 totalAmount0, uint256 totalAmount1) = this
+        (uint256 totalAmount0, uint256 totalAmount1, ,) = this
             .getAUMWithFees(false);
 
         accPerformanceFeeShares = accPerformanceFeeShares.add(
@@ -395,7 +395,9 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         external
         returns (
             uint256 amount0,
-            uint256 amount1
+            uint256 amount1,
+            uint256 totalFee0,
+            uint256 totalFee1
         )
     {
         // get unused amounts
@@ -430,13 +432,13 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             }
 
             // collect fees
-            if(_claimFee){
+            if(_claimFee && currentLiquidity > 0){
 
                 // update fees earned in Uniswap pool
                 // Uniswap recalculates the fees and updates the variables when amount is passed as 0
                 pool.burn(tick.tickLower, tick.tickUpper, 0);
 
-                (uint256 collect0, uint256 collect1) = pool.collect(
+                (totalFee0, totalFee1) = pool.collect(
                     address(this),
                     tick.tickLower,
                     tick.tickUpper,
@@ -444,10 +446,13 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
                     type(uint128).max
                 );
                 
-                // mint performance fees
-                addPerformanceFees(collect0, collect1);
+                amount0 = amount0.add(totalFee0);
+                amount1 = amount1.add(totalFee1);
 
-                emit FeesClaim(address(this), collect0, collect1);
+                // mint performance fees
+                addPerformanceFees(totalFee0, totalFee0);
+
+                emit FeesClaim(address(this), totalFee0, totalFee1);
             }
 
         }

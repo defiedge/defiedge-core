@@ -413,7 +413,9 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, IUniswapV3MintCallba
         external
         returns (
             uint256 amount0,
-            uint256 amount1
+            uint256 amount1,
+            uint256 totalFee0,
+            uint256 totalFee1
         )
     {
         // get unused amounts
@@ -448,13 +450,13 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, IUniswapV3MintCallba
             }
 
             // collect fees
-            if (_claimFee) {
+            if (_claimFee && currentLiquidity > 0) {
 
                 // update fees earned in Uniswap pool
                 // Uniswap recalculates the fees and updates the variables when amount is passed as 0
                 pool.burn(tick.tickLower, tick.tickUpper, 0);
 
-                (uint256 collect0, uint256 collect1) = pool.collect(
+                (totalFee0, totalFee1) = pool.collect(
                     address(this),
                     tick.tickLower,
                     tick.tickUpper,
@@ -462,10 +464,13 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, IUniswapV3MintCallba
                     type(uint128).max
                 );
 
-                // transfer performance fees
-                _transferPerformanceFees(collect0, collect1);
+                amount0 = amount0.add(totalFee0);
+                amount1 = amount1.add(totalFee1);
 
-                emit FeesClaim(address(this), collect0, collect1);
+                // transfer performance fees
+                _transferPerformanceFees(totalFee0, totalFee1);
+
+                emit FeesClaim(address(this), totalFee0, totalFee1);
             }
         }
     }

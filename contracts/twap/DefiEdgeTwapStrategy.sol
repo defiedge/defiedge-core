@@ -89,8 +89,8 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
         require(manager.isUserWhiteListed(msg.sender), "UA");
 
         // get total amounts with fees
-        (uint256 totalAmount0, uint256 totalAmount1) = this
-            .getAUMWithFees(false);
+        (uint256 totalAmount0, uint256 totalAmount1, ,) = this
+            .getAUMWithFees(true);
 
         // calculate optimal token0 & token1 amount for mint
         (_amount0, _amount1) = TwapShareHelper.getOptimalAmounts(
