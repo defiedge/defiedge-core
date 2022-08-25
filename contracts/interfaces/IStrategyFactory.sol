@@ -14,8 +14,8 @@ interface IStrategyFactory {
     struct CreateStrategyParams {
         address operator;
         address feeTo;
-        uint256 managementFee;
-        uint256 performanceFee;
+        uint256 managementFeeRate;
+        uint256 performanceFeeRate;
         uint256 limit;
         IUniswapV3Pool pool;
         bool[2] usdAsBase;
@@ -40,9 +40,9 @@ interface IStrategyFactory {
 
     function denied(address) external view returns (bool);
 
-    function protocolFee() external view returns (uint256);  // 1e8 means 100%
+    function protocolFeeRate() external view returns (uint256);  // 1e8 means 100%
 
-    function protocolPerformanceFee() external view returns (uint256);  // 1e8 means 100%
+    function protocolPerformanceFeeRate() external view returns (uint256);  // 1e8 means 100%
 
     function governance() external view returns (address);
 
@@ -55,6 +55,8 @@ interface IStrategyFactory {
     function chainlinkRegistry() external view returns (FeedRegistryInterface);
 
     function oneInchRouter() external view returns (IOneInchRouter);
+
+    function getHeartBeat(address _base, address _quote) external view returns(uint256);
 
     function createStrategy(CreateStrategyParams calldata params) external payable;
 

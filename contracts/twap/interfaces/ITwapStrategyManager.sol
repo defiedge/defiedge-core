@@ -11,9 +11,9 @@ interface ITwapStrategyManager {
 
     function isAllowedToBurn(address) external view returns (bool);
 
-    function managementFee() external view returns (uint256); // 1e8 decimals
+    function managementFeeRate() external view returns (uint256); // 1e8 decimals
 
-    function performanceFee() external view returns (uint256); // 1e8 decimals
+    function performanceFeeRate() external view returns (uint256); // 1e8 decimals
 
     function operator() external view returns (address);
 

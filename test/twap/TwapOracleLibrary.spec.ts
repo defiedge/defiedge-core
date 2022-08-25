@@ -172,8 +172,8 @@ describe("TwapOracleLibrary", () => {
     let params = {
       operator: signers[0].address,
       feeTo: signers[1].address,
-      managementFee: "500000", // 0.5%
-      performanceFee: "500000", // 0.5%
+      managementFeeRate: "500000", // 0.5%
+      performanceFeeRate: "500000", // 0.5%
       limit: 0,
       pool: pool.address,
       useTwap: useTwap,
@@ -306,19 +306,38 @@ describe("TwapOracleLibrary", () => {
     it("should return correct chainlink price", async () => {
       let token0A = await pool.token0();
       let token1A = await pool.token1();
-      expect(await oracleLibraryTest.getChainlinkPrice(chainlinkRegistry.address, token0A, token1A)).to.equal("3000000000000000000000");
+      expect(await oracleLibraryTest.getChainlinkPrice(chainlinkRegistry.address, token0A, token1A, 3600)).to.equal("3000000000000000000000");
 
       await chainlinkRegistry.setAnswer(
         "400000000000",
         "100000000"
       );    
 
-      expect(await oracleLibraryTest.getChainlinkPrice(chainlinkRegistry.address, token0A, token1A)).to.equal("4000000000000000000000");
+      expect(await oracleLibraryTest.getChainlinkPrice(chainlinkRegistry.address, token0A, token1A, 3600)).to.equal("4000000000000000000000");
 
       let USD = "0x0000000000000000000000000000000000000348"
 
-      expect(await oracleLibraryTest.getChainlinkPrice(chainlinkRegistry.address, token0A, USD)).to.equal("4000000000000000000000");
-      expect(await oracleLibraryTest.getChainlinkPrice(chainlinkRegistry.address, token1A, USD)).to.equal("1000000000000000000");
+      expect(await oracleLibraryTest.getChainlinkPrice(chainlinkRegistry.address, token0A, USD, 3600)).to.equal("4000000000000000000000");
+      expect(await oracleLibraryTest.getChainlinkPrice( chainlinkRegistry.address, token1A, USD, 3600)).to.equal("1000000000000000000");
+
+    })
+
+    it("should return price zero if validPeriod is zero", async () => {
+      let token0A = await pool.token0();
+      let token1A = await pool.token1();
+      await expect(oracleLibraryTest.getChainlinkPrice(chainlinkRegistry.address, token0A, token1A, 0)).to.be.revertedWith("OLD_PRICE");
+
+      await chainlinkRegistry.setAnswer(
+        "400000000000",
+        "100000000"
+      );    
+
+      await expect(oracleLibraryTest.getChainlinkPrice(chainlinkRegistry.address, token0A, token1A, 0)).to.be.revertedWith("OLD_PRICE");
+
+      let USD = "0x0000000000000000000000000000000000000348"
+
+      await expect(oracleLibraryTest.getChainlinkPrice(chainlinkRegistry.address, token0A, USD, 0)).to.be.revertedWith("OLD_PRICE");
+      await expect(oracleLibraryTest.getChainlinkPrice( chainlinkRegistry.address, token1A, USD, 0)).to.be.revertedWith("OLD_PRICE");
 
     })
   })
@@ -326,13 +345,13 @@ describe("TwapOracleLibrary", () => {
   describe("#getPriceInUSD", async () => {
     it("should return correct token0 price in USD", async () => {
       let useTwap: [boolean, boolean] = [true, false];
-      const price = await oracleLibraryTest.getPriceInUSD(pool.address, chainlinkRegistry.address, await pool.token0(), useTwap, strategyManager.address);
+      const price = await oracleLibraryTest.getPriceInUSD(factory.address, pool.address, chainlinkRegistry.address, await pool.token0(), useTwap, strategyManager.address);
       expect(price).to.eq("2999796379020818450736") // 1 ETH = ~3000 USD
     })
 
     it("should return correct token1 price in USD", async () => {
       let useTwap: [boolean, boolean] = [true, false];
-      const price = await oracleLibraryTest.getPriceInUSD(pool.address, chainlinkRegistry.address, await pool.token1(), useTwap, strategyManager.address);
+      const price = await oracleLibraryTest.getPriceInUSD(factory.address, pool.address, chainlinkRegistry.address, await pool.token1(), useTwap, strategyManager.address);
       expect(price).to.eq("1000000000000000000") // 1 DAI = ~1 USD
     })
 
@@ -423,10 +442,10 @@ describe("TwapOracleLibrary", () => {
       );
 
       let useTwap: [boolean, boolean] = [true, false];
-      const price0 = await oracleLibraryTest.getPriceInUSD(ethUsdtpool.address, chainlinkRegistryEthUsdt.address, await ethUsdtpool.token0(), useTwap, strategyManager.address);
-      const price1 = await oracleLibraryTest.getPriceInUSD(ethUsdtpool.address, chainlinkRegistryEthUsdt.address, await ethUsdtpool.token1(), useTwap, strategyManager.address);
+      const price0 = await oracleLibraryTest.getPriceInUSD(factory.address, ethUsdtpool.address, chainlinkRegistryEthUsdt.address, await ethUsdtpool.token0(), useTwap, strategyManager.address);
+      const price1 = await oracleLibraryTest.getPriceInUSD(factory.address, ethUsdtpool.address, chainlinkRegistryEthUsdt.address, await ethUsdtpool.token1(), useTwap, strategyManager.address);
       if(poolToken0 == token1.address){
-        expect(price0).to.eq("2999796379020818450736") // 1 USDT = ~1 USD
+        expect(price0).to.eq("2999804309000000000000") // 1 USDT = ~1 USD
         expect(price1).to.eq("1000000000000000000") // 1 ETH = ~3000 USD
       } else {
         expect(price0).to.eq("999965237739678000") // 1 USDT = ~0.9999 USD
@@ -522,8 +541,8 @@ describe("TwapOracleLibrary", () => {
       );
 
       let useTwap: [boolean, boolean] = [false, true];
-      const price0 = await oracleLibraryTest.getPriceInUSD(ethUsdtpool.address, chainlinkRegistryEthUsdt.address, await ethUsdtpool.token0(), useTwap, strategyManager.address);
-      const price1 = await oracleLibraryTest.getPriceInUSD(ethUsdtpool.address, chainlinkRegistryEthUsdt.address, await ethUsdtpool.token1(), useTwap, strategyManager.address);
+      const price0 = await oracleLibraryTest.getPriceInUSD(factory.address, ethUsdtpool.address, chainlinkRegistryEthUsdt.address, await ethUsdtpool.token0(), useTwap, strategyManager.address);
+      const price1 = await oracleLibraryTest.getPriceInUSD(factory.address, ethUsdtpool.address, chainlinkRegistryEthUsdt.address, await ethUsdtpool.token1(), useTwap, strategyManager.address);
       if(poolToken0 == token1.address){
         expect(price0).to.eq("3000000000000000000000") // 1 ETH = ~3000 USD
         expect(price1).to.eq("1000065234588606000") // 1 USDT = ~1 USD
@@ -620,8 +639,8 @@ describe("TwapOracleLibrary", () => {
       );
 
       let useTwap: [boolean, boolean] = [true, false];
-      const price0 = await oracleLibraryTest.getPriceInUSD(ethWbtcpool.address, chainlinkRegistryWbtcUsdt.address, await ethWbtcpool.token0(), useTwap, strategyManager.address);
-      const price1 = await oracleLibraryTest.getPriceInUSD(ethWbtcpool.address, chainlinkRegistryWbtcUsdt.address, await ethWbtcpool.token1(), useTwap, strategyManager.address);
+      const price0 = await oracleLibraryTest.getPriceInUSD(factory.address, ethWbtcpool.address, chainlinkRegistryWbtcUsdt.address, await ethWbtcpool.token0(), useTwap, strategyManager.address);
+      const price1 = await oracleLibraryTest.getPriceInUSD(factory.address, ethWbtcpool.address, chainlinkRegistryWbtcUsdt.address, await ethWbtcpool.token1(), useTwap, strategyManager.address);
       if(poolToken0 == token1.address){
         expect(price0).to.eq("2999799000000000000000") // 1 ETH = ~3000 USD
         expect(price1).to.eq("36000000000000000000000") // 1 WBTC = ~25000 USD
@@ -717,8 +736,8 @@ describe("TwapOracleLibrary", () => {
     );
 
     let useTwap: [boolean, boolean] = [false, true];
-    const price0 = await oracleLibraryTest.getPriceInUSD(ethWbtcpool.address, chainlinkRegistryWbtcUsdt.address, await ethWbtcpool.token0(), useTwap, strategyManager.address);
-    const price1 = await oracleLibraryTest.getPriceInUSD(ethWbtcpool.address, chainlinkRegistryWbtcUsdt.address, await ethWbtcpool.token1(), useTwap, strategyManager.address);
+    const price0 = await oracleLibraryTest.getPriceInUSD(factory.address, ethWbtcpool.address, chainlinkRegistryWbtcUsdt.address, await ethWbtcpool.token0(), useTwap, strategyManager.address);
+    const price1 = await oracleLibraryTest.getPriceInUSD(factory.address, ethWbtcpool.address, chainlinkRegistryWbtcUsdt.address, await ethWbtcpool.token1(), useTwap, strategyManager.address);
     if(poolToken0 == token1.address){
       expect(price0).to.eq("3000000000000000000000") // 1 ETH = ~3000 USD
       expect(price1).to.eq("36002412161614828191000") // 1 WBTC = ~25000 USD
@@ -736,16 +755,16 @@ describe("TwapOracleLibrary", () => {
     it("should return correct price", async () => {
       let useTwap: [boolean, boolean] = [true, false];
       // token 0 - chainink
-      expect(await oracleLibraryTest.getPriceInUSD(pool.address, chainlinkRegistry.address, await pool.token0(), useTwap, strategyManager.address)).to.equal("2999796379020818450736");
+      expect(await oracleLibraryTest.getPriceInUSD(factory.address, pool.address, chainlinkRegistry.address, await pool.token0(), useTwap, strategyManager.address)).to.equal("2999796379020818450736");
    
       // token 1 - chainink
-      expect(await oracleLibraryTest.getPriceInUSD(pool.address, chainlinkRegistry.address, await pool.token1(), useTwap, strategyManager.address)).to.equal("1000000000000000000");
+      expect(await oracleLibraryTest.getPriceInUSD(factory.address, pool.address, chainlinkRegistry.address, await pool.token1(), useTwap, strategyManager.address)).to.equal("1000000000000000000");
    
       // token 0 - uniswapv3 twap
-      expect(await oracleLibraryTest.getPriceInUSD(pool.address, chainlinkRegistry.address, await pool.token0(), useTwap, strategyManager.address)).to.equal("2999796379020818450736");
+      expect(await oracleLibraryTest.getPriceInUSD(factory.address, pool.address, chainlinkRegistry.address, await pool.token0(), useTwap, strategyManager.address)).to.equal("2999796379020818450736");
     
       // token 1 - uniswapv3 twap
-      expect(await oracleLibraryTest.getPriceInUSD(pool.address, chainlinkRegistry.address, await pool.token1(), useTwap, strategyManager.address)).to.equal("1000000000000000000");
+      expect(await oracleLibraryTest.getPriceInUSD(factory.address, pool.address, chainlinkRegistry.address, await pool.token1(), useTwap, strategyManager.address)).to.equal("1000000000000000000");
     })
   })
 
@@ -753,6 +772,7 @@ describe("TwapOracleLibrary", () => {
 
     it("should return true if swap exceeds deviation", async () => {
       expect(await oracleLibraryTest.isSwapExceedDeviation(
+        factory.address, 
         pool.address, 
         chainlinkRegistry.address,
         expandTo18Decimals(1),
@@ -764,6 +784,7 @@ describe("TwapOracleLibrary", () => {
       )).to.equal(true);
 
       expect(await oracleLibraryTest.isSwapExceedDeviation(
+        factory.address, 
         pool.address, 
         chainlinkRegistry.address,
         expandTo18Decimals(1),
@@ -777,6 +798,7 @@ describe("TwapOracleLibrary", () => {
 
     it("should return false if swap doesn't exceeds deviation", async () => {
       expect(await oracleLibraryTest.isSwapExceedDeviation(
+        factory.address, 
         pool.address, 
         chainlinkRegistry.address,
         expandTo18Decimals(1),
@@ -788,6 +810,7 @@ describe("TwapOracleLibrary", () => {
       )).to.equal(false);
 
       expect(await oracleLibraryTest.isSwapExceedDeviation(
+        factory.address, 
         pool.address, 
         chainlinkRegistry.address,
         expandTo18Decimals(1),

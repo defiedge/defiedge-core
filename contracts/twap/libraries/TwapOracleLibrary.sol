@@ -88,9 +88,16 @@ library TwapOracleLibrary {
     function getChainlinkPrice(
         FeedRegistryInterface _registry,
         address _base,
-        address _quote
+        address _quote,
+        uint256 _validPeriod
     ) internal view returns (uint256 price) {
-        (, int256 _price, , , ) = _registry.latestRoundData(_base, _quote);
+        (, int256 _price, , uint256 updatedAt, ) = _registry.latestRoundData(_base, _quote);
+
+        require(block.timestamp.sub(updatedAt) < _validPeriod, "OLD_PRICE");
+
+        if (_price <= 0) {
+            return 0;
+        }
 
         // normalise the price to 18 decimals
         uint256 _decimals = _registry.decimals(_base, _quote);
@@ -114,6 +121,7 @@ library TwapOracleLibrary {
      * @param _useTwap tif the contract should use uniswap v3 twap to fetch usd price of chainlink
      */
     function getPriceInUSD(
+        ITwapStrategyFactory _factory,
         IUniswapV3Pool _pool,
         FeedRegistryInterface _registry,
         address _priceOf,
@@ -127,29 +135,31 @@ library TwapOracleLibrary {
         )
     {
         uint256 _period = _manager.twapPricePeriod();
-        
-        // price of token0 denominated in token1
-        uint256 _price = consult(address(_pool), uint32(_period));
  
         if(_useTwap[0]){
+            address _token1 = _pool.token1();
             // token0 - twap , token1 - chainlink
-            uint256 token1ChainlinkPrice = getChainlinkPrice(_registry, _pool.token1(), Denominations.USD);
+            uint256 token1ChainlinkPrice = getChainlinkPrice(_registry, _token1, Denominations.USD, _factory.getHeartBeat(_token1, Denominations.USD));
 
-            if (_priceOf == _pool.token1()) {
+            if (_priceOf == _token1) {
                 price = token1ChainlinkPrice;
             } else {
+                // price of token0 denominated in token1
+                uint256 _price = consult(address(_pool), uint32(_period));
                 price = _price.mul(token1ChainlinkPrice).div(BASE);
             }
 
 
         } else {
+            address _token0 = _pool.token0();
             // // token0 - chainlink , token1 - twap
+            uint256 token0ChainlinkPrice = getChainlinkPrice(_registry, _token0, Denominations.USD, _factory.getHeartBeat(_token0, Denominations.USD));
 
-            uint256 token0ChainlinkPrice = getChainlinkPrice(_registry, _pool.token0(), Denominations.USD);
-
-            if (_priceOf == _pool.token0()) {
+            if (_priceOf == _token0) {
                 price = token0ChainlinkPrice;
             } else {
+                // price of token0 denominated in token1
+                uint256 _price = consult(address(_pool), uint32(_period));
                 _price = 1e36 / _price;
                 price = _price.mul(token0ChainlinkPrice).div(BASE);
             }
@@ -168,6 +178,7 @@ library TwapOracleLibrary {
      * @param _manager Manager contract address to check allowed deviation
      */
     function isSwapExceedDeviation(
+        ITwapStrategyFactory _factory,
         IUniswapV3Pool _pool,
         FeedRegistryInterface _registry,
         uint256 _amountIn,
@@ -189,12 +200,12 @@ library TwapOracleLibrary {
 
         // get tokenIn prce in USD fron chainlink
         uint256 amountInUSD = _amountIn.mul(
-            getPriceInUSD(_pool, _registry, _tokenIn, _useTwap, _manager)
+            getPriceInUSD(_factory, _pool, _registry, _tokenIn, _useTwap, _manager)
         );
 
         // get tokenout prce in USD fron chainlink
         uint256 amountOutUSD = _amountOut.mul(
-            getPriceInUSD(_pool, _registry, _tokenOut, _useTwap, _manager)
+            getPriceInUSD(_factory, _pool, _registry, _tokenOut, _useTwap, _manager)
         );
 
         uint256 diff;
@@ -247,6 +258,7 @@ library TwapOracleLibrary {
         // get price of token0 Uniswap and convert it to USD
         uint256 amountInUSD = _amountIn.mul(
             getPriceInUSD(
+                _factory,
                 _pool,
                 FeedRegistryInterface(_factory.chainlinkRegistry()),
                 _tokenIn,
@@ -258,6 +270,7 @@ library TwapOracleLibrary {
         // get price of token0 Uniswap and convert it to USD
         uint256 amountOutUSD = _amountOut.mul(
             getPriceInUSD(
+                _factory,
                 _pool,
                 FeedRegistryInterface(_factory.chainlinkRegistry()),
                 _tokenOut,
@@ -326,10 +339,14 @@ library TwapOracleLibrary {
 
         uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(tick);
 
-        uint256 ratioX192 = uint256(sqrtRatioX96).mul(sqrtRatioX96);
-
-        // return price from TWAP in 1e18
-        price = FullMath.mulDiv(ratioX192, BASE, 1 << 192);
+        // Calculate price with better precision if it doesn't overflow when multiplied by itself
+        if (sqrtRatioX96 <= type(uint128).max) {
+            uint256 ratioX192 = uint256(sqrtRatioX96).mul(sqrtRatioX96);
+            price = FullMath.mulDiv(ratioX192, BASE, 1 << 192);
+        } else {
+            uint256 ratioX128 = FullMath.mulDiv(sqrtRatioX96, sqrtRatioX96, 1 << 64);
+            price = FullMath.mulDiv(ratioX128, BASE, 1 << 128);
+        }
 
         uint256 token0Decimals = IERC20Minimal(IUniswapV3Pool(_pool).token0()).decimals();
         uint256 token1Decimals = IERC20Minimal(IUniswapV3Pool(_pool).token1()).decimals();

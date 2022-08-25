@@ -18,13 +18,15 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
 
     mapping(address => address) public override strategyByManager; // strategy manager contracts linked with strategies
 
+    mapping(address => mapping(address => uint256)) internal _heartBeat; // map heartBeat for base and quote token
+
     // total number of strategies
     uint256 public override totalIndex;
 
-    uint256 public constant MAX_PROTOCOL_PERFORMANCE_FEES = 20e6; // maximum 20%
-    uint256 public override protocolPerformanceFee; // 1e8 means 100%
+    uint256 public constant MAX_PROTOCOL_PERFORMANCE_FEES_RATE = 20e6; // maximum 20%
+    uint256 public override protocolPerformanceFeeRate; // 1e8 means 100%
 
-    uint256 public override protocolFee; // 1e8 means 100%
+    uint256 public override protocolFeeRate; // 1e8 means 100%
     uint256 public override allowedDeviation; // 1e18 means 100%
     uint256 public override allowedSlippage; // 1e18 means 100%
 
@@ -109,8 +111,8 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
                 IStrategyFactory(address(this)),
                 params.operator,
                 params.feeTo,
-                params.managementFee,
-                params.performanceFee,
+                params.managementFeeRate,
+                params.performanceFeeRate,
                 params.limit,
                 allowedDeviation
             )
@@ -159,20 +161,20 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
      * @notice Changes protocol fees
      * @param _fee New fee in 1e8 format
      */
-    function changeFee(uint256 _fee) external onlyGovernance {
+    function changeProtocolFeeRate(uint256 _fee) external onlyGovernance {
         require(_fee <= 1e7, "IA"); // should be less than 10%
-        protocolFee = _fee;
-        emit ChangeProtocolFee(protocolFee);
+        protocolFeeRate = _fee;
+        emit ChangeProtocolFee(protocolFeeRate);
     }
 
     /**
      * @notice Changes protocol performance fees
-     * @param _fee New fee in 1e8 format
+     * @param _feeRate New fee in 1e8 format
      */
-    function changeProtocolPerformanceFee(uint256 _fee) external onlyGovernance {
-        require(_fee <= MAX_PROTOCOL_PERFORMANCE_FEES, "IA"); // should be less than 20%
-        protocolPerformanceFee = _fee;
-        emit ChangeProtocolPerformanceFee(protocolPerformanceFee);
+    function changeProtocolPerformanceFeeRate(uint256 _feeRate) external onlyGovernance {
+        require(_feeRate <= MAX_PROTOCOL_PERFORMANCE_FEES_RATE, "IA"); // should be less than 20%
+        protocolPerformanceFeeRate = _feeRate;
+        emit ChangeProtocolPerformanceFee(protocolPerformanceFeeRate);
     }
 
     /**
@@ -225,6 +227,30 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
         if(balance > 0){
             payable(_to).transfer(balance);
             emit ClaimFees(_to, balance);
+        }
+    }
+
+    /**
+     * @notice Update heartBeat for specific feeds
+     * @param _base base token address
+     * @param _quote quote token address
+     * @param _period heartbeat in seconds
+     */
+    function setMinHeartbeat(address _base, address _quote, uint256 _period) external onlyGovernance {
+        _heartBeat[_base][_quote] = _period;
+        _heartBeat[_quote][_base] = _period;
+    }
+
+    /**
+     * @notice Fetch heartBeat for specific feeds, if hearbeat is 0 then it will return 3600 seconds by default
+     * @param _base base token address
+     * @param _quote quote token address
+     */
+    function getHeartBeat(address _base, address _quote) external override view returns(uint256){
+        if(_heartBeat[_base][_quote] == 0){
+            return 3600;
+        } else {
+            return _heartBeat[_base][_quote];
         }
     }
 }

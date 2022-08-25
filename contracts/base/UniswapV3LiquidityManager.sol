@@ -14,10 +14,12 @@ import "../interfaces/IOneInch.sol";
 
 // libraries
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
     using SafeMath for uint256;
     using SafeCast for uint256;
+    using SafeERC20 for IERC20;
 
     event Swap(uint256 amountIn, uint256 amountOut, bool _zeroForOne);
 
@@ -147,20 +149,21 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
      */
     function addPerformanceFees(uint256 _fee0, uint256 _fee1) internal {
         // transfer performance fee to manager
-        uint256 performanceFee = manager.performanceFee();
+        uint256 performanceFeeRate = manager.performanceFeeRate();
         // address feeTo = manager.feeTo();
 
         // get total amounts with fees
-        (uint256 totalAmount0, uint256 totalAmount1, , ) = this
+        (uint256 totalAmount0, uint256 totalAmount1, ,) = this
             .getAUMWithFees(false);
 
-        accPerformanceFee = accPerformanceFee.add(
+        accPerformanceFeeShares = accPerformanceFeeShares.add(
             ShareHelper.calculateShares(
+                factory,
                 chainlinkRegistry,
                 pool,
                 usdAsBase,
-                FullMath.mulDiv(_fee0, performanceFee, FEE_PRECISION),
-                FullMath.mulDiv(_fee1, performanceFee, FEE_PRECISION),
+                FullMath.mulDiv(_fee0, performanceFeeRate, FEE_PRECISION),
+                FullMath.mulDiv(_fee1, performanceFeeRate, FEE_PRECISION),
                 totalAmount0,
                 totalAmount1,
                 totalSupply()
@@ -168,10 +171,11 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         );
 
         // protocol performance fee 
-        uint256 _protocolPerformanceFee = factory.protocolPerformanceFee();
+        uint256 _protocolPerformanceFee = factory.protocolPerformanceFeeRate();
 
-        accProtocolPerformanceFee = accProtocolPerformanceFee.add(
+        accProtocolPerformanceFeeShares = accProtocolPerformanceFeeShares.add(
             ShareHelper.calculateShares(
+                factory,
                 chainlinkRegistry,
                 pool,
                 usdAsBase,
@@ -278,7 +282,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         balances.tokenInBalBefore = srcToken.balanceOf(address(this));
         balances.tokenOutBalBefore = dstToken.balanceOf(address(this));
 
-        srcToken.approve(address(oneInchRouter), amount);
+        srcToken.safeIncreaseAllowance(address(oneInchRouter), amount);
 
         // Interact with 1inch through contract call with data
         (bool success, bytes memory returnData) = address(oneInchRouter).call{
@@ -316,6 +320,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         // check if swap exceed allowed deviation and revert if maximum swap limits reached
         if (
             OracleLibrary.isSwapExceedDeviation(
+                factory,
                 pool,
                 chainlinkRegistry,
                 amountIn,
@@ -385,8 +390,9 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
     /**
      * @notice Get's assets under management with realtime fees
+     * @param _includeFee Whether to include pool fees in AUM or not. (passing true will also collect fees from pool)
      */
-    function getAUMWithFees(bool _claimFee)
+    function getAUMWithFees(bool _includeFee)
         external
         returns (
             uint256 amount0,
@@ -422,43 +428,34 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
                         currentLiquidity
                     );
 
-                // update fees earned in Uniswap pool
-                // Uniswap recalculates the fees and updates the variables when amount is passed as 0
-                pool.burn(tick.tickLower, tick.tickUpper, 0);
-
-                // fees are credited as tokensOwed in Uniswap when burn is called with 0
-                // https://github.com/Uniswap/v3-core/blob/main/contracts/interfaces/pool/IUniswapV3PoolActions.sol#L43
-                (, , , uint256 tokensOwed0, uint256 tokensOwed1) = pool
-                    .positions(
-                        PositionKey.compute(
-                            address(this),
-                            tick.tickLower,
-                            tick.tickUpper
-                        )
-                    );
-
-                totalFee0 = totalFee0.add(tokensOwed0);
-                totalFee1 = totalFee1.add(tokensOwed1);
-
                 amount0 = amount0.add(position0);
                 amount1 = amount1.add(position1);
             }
 
             // collect fees
-            if(_claimFee){
-                (uint256 collect0, uint256 collect1) = pool.collect(
+            if(_includeFee && currentLiquidity > 0){
+
+                // update fees earned in Uniswap pool
+                // Uniswap recalculates the fees and updates the variables when amount is passed as 0
+                pool.burn(tick.tickLower, tick.tickUpper, 0);
+
+                (totalFee0, totalFee1) = pool.collect(
                     address(this),
                     tick.tickLower,
                     tick.tickUpper,
                     type(uint128).max,
                     type(uint128).max
                 );
-                emit FeesClaim(address(this), collect0, collect1);
+                
+                amount0 = amount0.add(totalFee0);
+                amount1 = amount1.add(totalFee1);
+
+                // mint performance fees
+                addPerformanceFees(totalFee0, totalFee0);
+
+                emit FeesClaim(address(this), totalFee0, totalFee1);
             }
 
         }
-
-        amount0 = amount0.add(totalFee0);
-        amount1 = amount1.add(totalFee1);
     }
 }

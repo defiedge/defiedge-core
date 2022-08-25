@@ -97,8 +97,8 @@ contract DefiEdgePrivateManager is UniswapV3PersonalLiquidityManager {
      */
     function rebalance(
         bytes calldata _swapData,
-        PartialTick[] memory _existingTicks,
-        Tick[] memory _newTicks,
+        PartialTick[] calldata _existingTicks,
+        Tick[] calldata _newTicks,
         bool _burnAll
     ) external onlyOperator {
         if (_burnAll) {
@@ -110,7 +110,7 @@ contract DefiEdgePrivateManager is UniswapV3PersonalLiquidityManager {
         }
         //swap from 1inch if needed
         if (_swapData.length > 0) {
-            this.swap(_swapData);
+            swap(_swapData);
         }
         // redeploy the partial ticks
         if (_existingTicks.length > 0) {

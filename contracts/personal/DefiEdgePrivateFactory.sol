@@ -16,7 +16,7 @@ contract DefiEgdePrivateFactory {
 
     mapping(uint256 => address) public strategyByIndex; // map strategies by index
 
-    uint256 public constant MAX_PROTOCOL_PERFORMANCE_FEES = 20e6; // maximum 20%
+    uint256 public constant MAX_PROTOCOL_PERFORMANCE_FEES_RATE = 20e6; // maximum 20%
     uint256 public totalIndex;
 
     event NewStrategy(address strategy, address operator);
@@ -57,7 +57,7 @@ contract DefiEgdePrivateFactory {
      * @param _fee New fee, should be less than 20%
      */
     function changeProtocolFee(uint256 _fee) external {
-        require(_fee <= MAX_PROTOCOL_PERFORMANCE_FEES, "IA"); // should be less than 20%
+        require(_fee <= MAX_PROTOCOL_PERFORMANCE_FEES_RATE, "IA"); // should be less than 20%
         PROTOCOL_FEE = _fee;
         emit ChangeProtocolFee(_fee);
     }

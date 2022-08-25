@@ -56,7 +56,7 @@ let token0: TestERC20;
 let token1: TestERC20;
 let pool: UniswapV3Pool;
 let signers: SignerWithAddress[];
-let factory;
+let factory: DefiEdgeTwapStrategyFactory;
 let strategy: DefiEdgeTwapStrategy;
 let strategyManager: TwapStrategyManager;
 let strategyDeplopyer: DefiEdgeTwapStrategyDeployer;
@@ -165,8 +165,8 @@ describe("TwapShareHelper", () => {
     let params = {
       operator: signers[0].address,
       feeTo: signers[1].address,
-      managementFee: "500000", // 0.5%
-      performanceFee: "500000", // 0.5%
+      managementFeeRate: "500000", // 0.5%
+      performanceFeeRate: "500000", // 0.5%
       limit: 0,
       pool: pool.address,
       useTwap: useTwap,
@@ -252,6 +252,7 @@ describe("TwapShareHelper", () => {
   describe("#calculateShares", async () => {
     it("should revert if amount0 or amount1 is zero", async () => {
       await expect(shareHelper.calculateShares(
+            factory.address,
             chainlinkRegistry.address,
             pool.address,
             strategyManager.address,
@@ -264,6 +265,7 @@ describe("TwapShareHelper", () => {
       )).to.be.revertedWith("INSUFFICIENT_AMOUNT")
 
       await expect(shareHelper.calculateShares(
+        factory.address,
         chainlinkRegistry.address,
         pool.address,
         strategyManager.address,
@@ -278,6 +280,7 @@ describe("TwapShareHelper", () => {
 
     it("should return correct share amount if total supply is zero", async () => {
       const sharesFromContract = await shareHelper.calculateShares(
+        factory.address,
         chainlinkRegistry.address,
         pool.address,
         strategyManager.address,
@@ -294,6 +297,7 @@ describe("TwapShareHelper", () => {
 
     it("should return correct share amount if total supply is not zero", async () => {
       const sharesFromContract = await shareHelper.calculateShares(
+        factory.address,
         chainlinkRegistry.address,
         pool.address,
         strategyManager.address,
@@ -313,6 +317,7 @@ describe("TwapShareHelper", () => {
 
     it("should return correct share amount if total supply is not zero", async () => {
       const sharesFromContract = await shareHelper.calculateShares(
+        factory.address,
         chainlinkRegistry.address,
         pool.address,
         strategyManager.address,

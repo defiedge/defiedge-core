@@ -89,8 +89,8 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
         require(manager.isUserWhiteListed(msg.sender), "UA");
 
         // get total amounts with fees
-        (uint256 totalAmount0, uint256 totalAmount1, , ) = this
-            .getAUMWithFees(false);
+        (uint256 totalAmount0, uint256 totalAmount1, ,) = this
+            .getAUMWithFees(true);
 
         // calculate optimal token0 & token1 amount for mint
         (_amount0, _amount1) = TwapShareHelper.getOptimalAmounts(
@@ -157,27 +157,11 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
         uint256 _amount1Min
     ) external returns (uint256 collect0, uint256 collect1) {
         
-        require(manager.isUserWhiteListed(msg.sender), "UA");
-
         // check if the user has sufficient shares
         require(balanceOf(msg.sender) >= _shares && _shares != 0, "INS");
 
         uint256 amount0;
         uint256 amount1;
-
-        // give from unused amounts
-        collect0 = IERC20(token0).balanceOf(address(this));
-        collect1 = IERC20(token1).balanceOf(address(this));
-
-        uint256 _totalSupply = totalSupply();
-
-        if (collect0 > 0) {
-            collect0 = FullMath.mulDiv(collect0, _shares, _totalSupply);
-        }
-
-        if (collect1 > 0) {
-            collect1 = FullMath.mulDiv(collect1, _shares, _totalSupply);
-        }
 
         // burn liquidity based on shares from existing ticks
         for (uint256 i = 0; i < ticks.length; i++) {
@@ -205,8 +189,22 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
                 : 0;
         }
 
+        // give from unused amounts
+        uint256 total0 = IERC20(token0).balanceOf(address(this));
+        uint256 total1 = IERC20(token1).balanceOf(address(this));
+
+        uint256 _totalSupply = totalSupply();
+
+        if (total0 > collect0) {
+            collect0 = collect0.add(FullMath.mulDiv(total0 - collect0, _shares, _totalSupply));
+        }
+
+        if (total1 > collect1) {
+            collect1 = collect1.add(FullMath.mulDiv(total1 - collect1, _shares, _totalSupply));
+        }
+
         // check slippage
-        require(_amount0Min <= amount0 && _amount1Min <= amount1, "S");
+        require(_amount0Min <= collect0 && _amount1Min <= collect1, "S");
 
         // burn shares
         _burn(msg.sender, _shares);
@@ -231,8 +229,8 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
      */
     function rebalance(
         bytes calldata _swapData,
-        PartialTick[] memory _existingTicks,
-        Tick[] memory _newTicks,
+        PartialTick[] calldata _existingTicks,
+        Tick[] calldata _newTicks,
         bool _burnAll
     ) external onlyOperator onlyValidStrategy {
         if (_burnAll) {

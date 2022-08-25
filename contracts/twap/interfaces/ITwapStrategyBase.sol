@@ -20,7 +20,7 @@ interface ITwapStrategyBase {
 
     function onHold() external view returns (bool);
 
-    function accManagementFee() external view returns (uint256);
+    function accManagementFeeShares() external view returns (uint256);
 
     function factory() external view returns (ITwapStrategyFactory);
 

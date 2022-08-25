@@ -14,10 +14,12 @@ import "../../interfaces/IOneInch.sol";
 
 // libraries
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 contract UniswapV3TwapLiquidityManager is TwapStrategyBase, IUniswapV3MintCallback {
     using SafeMath for uint256;
     using SafeCast for uint256;
+    using SafeERC20 for IERC20;
 
     event Swap(uint256 amountIn, uint256 amountOut, bool _zeroForOne);
 
@@ -147,41 +149,41 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, IUniswapV3MintCallba
         (
             address managerFeeTo,
             address protocolFeeTo,
-            uint256 managerToken0Share,
-            uint256 managerToken1Share,
-            uint256 protocolToken0Share,
-            uint256 protocolToken1Share
+            uint256 managerToken0Amount,
+            uint256 managerToken1Amount,
+            uint256 protocolToken0Amount,
+            uint256 protocolToken1Amount
         ) = TwapShareHelper.calculateFeeTokenShares(factory, manager, _fee0, _fee1);
 
-        if (managerToken0Share > 0) {
+        if (managerToken0Amount > 0) {
             TransferHelper.safeTransfer(
                 address(token0),
                 managerFeeTo,
-                managerToken0Share
+                managerToken0Amount
             );
         }
 
-        if (managerToken1Share > 0) {
+        if (managerToken1Amount > 0) {
             TransferHelper.safeTransfer(
                 address(token1),
                 managerFeeTo,
-                managerToken1Share
+                managerToken1Amount
             );
         }
 
-        if (protocolToken0Share > 0) {
+        if (protocolToken0Amount > 0) {
             TransferHelper.safeTransfer(
                 address(token0),
                 protocolFeeTo,
-                protocolToken0Share
+                protocolToken0Amount
             );
         }
 
-        if (protocolToken1Share > 0) {
+        if (protocolToken1Amount > 0) {
             TransferHelper.safeTransfer(
                 address(token1),
                 protocolFeeTo,
-                protocolToken1Share
+                protocolToken1Amount
             );
         }
 
@@ -285,7 +287,7 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, IUniswapV3MintCallba
         balances.tokenInBalBefore = srcToken.balanceOf(address(this));
         balances.tokenOutBalBefore = dstToken.balanceOf(address(this));
 
-        srcToken.approve(address(oneInchRouter), amount);
+        srcToken.safeIncreaseAllowance(address(oneInchRouter), amount);
 
         // Interact with 1inch through contract call with data
         (bool success, bytes memory returnData) = address(oneInchRouter).call{
@@ -327,6 +329,7 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, IUniswapV3MintCallba
         // check if swap exceed allowed deviation and revert if maximum swap limits reached
         if (
             TwapOracleLibrary.isSwapExceedDeviation(
+                factory,
                 pool,
                 chainlinkRegistry,
                 amountIn,
@@ -405,8 +408,9 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, IUniswapV3MintCallba
 
     /**
      * @notice Get's assets under management with realtime fees
+     * @param _includeFee Whether to include pool fees in AUM or not. (passing true will also collect fees from pool)
      */
-    function getAUMWithFees(bool _claimFee)
+    function getAUMWithFees(bool _includeFee)
         external
         returns (
             uint256 amount0,
@@ -442,42 +446,33 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, IUniswapV3MintCallba
                         currentLiquidity
                     );
 
-                // update fees earned in Uniswap pool
-                // Uniswap recalculates the fees and updates the variables when amount is passed as 0
-                pool.burn(tick.tickLower, tick.tickUpper, 0);
-
-                // fees are credited as tokensOwed in Uniswap when burn is called with 0
-                // https://github.com/Uniswap/v3-core/blob/main/contracts/interfaces/pool/IUniswapV3PoolActions.sol#L43
-                (, , , uint256 tokensOwed0, uint256 tokensOwed1) = pool
-                    .positions(
-                        PositionKey.compute(
-                            address(this),
-                            tick.tickLower,
-                            tick.tickUpper
-                        )
-                    );
-
-                totalFee0 = totalFee0.add(tokensOwed0);
-                totalFee1 = totalFee1.add(tokensOwed1);
-
                 amount0 = amount0.add(position0);
                 amount1 = amount1.add(position1);
             }
 
             // collect fees
-            if (_claimFee) {
-                (uint256 collect0, uint256 collect1) = pool.collect(
+            if (_includeFee && currentLiquidity > 0) {
+
+                // update fees earned in Uniswap pool
+                // Uniswap recalculates the fees and updates the variables when amount is passed as 0
+                pool.burn(tick.tickLower, tick.tickUpper, 0);
+
+                (totalFee0, totalFee1) = pool.collect(
                     address(this),
                     tick.tickLower,
                     tick.tickUpper,
                     type(uint128).max,
                     type(uint128).max
                 );
-                emit FeesClaim(address(this), collect0, collect1);
+
+                amount0 = amount0.add(totalFee0);
+                amount1 = amount1.add(totalFee1);
+
+                // transfer performance fees
+                _transferPerformanceFees(totalFee0, totalFee1);
+
+                emit FeesClaim(address(this), totalFee0, totalFee1);
             }
         }
-
-        amount0 = amount0.add(totalFee0);
-        amount1 = amount1.add(totalFee1);
     }
 }

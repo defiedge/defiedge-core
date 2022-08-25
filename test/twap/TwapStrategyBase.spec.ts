@@ -163,8 +163,8 @@ describe("TwapStrategyBase", () => {
     let params = {
       operator: signers[0].address,
       feeTo: signers[1].address,
-      managementFee: "500000", // 0.5%
-      performanceFee: "500000", // 0.5%
+      managementFeeRate: "500000", // 0.5%
+      performanceFeeRate: "500000", // 0.5%
       limit: 0,
       pool: pool.address,
       useTwap: useTwap,
@@ -178,7 +178,7 @@ describe("TwapStrategyBase", () => {
       ]
     }
 
-    await factory.changeProtocolPerformanceFee("500000");
+    await factory.changeProtocolPerformanceFeeRate("500000");
 
     // create strategy
     await factory.createStrategy(params);
@@ -251,7 +251,7 @@ describe("TwapStrategyBase", () => {
 
   describe("#Constants", async () => {
     // it("should set management fee to 0", async () => {
-    //   expect(await strategy.managementFee()).to.equal(0);
+    //   expect(await strategy.managementFeeRate()).to.equal(0);
     // });
 
     // it("should set feeToo as zero address initially", async () => {
@@ -354,13 +354,13 @@ describe("TwapStrategyBase", () => {
         .connect(signers[1])
         .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
       expect(await strategy.balanceOf(signers[1].address)).to.equal(
-        "64672973971257143585"
+        "64672973971257142590"
       );
     });
 
     it("should mint fees to manager", async () => {
       // set 1% fee
-      await strategyManager.changeFee("1000000");
+      await strategyManager.changeManagementFeeRate("1000000");
       await strategyManager.changeFeeTo(signers[2].address);
 
       await approve(strategy.address, signers[1]);
@@ -369,8 +369,8 @@ describe("TwapStrategyBase", () => {
         .connect(signers[1])
         .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
 
-      expect(await strategy.accManagementFee()).to.equal(
-        "649979637902081845"
+      expect(await strategy.accManagementFeeShares()).to.equal(
+        "649979637902081835"
       );
     });
 
@@ -401,17 +401,17 @@ describe("TwapStrategyBase", () => {
 
   //   it("should set fees to 1%", async () => {
   //     await strategy.changeFee(0);
-  //     expect(await strategy.managementFee()).to.equal(1000000);
+  //     expect(await strategy.managementFeeRate()).to.equal(1000000);
   //   });
 
   //   it("should set fees to 2%", async () => {
   //     await strategy.changeFee(1);
-  //     expect(await strategy.managementFee()).to.equal(2000000);
+  //     expect(await strategy.managementFeeRate()).to.equal(2000000);
   //   });
 
   //   it("should set fees to 5%", async () => {
   //     await strategy.changeFee(2);
-  //     expect(await strategy.managementFee()).to.equal(5000000);
+  //     expect(await strategy.managementFeeRate()).to.equal(5000000);
   //   });
 
   //   it("should emit changeFee event", async () => {
@@ -423,7 +423,7 @@ describe("TwapStrategyBase", () => {
 
   describe("#changeFeeTo", async () => {
     it("should revert if operator is not calling", async () => {
-      expect(strategyManager.connect(signers[1]).changeFee(1)).to.be.revertedWith("N");
+      expect(strategyManager.connect(signers[1]).changeFeeTo(signers[1].address)).to.be.revertedWith("N");
     });
 
     it("should update feeTo", async () => {
@@ -490,10 +490,10 @@ describe("TwapStrategyBase", () => {
   describe("#claimFee", async () => {
     beforeEach(async () => {
       // set 1% fee
-      await strategyManager.changeFee("1000000");
+      await strategyManager.changeManagementFeeRate("1000000");
       await strategyManager.changeFeeTo(signers[2].address);
 
-      await factory.changeFee("1000000");
+      await factory.changeProtocolFeeRate("1000000");
       await factory.changeFeeTo(signers[3].address);
 
       await approve(strategy.address, signers[1]);
@@ -503,9 +503,9 @@ describe("TwapStrategyBase", () => {
         .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
     });
 
-    it("should mint accManagementFee to feeTo address", async () => {
-      expect(await strategy.accManagementFee()).to.equal(
-        "649979637902081845"
+    it("should mint accManagementFeeShares to feeTo address", async () => {
+      expect(await strategy.accManagementFeeShares()).to.equal(
+        "649979637902081835"
       );
 
       // swap tokens
@@ -530,7 +530,7 @@ describe("TwapStrategyBase", () => {
         .withArgs(
           "0x0000000000000000000000000000000000000000",
           signers[2].address,
-          "643479841523061027" 
+          "643479841523061017" 
         );
       expect(claimFee)
         .to.emit(strategy, "Transfer")
@@ -548,14 +548,14 @@ describe("TwapStrategyBase", () => {
       await strategy.claimFee();
 
       expect(await strategy.balanceOf(signers[2].address)).to.equal(
-        "643479841523061027"
+        "643479841523061017"
       );
       expect(await strategy.balanceOf(signers[3].address)).to.equal(
         "6499796379020818"
       );
     });
 
-    it("should set accManagementFee to zero after claiming fee", async () => {
+    it("should set accManagementFeeShares to zero after claiming fee", async () => {
 
       // swap tokens
       const sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96;
@@ -572,13 +572,13 @@ describe("TwapStrategyBase", () => {
 
       await strategy.connect(signers[1]).burn(shares, 0, 0)
 
-      expect(await strategy.accManagementFee()).to.equal(
-        "649979637902081845"
+      expect(await strategy.accManagementFeeShares()).to.equal(
+        "649979637902081835"
       );
 
       await strategy.claimFee();
 
-      expect(await strategy.accManagementFee()).to.equal("0");
+      expect(await strategy.accManagementFeeShares()).to.equal("0");
     });
   });
 });
