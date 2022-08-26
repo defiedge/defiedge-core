@@ -190,14 +190,7 @@ library TwapOracleLibrary {
     ) public view returns (bool) {
         _amountIn = normalise(_tokenIn, _amountIn);
         _amountOut = normalise(_tokenOut, _amountOut);
-
-
-        if(_pool.token0() == _tokenIn) {
-            _useTwap = [_useTwap[0], _useTwap[1]]; 
-        } else {
-            _useTwap = [_useTwap[1], _useTwap[0]];
-        }
-
+        
         // get tokenIn prce in USD fron chainlink
         uint256 amountInUSD = _amountIn.mul(
             getPriceInUSD(_factory, _pool, _registry, _tokenIn, _useTwap, _manager)
@@ -248,12 +241,6 @@ library TwapOracleLibrary {
     ) public view returns (bool) {
         _amountIn = normalise(_tokenIn, _amountIn);
         _amountOut = normalise(_tokenOut, _amountOut);
-
-        if(_pool.token0() == _tokenIn) {
-            _useTwap = [_useTwap[0], _useTwap[1]]; 
-        } else {
-            _useTwap = [_useTwap[1], _useTwap[0]];
-        }
 
         // get price of token0 Uniswap and convert it to USD
         uint256 amountInUSD = _amountIn.mul(
