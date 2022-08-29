@@ -57,7 +57,7 @@ contract StrategyManager is AccessControl, IStrategyManager {
     uint256 public override limit;
 
     // number of times user can perform swap in a day
-    uint256 public maxAllowedSwap = 0;
+    uint256 public maxAllowedSwap = 5;
 
     // current swap counter
     uint256 public swapCounter = 0;
