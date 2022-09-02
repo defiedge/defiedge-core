@@ -15,8 +15,18 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
     using SafeMath for uint256;
 
     // events
-    event Mint(address indexed user, uint256 share, uint256 amount0, uint256 amount1);
-    event Burn(address indexed user, uint256 share, uint256 amount0, uint256 amount1);
+    event Mint(
+        address indexed user,
+        uint256 share,
+        uint256 amount0,
+        uint256 amount1
+    );
+    event Burn(
+        address indexed user,
+        uint256 share,
+        uint256 amount0,
+        uint256 amount1
+    );
     event Hold();
     event Rebalance(Tick[] ticks);
     event PartialRebalance(PartialTick[] ticks);
@@ -89,16 +99,17 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
         require(manager.isUserWhiteListed(msg.sender), "UA");
 
         // get total amounts with fees
-        (uint256 totalAmount0, uint256 totalAmount1, ,) = this
-            .getAUMWithFees(true);
+        (uint256 totalAmount0, uint256 totalAmount1, , ) = this.getAUMWithFees(
+            true
+        );
 
         // calculate optimal token0 & token1 amount for mint
         (_amount0, _amount1) = TwapShareHelper.getOptimalAmounts(
-            _amount0, 
-            _amount1, 
-            _amount0Min, 
-            _amount1Min, 
-            totalAmount0, 
+            _amount0,
+            _amount1,
+            _amount0Min,
+            _amount1Min,
+            totalAmount0,
             totalAmount1
         );
 
@@ -156,7 +167,6 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
         uint256 _amount0Min,
         uint256 _amount1Min
     ) external returns (uint256 collect0, uint256 collect1) {
-        
         // check if the user has sufficient shares
         require(balanceOf(msg.sender) >= _shares && _shares != 0, "INS");
 
@@ -196,11 +206,15 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
         uint256 _totalSupply = totalSupply();
 
         if (total0 > collect0) {
-            collect0 = collect0.add(FullMath.mulDiv(total0 - collect0, _shares, _totalSupply));
+            collect0 = collect0.add(
+                FullMath.mulDiv(total0 - collect0, _shares, _totalSupply)
+            );
         }
 
         if (total1 > collect1) {
-            collect1 = collect1.add(FullMath.mulDiv(total1 - collect1, _shares, _totalSupply));
+            collect1 = collect1.add(
+                FullMath.mulDiv(total1 - collect1, _shares, _totalSupply)
+            );
         }
 
         // check slippage
@@ -249,7 +263,6 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
         // redeploy the partial ticks
         if (_existingTicks.length > 0) {
             for (uint256 i = 0; i < _existingTicks.length; i++) {
-
                 Tick memory _tick = ticks[_existingTicks[i].index];
 
                 Tick storage tick;
@@ -274,9 +287,16 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
                         address(this)
                     );
 
-                    if(_existingTicks[i].burn){
+                    if (_existingTicks[i].burn) {
                         // push to ticks array
-                        ticks.push(Tick(amount0, amount1, _tick.tickLower, _tick.tickUpper));
+                        ticks.push(
+                            Tick(
+                                amount0,
+                                amount1,
+                                _tick.tickLower,
+                                _tick.tickUpper
+                            )
+                        );
                     } else {
                         // update data in the tick
                         tick.amount0 = tick.amount0.add(amount0);
@@ -335,5 +355,4 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
         );
         TransferHelper.safeTransfer(_token, _to, _amount);
     }
-
 }

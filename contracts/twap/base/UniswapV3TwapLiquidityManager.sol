@@ -16,7 +16,10 @@ import "../../interfaces/IOneInch.sol";
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
-contract UniswapV3TwapLiquidityManager is TwapStrategyBase, IUniswapV3MintCallback {
+contract UniswapV3TwapLiquidityManager is
+    TwapStrategyBase,
+    IUniswapV3MintCallback
+{
     using SafeMath for uint256;
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
@@ -153,7 +156,12 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, IUniswapV3MintCallba
             uint256 managerToken1Amount,
             uint256 protocolToken0Amount,
             uint256 protocolToken1Amount
-        ) = TwapShareHelper.calculateFeeTokenShares(factory, manager, _fee0, _fee1);
+        ) = TwapShareHelper.calculateFeeTokenShares(
+                factory,
+                manager,
+                _fee0,
+                _fee1
+            );
 
         if (managerToken0Amount > 0) {
             TransferHelper.safeTransfer(
@@ -419,10 +427,6 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, IUniswapV3MintCallba
             uint256 totalFee1
         )
     {
-        // get unused amounts
-        amount0 = IERC20(token0).balanceOf(address(this));
-        amount1 = IERC20(token1).balanceOf(address(this));
-
         // get fees accumulated in each tick
         for (uint256 i = 0; i < ticks.length; i++) {
             Tick memory tick = ticks[i];
@@ -452,7 +456,6 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, IUniswapV3MintCallba
 
             // collect fees
             if (_includeFee && currentLiquidity > 0) {
-
                 // update fees earned in Uniswap pool
                 // Uniswap recalculates the fees and updates the variables when amount is passed as 0
                 pool.burn(tick.tickLower, tick.tickUpper, 0);
@@ -465,14 +468,15 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, IUniswapV3MintCallba
                     type(uint128).max
                 );
 
-                amount0 = amount0.add(totalFee0);
-                amount1 = amount1.add(totalFee1);
-
                 // transfer performance fees
                 _transferPerformanceFees(totalFee0, totalFee1);
 
                 emit FeesClaim(address(this), totalFee0, totalFee1);
             }
         }
+
+        // get unused amounts
+        amount0 = amount0.add(IERC20(token0).balanceOf(address(this)));
+        amount1 = amount1.add(IERC20(token1).balanceOf(address(this)));
     }
 }
