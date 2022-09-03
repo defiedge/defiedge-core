@@ -16,7 +16,7 @@ contract StrategyBase is ERC20, IStrategyBase {
     bool public override onHold;
 
     uint256 public constant MIN_SHARE = 1e16;
-    uint256 public constant MINIMUM_LIQUIDITY = 1000;
+    uint256 public constant MINIMUM_LIQUIDITY = 1e12;
 
     // store ticks
     Tick[] public ticks;
@@ -113,7 +113,6 @@ contract StrategyBase is ERC20, IStrategyBase {
         uint256 _totalAmount1,
         address _user
     ) internal returns (uint256 share) {
-
         uint256 _shareTotalSupply = totalSupply();
         // calculate number of shares
         share = ShareHelper.calculateShares(
@@ -132,8 +131,8 @@ contract StrategyBase is ERC20, IStrategyBase {
 
         uint256 managerShare;
         uint256 managementFeeRate = manager.managementFeeRate();
-        
-        if(_shareTotalSupply == 0){
+
+        if (_shareTotalSupply == 0) {
             share = share.sub(MINIMUM_LIQUIDITY);
             _mint(address(0), MINIMUM_LIQUIDITY);
         }
@@ -150,7 +149,11 @@ contract StrategyBase is ERC20, IStrategyBase {
     }
 
     function totalSupply() public view override returns (uint256) {
-        return _totalSupply.add(accManagementFeeShares).add(accPerformanceFeeShares).add(accProtocolPerformanceFeeShares);
+        return
+            _totalSupply
+                .add(accManagementFeeShares)
+                .add(accPerformanceFeeShares)
+                .add(accProtocolPerformanceFeeShares);
     }
 
     /**
