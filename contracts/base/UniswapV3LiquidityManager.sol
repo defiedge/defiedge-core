@@ -23,11 +23,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
     event Swap(uint256 amountIn, uint256 amountOut, bool _zeroForOne);
 
-    event FeesClaim(
-        address indexed strategy,
-        uint256 amount0,
-        uint256 amount1
-    );
+    event FeesClaim(address indexed strategy, uint256 amount0, uint256 amount1);
 
     struct MintCallbackData {
         address payer;
@@ -103,8 +99,11 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
                 PositionKey.compute(address(this), _tickLower, _tickUpper)
             );
             if (_currentLiquidity > 0) {
-
-                uint256 liquidity = FullMath.mulDiv(_currentLiquidity, _shares, totalSupply());
+                uint256 liquidity = FullMath.mulDiv(
+                    _currentLiquidity,
+                    _shares,
+                    totalSupply()
+                );
 
                 (tokensBurned0, tokensBurned1) = pool.burn(
                     _tickLower,
@@ -153,8 +152,9 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         // address feeTo = manager.feeTo();
 
         // get total amounts with fees
-        (uint256 totalAmount0, uint256 totalAmount1, ,) = this
-            .getAUMWithFees(false);
+        (uint256 totalAmount0, uint256 totalAmount1, , ) = this.getAUMWithFees(
+            false
+        );
 
         accPerformanceFeeShares = accPerformanceFeeShares.add(
             ShareHelper.calculateShares(
@@ -170,7 +170,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             )
         );
 
-        // protocol performance fee 
+        // protocol performance fee
         uint256 _protocolPerformanceFee = factory.protocolPerformanceFeeRate();
 
         accProtocolPerformanceFeeShares = accProtocolPerformanceFeeShares.add(
@@ -195,11 +195,14 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
      */
     function burnAllLiquidity() internal {
         for (uint256 _tickIndex = 0; _tickIndex < ticks.length; _tickIndex++) {
-
             Tick storage tick = ticks[_tickIndex];
 
             (uint128 currentLiquidity, , , , ) = pool.positions(
-                PositionKey.compute(address(this), tick.tickLower, tick.tickUpper)
+                PositionKey.compute(
+                    address(this),
+                    tick.tickLower,
+                    tick.tickUpper
+                )
             );
 
             if (currentLiquidity > 0) {
@@ -212,8 +215,8 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
                 // update data in ticks
                 tick.amount0 = tick.amount0 >= amount0
-                        ? tick.amount0.sub(amount0)
-                        : 0;
+                    ? tick.amount0.sub(amount0)
+                    : 0;
                 tick.amount1 = tick.amount1 >= amount1
                     ? tick.amount1.sub(amount1)
                     : 0;
@@ -253,8 +256,8 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
             // update data in ticks
             tick.amount0 = tick.amount0 >= amount0
-                    ? tick.amount0.sub(amount0)
-                    : 0;
+                ? tick.amount0.sub(amount0)
+                : 0;
             tick.amount1 = tick.amount1 >= amount1
                 ? tick.amount1.sub(amount1)
                 : 0;
@@ -271,13 +274,16 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
      * @param data Swap data to perform exchange from 1inch
      */
     function swap(bytes calldata data) public onlyOperator onlyHasDeviation {
-
         LocalVariables_Balances memory balances;
 
         (IERC20 srcToken, IERC20 dstToken, uint256 amount) = OneInchHelper
             .decodeData(IERC20(token0), IERC20(token1), data);
 
-        require (srcToken == token0 && dstToken == token1 || srcToken == token1 && dstToken == token0, "IA");
+        require(
+            (srcToken == token0 && dstToken == token1) ||
+                (srcToken == token1 && dstToken == token0),
+            "IA"
+        );
 
         balances.tokenInBalBefore = srcToken.balanceOf(address(this));
         balances.tokenOutBalBefore = dstToken.balanceOf(address(this));
@@ -297,15 +303,15 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
                 revert("swap");
             } else {
                 // Look for revert reason and bubble it up if present
-                uint t;
+                uint256 t;
                 assembly {
-                    returnData := add (returnData, 4)
-                    t := mload (returnData) // Save the content of the length slot
-                    mstore (returnData, sub (length, 4)) // Set proper length
+                    returnData := add(returnData, 4)
+                    t := mload(returnData) // Save the content of the length slot
+                    mstore(returnData, sub(length, 4)) // Set proper length
                 }
-                string memory reason = abi.decode (returnData, (string));
+                string memory reason = abi.decode(returnData, (string));
                 assembly {
-                    mstore (returnData, t) // Restore the content of the length slot
+                    mstore(returnData, t) // Restore the content of the length slot
                 }
                 revert(reason);
             }
@@ -314,8 +320,12 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         balances.tokenInBalAfter = srcToken.balanceOf(address(this));
         balances.tokenOutBalAfter = dstToken.balanceOf(address(this));
 
-        uint256 amountIn = balances.tokenInBalBefore.sub(balances.tokenInBalAfter);
-        uint256 amountOut = balances.tokenOutBalAfter.sub(balances.tokenOutBalBefore);
+        uint256 amountIn = balances.tokenInBalBefore.sub(
+            balances.tokenInBalAfter
+        );
+        uint256 amountOut = balances.tokenOutBalAfter.sub(
+            balances.tokenOutBalBefore
+        );
 
         // check if swap exceed allowed deviation and revert if maximum swap limits reached
         if (
@@ -362,10 +372,18 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         if (decoded.payer == address(this)) {
             // transfer tokens already in the contract
             if (amount0 > 0) {
-                TransferHelper.safeTransfer(address(token0), msg.sender, amount0);
+                TransferHelper.safeTransfer(
+                    address(token0),
+                    msg.sender,
+                    amount0
+                );
             }
             if (amount1 > 0) {
-                TransferHelper.safeTransfer(address(token1), msg.sender, amount1);
+                TransferHelper.safeTransfer(
+                    address(token1),
+                    msg.sender,
+                    amount1
+                );
             }
         } else {
             // take and transfer tokens to Uniswap V3 pool from the user
@@ -433,29 +451,32 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             }
 
             // collect fees
-            if(_includeFee && currentLiquidity > 0){
-
+            if (_includeFee && currentLiquidity > 0) {
                 // update fees earned in Uniswap pool
                 // Uniswap recalculates the fees and updates the variables when amount is passed as 0
                 pool.burn(tick.tickLower, tick.tickUpper, 0);
 
-                (totalFee0, totalFee1) = pool.collect(
+                (uint256 fee0, uint256 fee1) = pool.collect(
                     address(this),
                     tick.tickLower,
                     tick.tickUpper,
                     type(uint128).max,
                     type(uint128).max
                 );
-                
-                amount0 = amount0.add(totalFee0);
-                amount1 = amount1.add(totalFee1);
 
-                // mint performance fees
-                addPerformanceFees(totalFee0, totalFee0);
+                totalFee0 = totalFee0.add(fee0);
+                totalFee1 = totalFee1.add(fee1);
 
                 emit FeesClaim(address(this), totalFee0, totalFee1);
             }
+        }
 
+        if (_includeFee && (totalFee0 > 0 || totalFee1 > 0)) {
+            amount0 = amount0.add(totalFee0);
+            amount1 = amount1.add(totalFee1);
+
+            // mint performance fees
+            addPerformanceFees(totalFee0, totalFee1);
         }
     }
 }
