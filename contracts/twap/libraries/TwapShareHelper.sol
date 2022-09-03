@@ -177,6 +177,16 @@ library TwapShareHelper {
         if (_totalAmount0 == 0 && _totalAmount1 == 0) {
             (amount0, amount1) = (_amount0, _amount1);
         } else {
+            if (_totalAmount0 == 0) {
+                require(_amount0Min == 0, 'INSUFFICIENT_AMOUNT_0');
+                (amount0, amount1) = (0, _amount1);
+                return (amount0, amount1);
+            }
+            if (_totalAmount1 == 0) {
+                require(_amount1Min == 0, 'INSUFFICIENT_AMOUNT_1');
+                (amount0, amount1) = (_amount0, 0);
+                return (amount0, amount1);
+            }
             uint amount1Optimal = _amount0.mul(_totalAmount1).div(_totalAmount0);
             if (amount1Optimal <= _amount1) {
                 require(amount1Optimal >= _amount1Min, 'INSUFFICIENT_AMOUNT_1');

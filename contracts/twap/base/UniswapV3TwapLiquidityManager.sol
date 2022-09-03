@@ -87,14 +87,14 @@ contract UniswapV3TwapLiquidityManager is
     )
         internal
         returns (
-            uint256 collect0,
-            uint256 collect1,
+            uint256 tokensBurned0,
+            uint256 tokensBurned1,
             uint256 fee0,
             uint256 fee1
         )
     {
-        uint256 tokensBurned0;
-        uint256 tokensBurned1;
+        uint256 collect0;
+        uint256 collect1;
 
         if (_shares > 0) {
             (_currentLiquidity, , , , ) = pool.positions(
@@ -135,9 +135,6 @@ contract UniswapV3TwapLiquidityManager is
         fee1 = collect1 > tokensBurned1
             ? uint256(collect1).sub(tokensBurned1)
             : 0;
-
-        collect0 = tokensBurned0;
-        collect1 = tokensBurned1;
 
         // transfer performance fees
         _transferPerformanceFees(fee0, fee1);
@@ -214,20 +211,12 @@ contract UniswapV3TwapLiquidityManager is
             );
 
             if (currentLiquidity > 0) {
-                (uint256 amount0, uint256 amount1, , ) = burnLiquidity(
+                burnLiquidity(
                     tick.tickLower,
                     tick.tickUpper,
                     0,
                     currentLiquidity
                 );
-
-                // update data in ticks
-                tick.amount0 = tick.amount0 >= amount0
-                    ? tick.amount0.sub(amount0)
-                    : 0;
-                tick.amount1 = tick.amount1 >= amount1
-                    ? tick.amount1.sub(amount1)
-                    : 0;
             }
         }
     }
@@ -260,14 +249,6 @@ contract UniswapV3TwapLiquidityManager is
                 0,
                 currentLiquidity
             );
-
-            // update data in ticks
-            tick.amount0 = tick.amount0 >= amount0
-                ? tick.amount0.sub(amount0)
-                : 0;
-            tick.amount1 = tick.amount1 >= amount1
-                ? tick.amount1.sub(amount1)
-                : 0;
         }
 
         // shift the index element at last of array
@@ -460,7 +441,7 @@ contract UniswapV3TwapLiquidityManager is
                 // Uniswap recalculates the fees and updates the variables when amount is passed as 0
                 pool.burn(tick.tickLower, tick.tickUpper, 0);
 
-                (totalFee0, totalFee1) = pool.collect(
+                (uint256 fee0, uint256 fee1) = pool.collect(
                     address(this),
                     tick.tickLower,
                     tick.tickUpper,
@@ -468,11 +449,16 @@ contract UniswapV3TwapLiquidityManager is
                     type(uint128).max
                 );
 
-                // transfer performance fees
-                _transferPerformanceFees(totalFee0, totalFee1);
+                totalFee0 = totalFee0.add(fee0);
+                totalFee1 = totalFee1.add(fee1);
 
                 emit FeesClaim(address(this), totalFee0, totalFee1);
             }
+        }
+
+        if (_includeFee && (totalFee0 > 0 || totalFee1 > 0)) {
+            // transfer performance fees
+            _transferPerformanceFees(totalFee0, totalFee1);
         }
 
         // get unused amounts

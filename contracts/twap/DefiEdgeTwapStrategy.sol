@@ -28,7 +28,7 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
         uint256 amount1
     );
     event Hold();
-    event Rebalance(Tick[] ticks);
+    event Rebalance(NewTick[] ticks);
     event PartialRebalance(PartialTick[] ticks);
 
     struct PartialTick {
@@ -38,6 +38,12 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
         uint256 amount1;
     }
 
+    struct NewTick {
+        int24 tickLower;
+        int24 tickUpper;
+        uint256 amount0;
+        uint256 amount1;
+    }
     /**
      * @param _factory Address of the strategy factory
      * @param _pool Address of the pool
@@ -69,7 +75,7 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
         useTwap = _useTwap;
         // useTwap = _useTwapForToken0 ? [true, false] : [false, true];
         for (uint256 i = 0; i < _ticks.length; i++) {
-            ticks.push(Tick(0, 0, _ticks[i].tickLower, _ticks[i].tickUpper));
+            ticks.push(Tick(_ticks[i].tickLower, _ticks[i].tickUpper));
         }
     }
 
@@ -190,13 +196,6 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
             // add to total amounts
             collect0 = collect0.add(amount0);
             collect1 = collect1.add(amount1);
-
-            tick.amount0 = tick.amount0 >= amount0
-                ? tick.amount0.sub(amount0)
-                : 0;
-            tick.amount1 = tick.amount1 >= amount1
-                ? tick.amount1.sub(amount1)
-                : 0;
         }
 
         // give from unused amounts
@@ -244,7 +243,7 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
     function rebalance(
         bytes calldata _swapData,
         PartialTick[] calldata _existingTicks,
-        Tick[] calldata _newTicks,
+        NewTick[] calldata _newTicks,
         bool _burnAll
     ) external onlyOperator onlyValidStrategy {
         if (_burnAll) {
@@ -279,7 +278,7 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
                     _existingTicks[i].amount1 > 0
                 ) {
                     // mint liquidity
-                    (uint256 amount0, uint256 amount1) = mintLiquidity(
+                    mintLiquidity(
                         _tick.tickLower,
                         _tick.tickUpper,
                         _existingTicks[i].amount0,
@@ -289,18 +288,7 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
 
                     if (_existingTicks[i].burn) {
                         // push to ticks array
-                        ticks.push(
-                            Tick(
-                                amount0,
-                                amount1,
-                                _tick.tickLower,
-                                _tick.tickUpper
-                            )
-                        );
-                    } else {
-                        // update data in the tick
-                        tick.amount0 = tick.amount0.add(amount0);
-                        tick.amount1 = tick.amount1.add(amount1);
+                        ticks.push(Tick(_tick.tickLower, _tick.tickUpper));
                     }
                 }
             }
@@ -311,7 +299,7 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
         // deploy liquidity into new ticks
         if (_newTicks.length > 0) {
             redeploy(_newTicks);
-            emit Rebalance(ticks);
+            emit Rebalance(_newTicks);
         }
 
         require(!isInvalidTicks(ticks), "IT");
@@ -323,15 +311,15 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
      * @notice Redeploys between ticks
      * @param _ticks Array of the ticks with amounts
      */
-    function redeploy(Tick[] memory _ticks) internal {
+    function redeploy(NewTick[] memory _ticks) internal {
         // set hold false
         onHold = false;
         // redeploy the liquidity
         for (uint256 i = 0; i < _ticks.length; i++) {
-            Tick memory tick = _ticks[i];
+            NewTick memory tick = _ticks[i];
 
             // mint liquidity
-            (uint256 amount0, uint256 amount1) = mintLiquidity(
+            mintLiquidity(
                 tick.tickLower,
                 tick.tickUpper,
                 tick.amount0,
@@ -340,7 +328,7 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
             );
 
             // push to ticks array
-            ticks.push(Tick(amount0, amount1, tick.tickLower, tick.tickUpper));
+            ticks.push(Tick(tick.tickLower, tick.tickUpper));
         }
     }
 

@@ -85,14 +85,14 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         internal
         onlyHasDeviation
         returns (
-            uint256 collect0,
-            uint256 collect1,
+            uint256 tokensBurned0,
+            uint256 tokensBurned1,
             uint256 fee0,
             uint256 fee1
         )
     {
-        uint256 tokensBurned0;
-        uint256 tokensBurned1;
+        uint256 collect0;
+        uint256 collect1;
 
         if (_shares > 0) {
             (_currentLiquidity, , , , ) = pool.positions(
@@ -133,9 +133,6 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         fee1 = collect1 > tokensBurned1
             ? uint256(collect1).sub(tokensBurned1)
             : 0;
-
-        collect0 = tokensBurned0;
-        collect1 = tokensBurned1;
 
         // mint performance fees
         addPerformanceFees(fee0, fee1);
