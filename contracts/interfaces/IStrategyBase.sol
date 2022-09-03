@@ -8,10 +8,7 @@ import "./IOneInchRouter.sol";
 import "./IStrategyManager.sol";
 
 interface IStrategyBase {
-
     struct Tick {
-        uint256 amount0;
-        uint256 amount1;
         int24 tickLower;
         int24 tickUpper;
     }
@@ -23,7 +20,7 @@ interface IStrategyBase {
     function accManagementFeeShares() external view returns (uint256);
 
     function accPerformanceFeeShares() external view returns (uint256);
-    
+
     function accProtocolPerformanceFeeShares() external view returns (uint256);
 
     function factory() external view returns (IStrategyFactory);
@@ -37,5 +34,4 @@ interface IStrategyBase {
     function usdAsBase(uint256 index) external view returns (bool);
 
     function claimFee() external;
-    
 }

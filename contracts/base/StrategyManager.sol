@@ -71,7 +71,8 @@ contract StrategyManager is AccessControl, IStrategyManager {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE"); // can control everything
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE"); /// only can burn the liquidity
 
-    bytes32 public constant USER_WHITELIST_ROLE = keccak256("USER_WHITELIST_ROLE"); /// user have access to strategy - mint & burn
+    bytes32 public constant USER_WHITELIST_ROLE =
+        keccak256("USER_WHITELIST_ROLE"); /// user have access to strategy - mint & burn
 
     constructor(
         IStrategyFactory _factory,
@@ -102,7 +103,6 @@ contract StrategyManager is AccessControl, IStrategyManager {
         _setRoleAdmin(MANAGER_ROLE, ADMIN_ROLE);
         _setRoleAdmin(BURNER_ROLE, ADMIN_ROLE);
         _setRoleAdmin(USER_WHITELIST_ROLE, ADMIN_ROLE);
-
     }
 
     // Modifiers
@@ -122,19 +122,35 @@ contract StrategyManager is AccessControl, IStrategyManager {
         _;
     }
 
-    function isUserWhiteListed(address _account) public view override returns (bool) {
-        return isStrategyPrivate ? hasRole(USER_WHITELIST_ROLE, _account) : true;
+    function isUserWhiteListed(address _account)
+        public
+        view
+        override
+        returns (bool)
+    {
+        return
+            isStrategyPrivate ? hasRole(USER_WHITELIST_ROLE, _account) : true;
     }
 
-    function isAllowedToManage(address _account) public view override returns (bool) {
+    function isAllowedToManage(address _account)
+        public
+        view
+        override
+        returns (bool)
+    {
         return hasRole(ADMIN_ROLE, _account) || hasRole(MANAGER_ROLE, _account);
     }
 
-    function isAllowedToBurn(address _account) public view override returns (bool) {
-        return 
-            hasRole(ADMIN_ROLE, _account) || 
-            hasRole (MANAGER_ROLE, _account) ||
-            hasRole (BURNER_ROLE, _account);
+    function isAllowedToBurn(address _account)
+        public
+        view
+        override
+        returns (bool)
+    {
+        return
+            hasRole(ADMIN_ROLE, _account) ||
+            hasRole(MANAGER_ROLE, _account) ||
+            hasRole(BURNER_ROLE, _account);
     }
 
     function strategy() public view returns (address) {
@@ -207,10 +223,7 @@ contract StrategyManager is AccessControl, IStrategyManager {
      * @notice Manager can update strategy mode -  public, private
      * @param _isPrivate true - private strategy, false - public strategy
      */
-    function updateStrategyMode(bool _isPrivate)
-        external
-        onlyOperator
-    {
+    function updateStrategyMode(bool _isPrivate) external onlyOperator {
         isStrategyPrivate = _isPrivate;
         emit StrategyModeUpdated(isStrategyPrivate);
     }
@@ -244,7 +257,7 @@ contract StrategyManager is AccessControl, IStrategyManager {
         external
         onlyGovernance
     {
-        require(_allowedSwapDeviation <= MIN_DEVIATION, "ID");// should be less than 20%
+        require(_allowedSwapDeviation <= MIN_DEVIATION, "ID"); // should be less than 20%
         allowedSwapDeviation = _allowedSwapDeviation;
         emit AllowedSwapDeviationChanged(allowedSwapDeviation);
     }
@@ -254,8 +267,8 @@ contract StrategyManager is AccessControl, IStrategyManager {
      *         Can only be called by strategy contract
      */
     function increamentSwapCounter() external override onlyStrategy {
-        uint256 currentDay = block.timestamp /  1 days;
-        uint256 swapDay = lastSwapTimestamp /  1 days;
+        uint256 currentDay = block.timestamp / 1 days;
+        uint256 swapDay = lastSwapTimestamp / 1 days;
 
         if (currentDay == swapDay) {
             // last swap happened on same day
@@ -265,7 +278,6 @@ contract StrategyManager is AccessControl, IStrategyManager {
 
             lastSwapTimestamp = block.timestamp;
             swapCounter = _counter + 1;
-            
         } else {
             // last swap happened on other day
             swapCounter = 1;

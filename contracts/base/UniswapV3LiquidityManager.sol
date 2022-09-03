@@ -206,20 +206,12 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             );
 
             if (currentLiquidity > 0) {
-                (uint256 amount0, uint256 amount1, , ) = burnLiquidity(
+                burnLiquidity(
                     tick.tickLower,
                     tick.tickUpper,
                     0,
                     currentLiquidity
                 );
-
-                // update data in ticks
-                tick.amount0 = tick.amount0 >= amount0
-                    ? tick.amount0.sub(amount0)
-                    : 0;
-                tick.amount1 = tick.amount1 >= amount1
-                    ? tick.amount1.sub(amount1)
-                    : 0;
             }
         }
     }
@@ -253,14 +245,6 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
                 0,
                 currentLiquidity
             );
-
-            // update data in ticks
-            tick.amount0 = tick.amount0 >= amount0
-                ? tick.amount0.sub(amount0)
-                : 0;
-            tick.amount1 = tick.amount1 >= amount1
-                ? tick.amount1.sub(amount1)
-                : 0;
         }
 
         // shift the index element at last of array
