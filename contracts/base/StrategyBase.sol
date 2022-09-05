@@ -15,7 +15,6 @@ contract StrategyBase is ERC20, IStrategyBase {
     uint256 public constant FEE_PRECISION = 1e8;
     bool public override onHold;
 
-    uint256 public constant MIN_SHARE = 1e16;
     uint256 public constant MINIMUM_LIQUIDITY = 1e12;
 
     // store ticks
@@ -126,8 +125,6 @@ contract StrategyBase is ERC20, IStrategyBase {
             _totalAmount1,
             _shareTotalSupply
         );
-
-        require(share > MIN_SHARE, "IS");
 
         uint256 managerShare;
         uint256 managementFeeRate = manager.managementFeeRate();
