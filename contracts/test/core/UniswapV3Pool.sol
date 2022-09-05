@@ -412,6 +412,66 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         }
     }
 
+    function getAmountsForTick(address owner, int24 _tickLower, int24 _tickUpper) public view returns(uint256 amount0, uint256 amount1){
+        Position.Info memory position = positions.get(owner, _tickLower, _tickUpper);
+
+        uint128 _liquidity = position.liquidity;
+
+        // calculate liquidity needs to be added
+        (amount0, amount1) = getAmountsForLiquidity(
+            slot0.sqrtPriceX96,
+            TickMath.getSqrtRatioAtTick(_tickLower),
+            TickMath.getSqrtRatioAtTick(_tickUpper),
+            _liquidity
+        );
+    }
+
+    // function _toUint128(uint256 x) private pure returns (uint128 y) {
+    //     require((y = uint128(x)) == x);
+    // }
+
+    function getAmount0ForLiquidity(
+        uint160 sqrtRatioAX96,
+        uint160 sqrtRatioBX96,
+        uint128 _liquidity
+    ) internal pure returns (uint256 amount0) {
+        if (sqrtRatioAX96 > sqrtRatioBX96) (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
+
+        return
+            FullMath.mulDiv(
+                uint256(_liquidity) << FixedPoint96.RESOLUTION,
+                sqrtRatioBX96 - sqrtRatioAX96,
+                sqrtRatioBX96
+            ) / sqrtRatioAX96;
+    }
+
+    function getAmount1ForLiquidity(
+        uint160 sqrtRatioAX96,
+        uint160 sqrtRatioBX96,
+        uint128 _liquidity
+    ) internal pure returns (uint256 amount1) {
+        if (sqrtRatioAX96 > sqrtRatioBX96) (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
+
+        return FullMath.mulDiv(_liquidity, sqrtRatioBX96 - sqrtRatioAX96, FixedPoint96.Q96);
+    }
+
+    function getAmountsForLiquidity(
+        uint160 sqrtRatioX96,
+        uint160 sqrtRatioAX96,
+        uint160 sqrtRatioBX96,
+        uint128 _liquidity
+    ) internal pure returns (uint256 amount0, uint256 amount1) {
+        if (sqrtRatioAX96 > sqrtRatioBX96) (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
+
+        if (sqrtRatioX96 <= sqrtRatioAX96) {
+            amount0 = getAmount0ForLiquidity(sqrtRatioAX96, sqrtRatioBX96, _liquidity);
+        } else if (sqrtRatioX96 < sqrtRatioBX96) {
+            amount0 = getAmount0ForLiquidity(sqrtRatioX96, sqrtRatioBX96, _liquidity);
+            amount1 = getAmount1ForLiquidity(sqrtRatioAX96, sqrtRatioX96, _liquidity);
+        } else {
+            amount1 = getAmount1ForLiquidity(sqrtRatioAX96, sqrtRatioBX96, _liquidity);
+        }
+    }
     /// @dev Gets and updates a position with the given liquidity delta
     /// @param owner the owner of the position
     /// @param tickLower the lower tick of the position's tick range

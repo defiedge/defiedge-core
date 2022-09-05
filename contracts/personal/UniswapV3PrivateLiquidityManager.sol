@@ -175,14 +175,14 @@ contract UniswapV3PersonalLiquidityManager is
     )
         internal
         returns (
-            uint256 collect0,
-            uint256 collect1,
+            uint256 tokensBurned0,
+            uint256 tokensBurned1,
             uint256 fee0,
             uint256 fee1
         )
     {
-        uint256 tokensBurned0;
-        uint256 tokensBurned1;
+        uint256 collect0;
+        uint256 collect1;
 
         (tokensBurned0, tokensBurned1) = pool.burn(
             _tickLower,
@@ -204,9 +204,6 @@ contract UniswapV3PersonalLiquidityManager is
         fee1 = collect1 > tokensBurned1
             ? uint256(collect1).sub(tokensBurned1)
             : 0;
-
-        collect0 = tokensBurned0;
-        collect1 = tokensBurned1;
 
         // mint performance fees
         addPerformanceFees(fee0, fee1);

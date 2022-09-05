@@ -256,7 +256,7 @@ describe("UniswapV3TwapLiquidityManager", () => {
         .to.emit(strategy, "Mint")
         .withArgs(
           signers[0].address,
-          "64672973971257142590",
+          "64672972976257143585",
           expandTo18Decimals(1),
           expandTo18Decimals(3500)
         );
@@ -310,8 +310,8 @@ describe("UniswapV3TwapLiquidityManager", () => {
         .withArgs(
           signers[0].address,
           shares,
-          "994999999999999983",
-          "3482499999999999946448"
+          "994999984691828142",
+          "3482499946421398503513"
         );
     });
 
@@ -344,9 +344,9 @@ describe("UniswapV3TwapLiquidityManager", () => {
           strategy.address,
           calculateTick(2000, 60),
           calculateTick(4000, 60),
-          "344003867440483648043",
-          "840909296556212742",
-          "3482499999999999946440"
+          "344003862147950666443",
+          "840909283618741371",
+          "3482499946421398503505"
         );
     });
 
@@ -360,8 +360,8 @@ describe("UniswapV3TwapLiquidityManager", () => {
           strategy.address,
           calculateTick(2000, 60),
           calculateTick(4000, 60),
-          "840909296556212742",
-          "3482499999999999946440"
+          "840909283618741371",
+          "3482499946421398503505"
         );
     });
   });

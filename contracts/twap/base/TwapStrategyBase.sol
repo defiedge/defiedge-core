@@ -16,7 +16,7 @@ contract TwapStrategyBase is ERC20, ITwapStrategyBase {
     bool public override onHold;
 
     uint256 public constant MIN_SHARE = 1e16;
-    uint256 public constant MINIMUM_LIQUIDITY = 1000;
+    uint256 public constant MINIMUM_LIQUIDITY = 1e12;
 
     // store ticks
     Tick[] public ticks;
@@ -36,7 +36,7 @@ contract TwapStrategyBase is ERC20, ITwapStrategyBase {
 
     uint256 public constant MAX_TICK_LENGTH = 20;
 
-    bool[2] public override useTwap; // use uniswap v3 pool to fetch price in usd - (true => use uniswap v3 price, false - use chainlink price) 
+    bool[2] public override useTwap; // use uniswap v3 pool to fetch price in usd - (true => use uniswap v3 price, false - use chainlink price)
 
     // Modifiers
     modifier onlyOperator() {
@@ -94,7 +94,6 @@ contract TwapStrategyBase is ERC20, ITwapStrategyBase {
         uint256 _totalAmount1,
         address _user
     ) internal returns (uint256 share) {
-
         uint256 _shareTotalSupply = totalSupply();
 
         // calculate number of shares
@@ -115,7 +114,7 @@ contract TwapStrategyBase is ERC20, ITwapStrategyBase {
         uint256 managerShare;
         uint256 managementFeeRate = manager.managementFeeRate();
 
-        if(_shareTotalSupply == 0){
+        if (_shareTotalSupply == 0) {
             share = share.sub(MINIMUM_LIQUIDITY);
             _mint(address(0), MINIMUM_LIQUIDITY);
         }

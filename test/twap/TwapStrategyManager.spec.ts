@@ -575,7 +575,7 @@ describe("TwapStrategyManager", () => {
 
       await mint(signers[0])
 
-      expect(await strategy.accManagementFeeShares()).to.equal("324989818951040917");
+      expect(await strategy.accManagementFeeShares()).to.equal("324989813951040922");
 
     });
   })

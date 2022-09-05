@@ -354,7 +354,7 @@ describe("TwapStrategyBase", () => {
         .connect(signers[1])
         .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
       expect(await strategy.balanceOf(signers[1].address)).to.equal(
-        "64672973971257142590"
+        "64672972976257143585"
       );
     });
 
@@ -370,7 +370,7 @@ describe("TwapStrategyBase", () => {
         .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
 
       expect(await strategy.accManagementFeeShares()).to.equal(
-        "649979637902081835"
+        "649979627902081845"
       );
     });
 
@@ -505,7 +505,7 @@ describe("TwapStrategyBase", () => {
 
     it("should mint accManagementFeeShares to feeTo address", async () => {
       expect(await strategy.accManagementFeeShares()).to.equal(
-        "649979637902081835"
+        "649979627902081845"
       );
 
       // swap tokens
@@ -530,14 +530,14 @@ describe("TwapStrategyBase", () => {
         .withArgs(
           "0x0000000000000000000000000000000000000000",
           signers[2].address,
-          "643479841523061017" 
+          "643479831623061027" 
         );
       expect(claimFee)
         .to.emit(strategy, "Transfer")
         .withArgs(
           "0x0000000000000000000000000000000000000000",
           signers[3].address,
-          "6499796379020818"
+          "6499796279020818"
         );
     });
 
@@ -548,10 +548,10 @@ describe("TwapStrategyBase", () => {
       await strategy.claimFee();
 
       expect(await strategy.balanceOf(signers[2].address)).to.equal(
-        "643479841523061017"
+        "643479831623061027"
       );
       expect(await strategy.balanceOf(signers[3].address)).to.equal(
-        "6499796379020818"
+        "6499796279020818"
       );
     });
 
@@ -573,7 +573,7 @@ describe("TwapStrategyBase", () => {
       await strategy.connect(signers[1]).burn(shares, 0, 0)
 
       expect(await strategy.accManagementFeeShares()).to.equal(
-        "649979637902081835"
+        "649979627902081845"
       );
 
       await strategy.claimFee();
