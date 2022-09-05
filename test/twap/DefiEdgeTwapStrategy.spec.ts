@@ -281,8 +281,8 @@ describe("DefiEdgeTwapStrategy", () => {
     it("should set ticks", async () => {
       let tick = await strategy.ticks(0);
 
-      expect(tick.amount0).to.be.equal(0);
-      expect(tick.amount1).to.be.equal(0);
+      // expect(tick.amount0).to.be.equal(0);
+      // expect(tick.amount1).to.be.equal(0);
       expect(tick.tickLower).to.be.equal(calculateTick(2500, 60));
       expect(tick.tickUpper).to.be.equal(calculateTick(3500, 60));
     });
@@ -476,7 +476,7 @@ describe("DefiEdgeTwapStrategy", () => {
         .to.emit(strategy, "Mint")
         .withArgs(
           signers[1].address,
-          "64672973971257142590",
+          "64672972976257143585",
           expandTo18Decimals(1),
           "3500000000000000000000"
         );
@@ -506,7 +506,7 @@ describe("DefiEdgeTwapStrategy", () => {
 
       await mint(signers[0])
 
-      expect(await strategy.balanceOf(signers[0].address)).to.eq("64672973971257142590")
+      expect(await strategy.balanceOf(signers[0].address)).to.eq("64672972976257143585")
 
       const shareTobeBurned = (await strategy.balanceOf(signers[0].address)).toString();
   
@@ -534,7 +534,7 @@ describe("DefiEdgeTwapStrategy", () => {
 
       await mint(signers[0])
 
-      expect(await strategy.balanceOf(signers[0].address)).to.eq("64672973971257134529")
+      expect(await strategy.balanceOf(signers[0].address)).to.eq("64672973971257132420")
 
       await strategy.claimFee()
 
@@ -552,7 +552,7 @@ describe("DefiEdgeTwapStrategy", () => {
   
         await mint(signers[0])
   
-        expect(await strategy.balanceOf(signers[0].address)).to.eq("64672973971257142590")
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64672972976257143585")
   
         const shareTobeBurned = (await strategy.balanceOf(signers[0].address)).toString();
     
@@ -562,7 +562,7 @@ describe("DefiEdgeTwapStrategy", () => {
   
         await mint(signers[0])
   
-        expect(await strategy.balanceOf(signers[0].address)).to.eq("64672973971257134529")
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64672973971257132420")
   
     })
   });
@@ -643,17 +643,17 @@ describe("DefiEdgeTwapStrategy", () => {
         .to.emit(strategy, "Burn")
         .withArgs(
           signers[0].address,
-          "64672973971257142590",
-          "994999999882178285",
-          "3482500000355665635518"
+          "64672972976257143585",
+          "994999984574006446",
+          "3482499946777064187117"
         );
     });
 
     it("should burn the liquidity", async () => {
       const tick = await strategy.ticks(0);
-
-      let amount0 = tick.amount0.toString();
-      let amount1 = tick.amount1.toString();
+      let amounts = await pool.getAmountsForTick(strategy.address, tick.tickLower, tick.tickUpper);
+      let amount0 = amounts.amount0.toString();
+      let amount1 = amounts.amount1.toString();
 
       // console.log('amount0: '+ amount0)
       // console.log('amount1: '+ amount1)
@@ -687,9 +687,9 @@ describe("DefiEdgeTwapStrategy", () => {
           strategy.address,
           calculateTick(2500, 60),
           calculateTick(3500, 60),
-          "727510375048865587926",
-          "994999999999999984",
-          "3434999676203068291483"
+          "727510363856047661052",
+          "994999984691828143",
+          "3434999623355263953257"
         );
     });
 
@@ -722,10 +722,13 @@ describe("DefiEdgeTwapStrategy", () => {
       const tick = await strategy.ticks(0);
       const tick1 = await strategy.ticks(1);
 
-      let amount0 = tick.amount0.toString();
-      let amount1 = tick.amount1.toString();
-      let amount02 = tick1.amount0.toString();
-      let amount12 = tick1.amount1.toString();
+      let amounts = await pool.getAmountsForTick(strategy.address, tick.tickLower, tick.tickUpper);
+      let amounts1 = await pool.getAmountsForTick(strategy.address, tick1.tickLower, tick1.tickUpper);
+      
+      let amount0 = amounts.amount0.toString();
+      let amount1 = amounts.amount1.toString();
+      let amount02 = amounts1.amount0.toString();
+      let amount12 = amounts1.amount1.toString();
 
       const shares = (await strategy.balanceOf(signers[0].address)).toString();
       // const shares = "64199996762030683443";
@@ -754,17 +757,17 @@ describe("DefiEdgeTwapStrategy", () => {
         .to.emit(strategy, "Burn")
         .withArgs(
           signers[0].address,
-          "129345947942514286175",
-          "1989999999999999977",
-          "6964999999999999946469"
+          "129345946947514287170",
+          "1989999984691828137",
+          "6964999946421398503541"
         );
     });
 
     it("should operator claim fee and burn token", async () => {
       const tick = await strategy.ticks(0);
-
-      let amount0 = tick.amount0.toString();
-      let amount1 = tick.amount1.toString();
+      let amounts = await pool.getAmountsForTick(strategy.address, tick.tickLower, tick.tickUpper);
+      let amount0 = amounts.amount0.toString();
+      let amount1 = amounts.amount1.toString();
 
       // console.log('amount0: '+ amount0)
       // console.log('amount1: '+ amount1)
@@ -795,9 +798,9 @@ describe("DefiEdgeTwapStrategy", () => {
           strategy.address,
           calculateTick(2500, 60),
           calculateTick(3500, 60),
-          "727510375048865587926",
-          "994999999999999984",
-          "3434999676203068291483"
+          "727510363856047661052",
+          "994999984691828143",
+          "3434999623355263953257"
         );
 
       await factory.changeFeeTo(signers[3].address);
@@ -806,7 +809,7 @@ describe("DefiEdgeTwapStrategy", () => {
 
       await expect(claimFee)
         .to.emit(strategy, "ClaimFee")
-        .withArgs("324989818951040917", "0");
+        .withArgs("324989813951040922", "0");
 
       const sharesFeeto = (
         await strategy.balanceOf(signers[2].address)
@@ -820,34 +823,34 @@ describe("DefiEdgeTwapStrategy", () => {
           strategy.address,
           calculateTick(2500, 60),
           calculateTick(3500, 60),
-          "3655831030396309481",
-          "4999999999999999",
-          "17261304905543056712"
+          "3655830974150993266",
+          "4999999923074513",
+          "17261304639976200743"
         );
     });
 
-    it("should decrease the tick amount", async () => {
-      let tick;
-      tick = await strategy.ticks(0);
-      const before = {
-        amount0: expandToString(
-          parseInt(tick.amount0.toString()) - 999999999999999998
-        ),
-        amount1: expandToString(
-          parseInt(tick.amount1.toString()) - 3452260981108611401313
-        ),
-      };
+    // it("should decrease the tick amount", async () => {
+    //   let tick;
+    //   tick = await strategy.ticks(0);
+    //   const before = {
+    //     amount0: expandToString(
+    //       parseInt(tick.amount0.toString()) - 999999999999999998
+    //     ),
+    //     amount1: expandToString(
+    //       parseInt(tick.amount1.toString()) - 3452260981108611401313
+    //     ),
+    //   };
 
-      const shares = (await strategy.balanceOf(signers[0].address)).toString();
+    //   const shares = (await strategy.balanceOf(signers[0].address)).toString();
 
-      await strategy.connect(signers[0]).burn(shares, 0, 0);
-      tick = await strategy.ticks(0);
-      const after = {
-        amount0: "0",
-        amount1: "0",
-      };
-      expect(before).to.eqls(after);
-    });
+    //   await strategy.connect(signers[0]).burn(shares, 0, 0);
+    //   tick = await strategy.ticks(0);
+    //   const after = {
+    //     amount0: "0",
+    //     amount1: "0",
+    //   };
+    //   expect(before).to.eqls(after);
+    // });
 
     it("should revert if burned amounts are less than min amounts", async () => {
       const shares = (await strategy.balanceOf(signers[0].address)).toString();
@@ -886,7 +889,7 @@ describe("DefiEdgeTwapStrategy", () => {
       const balanceBefore = (await token0A.balanceOf(signers[0].address)).toString();
       
       await strategy.connect(signers[0]).burn(shares, 0, 0);
-      const balanceAfterExpected = new bn(balanceBefore).plus("994999999999999984").toFixed();
+      const balanceAfterExpected = new bn(balanceBefore).plus("994999984691828143").toFixed();
       expect(await token0A.balanceOf(signers[0].address)).to.equal(balanceAfterExpected);
     });
 
@@ -899,7 +902,7 @@ describe("DefiEdgeTwapStrategy", () => {
       const balanceBefore = (await token1A.balanceOf(signers[0].address)).toString();
 
       await strategy.connect(signers[0]).burn(shares, 0, 0);
-      const balanceAfterExpected = new bn(balanceBefore).plus("3482499999999999946445").toFixed();
+      const balanceAfterExpected = new bn(balanceBefore).plus("3482499946421398503516").toFixed();
       expect(await token1A.balanceOf(signers[0].address)).to.equal(balanceAfterExpected);
     });
 
@@ -911,8 +914,8 @@ describe("DefiEdgeTwapStrategy", () => {
         .withArgs(
           signers[0].address,
           shares,
-          "994999999999999984",
-          "3482499999999999946445"
+          "994999984691828143",
+          "3482499946421398503516"
         );
     });
 
@@ -931,6 +934,9 @@ describe("DefiEdgeTwapStrategy", () => {
       await strategy.getAUMWithFees(true);
 
       let tick = await strategy.ticks(0);
+      let amounts = await pool.getAmountsForTick(strategy.address, tick.tickLower, tick.tickUpper);
+      let amount0 = amounts.amount0.toString();
+      let amount1 = amounts.amount1.toString();
 
       let token0A = await ethers.getContractAt(
         "TestERC20",
@@ -968,11 +974,11 @@ describe("DefiEdgeTwapStrategy", () => {
         .dividedBy(shareTotalSupply)
         .toFixed(0);
 
-      let returnAmount0 = new bn(tick.amount0.toString())
+      let returnAmount0 = new bn(amount0)
         .multipliedBy(shareTobeBurned)
         .dividedBy(shareTotalSupply)
         .toFixed(0);
-      let returnAmount1 = new bn(tick.amount1.toString())
+      let returnAmount1 = new bn(amount1)
         .multipliedBy(shareTobeBurned)
         .dividedBy(shareTotalSupply)
         .toFixed(0);
@@ -988,11 +994,10 @@ describe("DefiEdgeTwapStrategy", () => {
 
       let totalAmount0 = new bn(unusedReturnAmount0)
         .plus(returnAmount0)
-        .minus(29455425)
         .toFixed(0);
       let totalAmount1 = new bn(unusedReturnAmount1)
         .plus(returnAmount1)
-        .plus(88652332568)
+        .minus(3)
         .toFixed(0);
 
       console.log('totalAmount0: ' + totalAmount0)
@@ -1024,6 +1029,9 @@ describe("DefiEdgeTwapStrategy", () => {
 
 
       let tick = await strategy.ticks(0);
+      let amounts = await pool.getAmountsForTick(strategy.address, tick.tickLower, tick.tickUpper);
+      let amount0 = amounts.amount0.toString();
+      let amount1 = amounts.amount1.toString();
 
       let token0A = await ethers.getContractAt(
         "TestERC20",
@@ -1061,11 +1069,11 @@ describe("DefiEdgeTwapStrategy", () => {
         .dividedBy(shareTotalSupply)
         .toFixed(0);
 
-      let returnAmount0 = new bn(tick.amount0.toString())
+      let returnAmount0 = new bn(amount0)
         .multipliedBy(shareTobeBurned)
         .dividedBy(shareTotalSupply)
         .toFixed(0);
-      let returnAmount1 = new bn(tick.amount1.toString())
+      let returnAmount1 = new bn(amount1)
         .multipliedBy(shareTobeBurned)
         .dividedBy(shareTotalSupply)
         .toFixed(0);
@@ -1081,11 +1089,10 @@ describe("DefiEdgeTwapStrategy", () => {
 
       let totalAmount0 = new bn(unusedReturnAmount0)
         .plus(returnAmount0)
-        .minus(58910850)
         .toFixed(0);
       let totalAmount1 = new bn(unusedReturnAmount1)
         .plus(returnAmount1)
-        .plus(177304665139)
+        .minus(2)
         .toFixed(0);
 
       console.log('totalAmount0: ' + totalAmount0)
@@ -1116,6 +1123,9 @@ describe("DefiEdgeTwapStrategy", () => {
       await strategy.getAUMWithFees(true);
 
       let tick = await strategy.ticks(0);
+      let amounts = await pool.getAmountsForTick(strategy.address, tick.tickLower, tick.tickUpper);
+      let amount0 = amounts.amount0.toString();
+      let amount1 = amounts.amount1.toString();
 
       let token0A = await ethers.getContractAt(
         "TestERC20",
@@ -1153,11 +1163,11 @@ describe("DefiEdgeTwapStrategy", () => {
         .dividedBy(shareTotalSupply)
         .toFixed(0);
 
-      let returnAmount0 = new bn(tick.amount0.toString())
+      let returnAmount0 = new bn(amount0)
         .multipliedBy(shareTobeBurned)
         .dividedBy(shareTotalSupply)
         .toFixed(0);
-      let returnAmount1 = new bn(tick.amount1.toString())
+      let returnAmount1 = new bn(amount1)
         .multipliedBy(shareTobeBurned)
         .dividedBy(shareTotalSupply)
         .toFixed(0);
@@ -1173,11 +1183,10 @@ describe("DefiEdgeTwapStrategy", () => {
 
       let totalAmount0 = new bn(unusedReturnAmount0)
         .plus(returnAmount0)
-        .minus(88366275)
         .toFixed(0);
       let totalAmount1 = new bn(unusedReturnAmount1)
         .plus(returnAmount1)
-        .plus(265956997708)
+        .minus(3)
         .toFixed(0);
 
       console.log('totalAmount0: ' + totalAmount0)
@@ -1195,6 +1204,9 @@ describe("DefiEdgeTwapStrategy", () => {
 
     it("burn 100% - should calculate correct amount", async () => {
       let tick = await strategy.ticks(0);
+      let amounts = await pool.getAmountsForTick(strategy.address, tick.tickLower, tick.tickUpper);
+      let amount0 = amounts.amount0.toString();
+      let amount1 = amounts.amount1.toString();
 
       let token0A = await ethers.getContractAt(
         "TestERC20",
@@ -1232,11 +1244,11 @@ describe("DefiEdgeTwapStrategy", () => {
         .dividedBy(shareTotalSupply)
         .toFixed(0);
 
-      let returnAmount0 = new bn(tick.amount0.toString())
+      let returnAmount0 = new bn(amount0)
         .multipliedBy(shareTobeBurned)
         .dividedBy(shareTotalSupply)
         .toFixed(0);
-      let returnAmount1 = new bn(tick.amount1.toString())
+      let returnAmount1 = new bn(amount1)
         .multipliedBy(shareTobeBurned)
         .dividedBy(shareTotalSupply)
         .toFixed(0);
@@ -1252,11 +1264,10 @@ describe("DefiEdgeTwapStrategy", () => {
 
       let totalAmount0 = new bn(unusedReturnAmount0)
         .plus(returnAmount0)
-        .minus(1)
         .toFixed(0);
       let totalAmount1 = new bn(unusedReturnAmount1)
         .plus(returnAmount1)
-        .minus(5)
+        .minus(4)
         .toFixed(0);
 
       // console.log('totalAmount0: ' + totalAmount0)
@@ -1309,7 +1320,7 @@ describe("DefiEdgeTwapStrategy", () => {
         // expect(await strategy.accPerformanceFeeShares()).to.eq(0)
         // expect(await strategy.accProtocolPerformanceFeeShares()).to.eq(0)
             
-        expect(await strategy.balanceOf(signers[0].address)).to.eq("64672973971257142590")
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64672972976257143585")
   
         const shareTobeBurned1 = (await strategy.balanceOf(signers[0].address)).toString();
     
@@ -1359,8 +1370,8 @@ describe("DefiEdgeTwapStrategy", () => {
           .withArgs(
             signers[0].address,
             "60000000000000000000",
-            "923105840462252302",
-            "3230870442330429811617"
+            "923105840462252297",
+            "3230870442330429811619"
           );
   
       })
@@ -1371,7 +1382,7 @@ describe("DefiEdgeTwapStrategy", () => {
         // expect(await strategy.accPerformanceFeeShares()).to.eq(0)
         // expect(await strategy.accProtocolPerformanceFeeShares()).to.eq(0)
             
-        expect(await strategy.balanceOf(signers[0].address)).to.eq("64672973971257142590")
+        expect(await strategy.balanceOf(signers[0].address)).to.eq("64672972976257143585")
   
         const shareTobeBurned1 = (await strategy.balanceOf(signers[0].address)).toString();
       
@@ -1390,8 +1401,8 @@ describe("DefiEdgeTwapStrategy", () => {
           .withArgs(
             signers[0].address,
             "60000000000000000000",
-            "923105840571560772",
-            "3230870442000462902214"
+            "923105840571560802",
+            "3230870442000462902213"
           );
   
       })
@@ -1504,9 +1515,10 @@ describe("DefiEdgeTwapStrategy", () => {
     });
 
     it("should burn all previous liquidity and decrease tick amounts", async () => {
-      expect((await strategy.ticks(0)).amount0).to.eq("1000000000000000000");
-      expect((await strategy.ticks(0)).amount1).to.eq("3452260981108611401314");
-
+      const tick = await strategy.ticks(0);
+      let amounts = await pool.getAmountsForTick(strategy.address, tick.tickLower, tick.tickUpper);
+      expect(amounts.amount0.toString()).to.eq("999999999999999999");
+      expect(amounts.amount1.toString()).to.eq("3452260981108611401313");
       await strategy.rebalance(
         "0x",
         [
@@ -1550,8 +1562,11 @@ describe("DefiEdgeTwapStrategy", () => {
       // await strategy.mint(expandTo18Decimals(1), 0, 0, 0, 0);
       // await strategy.mint(0, expandTo18Decimals(3500), 0, 0, 0);
 
-      expect((await strategy.ticks(0)).amount0).to.eq("1000000000000000000");
-      expect((await strategy.ticks(0)).amount1).to.eq("3452260981108611401314");
+      const tick = await strategy.ticks(0);
+      let amounts = await pool.getAmountsForTick(strategy.address, tick.tickLower, tick.tickUpper);
+      expect(amounts.amount0.toString()).to.eq("999999999999999999");
+      expect(amounts.amount1.toString()).to.eq("3452260981108611401313");
+
 
       let token0A = await ethers.getContractAt(
         "TestERC20",
@@ -1579,13 +1594,18 @@ describe("DefiEdgeTwapStrategy", () => {
         false
       );
 
-      expect((await strategy.ticks(0)).amount0).to.eq("2000000000000000000");
-      expect((await strategy.ticks(0)).amount1).to.eq("6904521962217222802628");
+      const tick1 = await strategy.ticks(0);
+      let amounts1 = await pool.getAmountsForTick(strategy.address, tick1.tickLower, tick1.tickUpper);
+      expect(amounts1.amount0.toString()).to.eq("1999999999999999999");
+      expect(amounts1.amount1.toString()).to.eq("6904521962217222802627");
+
     });
 
     it("should burn and redeploy all liquidity", async () => {
-      expect((await strategy.ticks(0)).amount0).to.eq("1000000000000000000");
-      expect((await strategy.ticks(0)).amount1).to.eq("3452260981108611401314");
+      const tick = await strategy.ticks(0);
+      let amounts = await pool.getAmountsForTick(strategy.address, tick.tickLower, tick.tickUpper);
+      expect(amounts.amount0.toString()).to.eq("999999999999999999");
+      expect(amounts.amount1.toString()).to.eq("3452260981108611401313");
 
       await strategy.rebalance(
         "0x",
@@ -1601,8 +1621,10 @@ describe("DefiEdgeTwapStrategy", () => {
         false
       );
 
-      expect((await strategy.ticks(0)).amount0).to.eq("999924402844964638");
-      expect((await strategy.ticks(0)).amount1).to.eq("3451999999999999999998");
+      const tick1 = await strategy.ticks(0);
+      let amounts1 = await pool.getAmountsForTick(strategy.address, tick1.tickLower, tick1.tickUpper);
+      expect(amounts1.amount0.toString()).to.eq("999924402844964637");
+      expect(amounts1.amount1.toString()).to.eq("3451999999999999999997");
 
     });
   });
@@ -1684,17 +1706,18 @@ describe("DefiEdgeTwapStrategy", () => {
       );
 
       const tick = await strategy.ticks(0);
+      let amounts = await pool.getAmountsForTick(strategy.address, tick.tickLower, tick.tickUpper);
 
       const ticks = {
-        amount0: tick.amount0,
-        amount1: tick.amount1,
+        amount0: amounts.amount0.toString(),
+        amount1: amounts.amount1.toString(),
         tickLower: tick.tickLower,
         tickUpper: tick.tickUpper,
       };
 
       expect(ticks).to.eqls({
-        amount0: BigNumber.from(expandTo18Decimals(0.000054276267152027)),
-        amount1: BigNumber.from(expandTo18Decimals(0.3)),
+        amount0: "54276267152026",
+        amount1: "299999999999999999",
         tickLower: 78300,
         tickUpper: 81060,
       });
@@ -1743,9 +1766,7 @@ describe("DefiEdgeTwapStrategy", () => {
   });
 
   describe("#Redeploy", async () => {
-    let oldTicks: ([BigNumber, BigNumber, number, number] & {
-      amount0: BigNumber;
-      amount1: BigNumber;
+    let oldTicks: ([number, number] & {
       tickLower: number;
       tickUpper: number;
     })[];
@@ -1788,15 +1809,17 @@ describe("DefiEdgeTwapStrategy", () => {
 
     it("should push new tick and amounts to ticks", async () => {
       const tick = await strategy.ticks(0);
+      let amounts = await pool.getAmountsForTick(strategy.address, tick.tickLower, tick.tickUpper);
+
       const newTick = {
-        amount0: tick.amount0.toString(),
-        amount1: tick.amount1.toString(),
+        amount0: amounts.amount0.toString(),
+        amount1: amounts.amount1.toString(),
         tickLower: tick.tickLower.toString(),
         tickUpper: tick.tickUpper.toString(),
       };
       expect(newTick).to.eqls({
-        amount0: expandTo18Decimals(0.000054276267152027),
-        amount1: expandTo18Decimals(0.3),
+        amount0: "54276267152026",
+        amount1: "299999999999999999",
         tickLower: "78300",
         tickUpper: "81060",
       });

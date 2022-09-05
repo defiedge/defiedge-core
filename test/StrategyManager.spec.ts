@@ -559,7 +559,7 @@ describe("StrategyManager", () => {
 
       await mint(signers[0])
 
-      expect(await strategy.accManagementFeeShares()).to.equal("322613049055430565");
+      expect(await strategy.accManagementFeeShares()).to.equal("322613044055430570");
 
     });
   })

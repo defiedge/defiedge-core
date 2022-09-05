@@ -404,7 +404,7 @@ describe("StrategyBase", () => {
         .connect(signers[1])
         .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
       expect(await strategy.balanceOf(signers[1].address)).to.equal(
-        "64199996762030682448"
+        "64199995767030683443"
       );
     });
 
@@ -420,7 +420,7 @@ describe("StrategyBase", () => {
         .mint(expandTo18Decimals(1), expandTo18Decimals(3500), 0, 0, 0);
 
       expect(await strategy.accManagementFeeShares()).to.equal(
-        "645226098110861130"
+        "645226088110861140"
       );
     });
 
@@ -555,7 +555,7 @@ describe("StrategyBase", () => {
 
     it("should mint accPerformanceFeeShares, accProtocolPerformanceFeeShares  & accManagementFeeShares to feeTo address", async () => {
       expect(await strategy.accManagementFeeShares()).to.equal(
-        "645226098110861130"
+        "645226088110861140"
       );
 
       expect(await strategy.accPerformanceFeeShares()).to.equal("0");
@@ -586,14 +586,14 @@ describe("StrategyBase", () => {
         .withArgs(
           "0x0000000000000000000000000000000000000000",
           signers[2].address,
-          "638773837129805602" 
+          "638773827229805612" 
         );
       expect(claimFee)
         .to.emit(strategy, "Transfer")
         .withArgs(
           "0x0000000000000000000000000000000000000000",
           signers[3].address,
-          "6452260981162766"
+          "6452260881162766"
         );
     });
 
@@ -604,10 +604,10 @@ describe("StrategyBase", () => {
       await strategy.claimFee();
 
       expect(await strategy.balanceOf(signers[2].address)).to.equal(
-        "638773837129752519"
+        "638773827229752529"
       );
       expect(await strategy.balanceOf(signers[3].address)).to.equal(
-        "6452260981108611"
+        "6452260881108611"
       );
     });
 
@@ -632,7 +632,7 @@ describe("StrategyBase", () => {
       await strategy.connect(signers[1]).burn(shares, 0, 0)
 
       expect(await strategy.accManagementFeeShares()).to.equal(
-        "645226098110861130"
+        "645226088110861140"
       );
       expect(await strategy.accPerformanceFeeShares()).to.equal(
         "53619"
