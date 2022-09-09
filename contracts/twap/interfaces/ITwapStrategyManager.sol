@@ -4,7 +4,6 @@ pragma solidity ^0.7.6;
 import "./ITwapStrategyFactory.sol";
 
 interface ITwapStrategyManager {
-
     function isUserWhiteListed(address _account) external view returns (bool);
 
     function isAllowedToManage(address) external view returns (bool);
@@ -29,7 +28,7 @@ interface ITwapStrategyManager {
 
     function factory() external view returns (ITwapStrategyFactory);
 
-    function increamentSwapCounter() external ;
+    function increamentSwapCounter() external;
 
     function twapPricePeriod() external view returns (uint256);
 }

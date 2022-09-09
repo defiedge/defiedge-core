@@ -10,7 +10,6 @@ import "./ITwapStrategyBase.sol";
 import "./IDefiEdgeTwapStrategyDeployer.sol";
 
 interface ITwapStrategyFactory {
-
     struct CreateStrategyParams {
         address operator;
         address feeTo;
@@ -40,15 +39,18 @@ interface ITwapStrategyFactory {
 
     function denied(address) external view returns (bool);
 
-    function protocolFeeRate() external view returns (uint256);  // 1e8 means 100%
+    function protocolFeeRate() external view returns (uint256); // 1e8 means 100%
 
-    function protocolPerformanceFeeRate() external view returns (uint256);  // 1e8 means 100%
+    function protocolPerformanceFeeRate() external view returns (uint256); // 1e8 means 100%
 
     function governance() external view returns (address);
 
     function pendingGovernance() external view returns (address);
-    
-    function deployerProxy() external view returns (IDefiEdgeTwapStrategyDeployer);
+
+    function deployerProxy()
+        external
+        view
+        returns (IDefiEdgeTwapStrategyDeployer);
 
     function uniswapV3Factory() external view returns (IUniswapV3Factory);
 
@@ -56,17 +58,21 @@ interface ITwapStrategyFactory {
 
     function oneInchRouter() external view returns (IOneInchRouter);
 
-    function getHeartBeat(address _base, address _quote) external view returns(uint256);
+    function getHeartBeat(address _base, address _quote)
+        external
+        view
+        returns (uint256);
 
-    function createStrategy(CreateStrategyParams calldata params) external payable;
+    function createStrategy(CreateStrategyParams calldata params)
+        external
+        payable;
 
-    event NewStrategy (address indexed strategy, address indexed creater);
-    event ChangeDeviation (uint256 deviation);
-    event ChangeSlippage (uint256 slippage);
-    event ChangeProtocolFee (uint256 fee);
-    event ChangeProtocolPerformanceFee (uint256 fee);
-    event StrategyStatusChanged (bool status);
-    event ChangeStrategyCreationFee (uint256 amount);
-    event ClaimFees (address to, uint256 amount);
-
+    event NewStrategy(address indexed strategy, address indexed creater);
+    event ChangeDeviation(uint256 deviation);
+    event ChangeSlippage(uint256 slippage);
+    event ChangeProtocolFee(uint256 fee);
+    event ChangeProtocolPerformanceFee(uint256 fee);
+    event StrategyStatusChanged(bool status);
+    event ChangeStrategyCreationFee(uint256 amount);
+    event ClaimFees(address to, uint256 amount);
 }

@@ -8,7 +8,6 @@ import "../../interfaces/IOneInchRouter.sol";
 import "./ITwapStrategyManager.sol";
 
 interface ITwapStrategyBase {
-
     struct Tick {
         int24 tickLower;
         int24 tickUpper;
@@ -31,5 +30,4 @@ interface ITwapStrategyBase {
     function useTwap(uint256 index) external view returns (bool);
 
     function claimFee() external;
-    
 }

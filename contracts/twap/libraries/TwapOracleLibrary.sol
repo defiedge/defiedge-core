@@ -91,7 +91,10 @@ library TwapOracleLibrary {
         address _quote,
         uint256 _validPeriod
     ) internal view returns (uint256 price) {
-        (, int256 _price, , uint256 updatedAt, ) = _registry.latestRoundData(_base, _quote);
+        (, int256 _price, , uint256 updatedAt, ) = _registry.latestRoundData(
+            _base,
+            _quote
+        );
 
         require(block.timestamp.sub(updatedAt) < _validPeriod, "OLD_PRICE");
 
@@ -127,19 +130,18 @@ library TwapOracleLibrary {
         address _priceOf,
         bool[2] memory _useTwap,
         ITwapStrategyManager _manager
-    )
-        internal
-        view
-        returns (
-            uint256 price
-        )
-    {
+    ) internal view returns (uint256 price) {
         uint256 _period = _manager.twapPricePeriod();
- 
-        if(_useTwap[0]){
+
+        if (_useTwap[0]) {
             address _token1 = _pool.token1();
             // token0 - twap , token1 - chainlink
-            uint256 token1ChainlinkPrice = getChainlinkPrice(_registry, _token1, Denominations.USD, _factory.getHeartBeat(_token1, Denominations.USD));
+            uint256 token1ChainlinkPrice = getChainlinkPrice(
+                _registry,
+                _token1,
+                Denominations.USD,
+                _factory.getHeartBeat(_token1, Denominations.USD)
+            );
 
             if (_priceOf == _token1) {
                 price = token1ChainlinkPrice;
@@ -148,12 +150,15 @@ library TwapOracleLibrary {
                 uint256 _price = consult(address(_pool), uint32(_period));
                 price = _price.mul(token1ChainlinkPrice).div(BASE);
             }
-
-
         } else {
             address _token0 = _pool.token0();
             // // token0 - chainlink , token1 - twap
-            uint256 token0ChainlinkPrice = getChainlinkPrice(_registry, _token0, Denominations.USD, _factory.getHeartBeat(_token0, Denominations.USD));
+            uint256 token0ChainlinkPrice = getChainlinkPrice(
+                _registry,
+                _token0,
+                Denominations.USD,
+                _factory.getHeartBeat(_token0, Denominations.USD)
+            );
 
             if (_priceOf == _token0) {
                 price = token0ChainlinkPrice;
@@ -163,7 +168,6 @@ library TwapOracleLibrary {
                 _price = 1e36 / _price;
                 price = _price.mul(token0ChainlinkPrice).div(BASE);
             }
-
         }
     }
 
@@ -190,15 +194,29 @@ library TwapOracleLibrary {
     ) public view returns (bool) {
         _amountIn = normalise(_tokenIn, _amountIn);
         _amountOut = normalise(_tokenOut, _amountOut);
-        
+
         // get tokenIn prce in USD fron chainlink
         uint256 amountInUSD = _amountIn.mul(
-            getPriceInUSD(_factory, _pool, _registry, _tokenIn, _useTwap, _manager)
+            getPriceInUSD(
+                _factory,
+                _pool,
+                _registry,
+                _tokenIn,
+                _useTwap,
+                _manager
+            )
         );
 
         // get tokenout prce in USD fron chainlink
         uint256 amountOutUSD = _amountOut.mul(
-            getPriceInUSD(_factory, _pool, _registry, _tokenOut, _useTwap, _manager)
+            getPriceInUSD(
+                _factory,
+                _pool,
+                _registry,
+                _tokenOut,
+                _useTwap,
+                _manager
+            )
         );
 
         uint256 diff;
@@ -282,7 +300,6 @@ library TwapOracleLibrary {
         return true;
     }
 
-
     /**
      * @notice Gets time weighted tick to calculate price
      * @param _pool Address of the pool
@@ -331,12 +348,18 @@ library TwapOracleLibrary {
             uint256 ratioX192 = uint256(sqrtRatioX96).mul(sqrtRatioX96);
             price = FullMath.mulDiv(ratioX192, BASE, 1 << 192);
         } else {
-            uint256 ratioX128 = FullMath.mulDiv(sqrtRatioX96, sqrtRatioX96, 1 << 64);
+            uint256 ratioX128 = FullMath.mulDiv(
+                sqrtRatioX96,
+                sqrtRatioX96,
+                1 << 64
+            );
             price = FullMath.mulDiv(ratioX128, BASE, 1 << 128);
         }
 
-        uint256 token0Decimals = IERC20Minimal(IUniswapV3Pool(_pool).token0()).decimals();
-        uint256 token1Decimals = IERC20Minimal(IUniswapV3Pool(_pool).token1()).decimals();
+        uint256 token0Decimals = IERC20Minimal(IUniswapV3Pool(_pool).token0())
+            .decimals();
+        uint256 token1Decimals = IERC20Minimal(IUniswapV3Pool(_pool).token1())
+            .decimals();
 
         bool decimalCheck = token0Decimals > token1Decimals;
 
