@@ -29,6 +29,8 @@ interface ITwapStrategyFactory {
 
     function allowedSlippage() external view returns (uint256); // 1e18 means 100%
 
+    function twapPricePeriod() external view returns (uint256); //in seconds
+
     function isValidStrategy(address) external view returns (bool);
 
     function strategyByIndex(uint256) external view returns (address);

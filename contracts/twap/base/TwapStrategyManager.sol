@@ -69,7 +69,7 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
     bool public isStrategyPrivate = false; // if strategy is private or public
 
     // Priceperiod for UniswapV3 TWAP
-    uint256 public override twapPricePeriod = 1800;
+    uint256 private _defaultTwapPricePeriod = 0;
 
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE"); // can only rebalance and swap
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE"); // can control everything
@@ -155,6 +155,19 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
             hasRole(ADMIN_ROLE, _account) ||
             hasRole(MANAGER_ROLE, _account) ||
             hasRole(BURNER_ROLE, _account);
+    }
+
+    /**
+     * @notice Returns latest twap price period
+     * @dev If default price of the twap is not setup for the strategy, 
+          return default value from the factory
+     */
+    function twapPricePeriod() public view override returns (uint256) {
+        if (_defaultTwapPricePeriod > 0) {
+            return _defaultTwapPricePeriod;
+        } else {
+            return ITwapStrategyFactory(factory).twapPricePeriod();
+        }
     }
 
     function strategy() public view returns (address) {
@@ -303,7 +316,7 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
      * @param _period Maximum number of swap that can be performed in a day
      */
     function changeTwapPricePeriod(uint256 _period) external onlyGovernance {
-        twapPricePeriod = _period;
-        emit TwapPricePeriodChanged(twapPricePeriod);
+        _defaultTwapPricePeriod = _period;
+        emit TwapPricePeriodChanged(_defaultTwapPricePeriod);
     }
 }

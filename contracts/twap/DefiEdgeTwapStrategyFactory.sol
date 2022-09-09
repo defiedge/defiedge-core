@@ -29,6 +29,7 @@ contract DefiEdgeTwapStrategyFactory is ITwapStrategyFactory {
     uint256 public override protocolFeeRate; // 1e8 means 100%
     uint256 public override allowedDeviation; // 1e18 means 100%
     uint256 public override allowedSlippage; // 1e18 means 100%
+    uint256 public override twapPricePeriod; // in seconds
 
     uint256 public constant MAX_DECIMAL = 18; // pool token decimal should be less then 18
 
@@ -46,7 +47,6 @@ contract DefiEdgeTwapStrategyFactory is ITwapStrategyFactory {
     IDefiEdgeTwapStrategyDeployer public override deployerProxy;
     IUniswapV3Factory public override uniswapV3Factory; // Uniswap V3 pool factory
     FeedRegistryInterface public override chainlinkRegistry; // Chainlink registry
-    // Interface public swapRouter; // Uniswap V3 Swap Router
     IOneInchRouter public override oneInchRouter;
 
     // mapping of blacklisted strategies
@@ -78,12 +78,9 @@ contract DefiEdgeTwapStrategyFactory is ITwapStrategyFactory {
         oneInchRouter = _oneInchRouter;
     }
 
-    // /**
-    //  * @notice Launches strategy contract
-    //  * @param _pool Address of the pool
-    //  * @param _operator Address of the operator
-    //  * @param _ticks Array of the ticks
-    //  */
+    /**
+     * @inheritdoc ITwapStrategyFactory
+     */
     function createStrategy(CreateStrategyParams calldata params)
         external
         payable
@@ -140,6 +137,17 @@ contract DefiEdgeTwapStrategyFactory is ITwapStrategyFactory {
 
         isValidStrategy[strategy] = true;
         emit NewStrategy(strategy, msg.sender);
+    }
+
+    /**
+     * @notice Changes default TWAP period
+     * @param _twapPricePeriod Timespan in seconds
+     */
+    function changeDefaultTwapPeriod(uint256 _twapPricePeriod)
+        external
+        onlyGovernance
+    {
+        twapPricePeriod = _twapPricePeriod;
     }
 
     function changeDefaultAllowedDeviation(uint256 _allowedDeviation)
