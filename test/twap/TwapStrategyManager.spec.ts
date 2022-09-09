@@ -245,6 +245,8 @@ describe("TwapStrategyManager", () => {
     // whitelist user 1 address
     let userWhiteListRole = await strategyManager.USER_WHITELIST_ROLE();
     await strategyManager.grantRole(userWhiteListRole, signers[1].address)
+    await factory.changeDefaultTwapPeriod(pool.address, 1800);
+
 
   });
 
@@ -443,22 +445,6 @@ describe("TwapStrategyManager", () => {
     it("should emit changeLimit function", async () => {
       await expect(await strategyManager.changeMaxSwapLimit(10))
         .to.emit(strategyManager, "MaxSwapLimitChanged")
-        .withArgs(10);
-    });
-  });
-
-  describe("#changeTwapPricePeriod", async () => {
-    it("should revert if operator is not calling", async () => {
-      expect(strategyManager.connect(signers[1]).changeTwapPricePeriod(1000)).to.be.revertedWith("N");
-    });
-
-    it("should update price period", async () => {
-      await strategyManager.changeTwapPricePeriod(1000);
-      expect(await strategyManager.twapPricePeriod()).to.equal(1000);
-    });
-    it("should emit changeLimit function", async () => {
-      await expect(await strategyManager.changeTwapPricePeriod(10))
-        .to.emit(strategyManager, "TwapPricePeriodChanged")
         .withArgs(10);
     });
   });

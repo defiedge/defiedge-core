@@ -254,6 +254,8 @@ describe("TwapOracleLibrary", () => {
     oracle = (await (
       await UniswapV3OracleTestFactory
     ).deploy()) as UniswapV3OracleTest;
+    await factory.changeDefaultTwapPeriod(pool.address, 1800);
+
   });
 
   describe("#normalise", async () => {

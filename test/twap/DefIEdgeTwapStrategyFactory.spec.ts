@@ -248,6 +248,7 @@ describe("DefIEdgeTwapStrategyFactory", () => {
     // whitelist user 1 address
     let userWhiteListRole = await strategyManager.USER_WHITELIST_ROLE();
     await strategyManager.grantRole(userWhiteListRole, signers[1].address)
+    await factory.changeDefaultTwapPeriod(pool.address, 1800);
 
   });
 
@@ -913,6 +914,23 @@ describe("DefIEdgeTwapStrategyFactory", () => {
       expect(await factory.getHeartBeat(token1.address, token0.address)).to.eq(3600)
     })
   })
+
+
+  describe("#changeDefaultTwapPeriod", async () => {
+    it("should revert if governance is not calling", async () => {
+      expect(factory.connect(signers[1]).changeDefaultTwapPeriod(pool.address, 1000)).to.be.revertedWith("N");
+    });
+
+    it("should update price period", async () => {
+      await factory.changeDefaultTwapPeriod(pool.address, 1000);
+      expect(await strategyManager.twapPricePeriod()).to.equal(1000);
+    });
+    it("should emit changeLimit function", async () => {
+      await expect(await factory.changeDefaultTwapPeriod(pool.address, 10))
+        .to.emit(factory, "TwapPricePeriodChanged")
+        .withArgs(pool.address, 10);
+    });
+  });
 
   // describe("#allowAgain", async () => {
   //   it("should be called by governance only", async () => {

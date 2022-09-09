@@ -247,6 +247,7 @@ describe("UniswapV3TwapLiquidityManager", () => {
     // whitelist user 1 address
     let userWhiteListRole = await strategyManager.USER_WHITELIST_ROLE();
     await strategyManager.grantRole(userWhiteListRole, signers[1].address)
+    await factory.changeDefaultTwapPeriod(pool.address, 1800);
 
   });
 

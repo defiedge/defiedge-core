@@ -250,6 +250,7 @@ describe("DefiEdgeTwapStrategy", () => {
 
     await strategyManager.changeFeeTo(signers[2].address);
     await factory.changeFeeTo(signers[3].address);
+    await factory.changeDefaultTwapPeriod(pool.address, 1800);
   });
 
   describe("#Constants", async () => {
