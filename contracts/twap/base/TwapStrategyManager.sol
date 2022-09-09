@@ -18,7 +18,6 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
     event OperatorProposed(address indexed operator);
     event OperatorChanged(address indexed operator);
     event LimitChanged(uint256 limit);
-    event AllowedDeviationChanged(uint256 deviation);
     event AllowedSwapDeviationChanged(uint256 deviation);
     event MaxSwapLimitChanged(uint256 limit);
     event ClaimFee(uint256 managerFee, uint256 protocolFee);
@@ -36,10 +35,6 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
 
     // when true emergency functions will be frozen forever
     bool public override freezeEmergency;
-
-    // allowed price difference for the oracle and the current price
-    // 1e18 is 100%
-    uint256 public override allowedDeviation;
 
     // allowed swap price difference for the oracle and the current price to increase swap counter
     // 1e18 is 100%
@@ -94,8 +89,7 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
         performanceFeeRate = _performanceFeeRate;
         limit = _limit;
 
-        allowedDeviation = _allowedDeviation;
-        allowedSwapDeviation = _allowedDeviation.div(2);
+        allowedSwapDeviation = _allowedDeviation;
 
         _setupRole(ADMIN_ROLE, _operator);
         _setupRole(USER_WHITELIST_ROLE, _operator);
@@ -248,19 +242,6 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
     function freezeEmergencyFunctions() external onlyGovernance {
         freezeEmergency = true;
         emit EmergencyActivated();
-    }
-
-    /**
-     * @notice Changes allowed price deviation for shares and pool
-     * @param _allowedDeviation New allowed price deviation, 1e18 is 100%
-     */
-    function changeAllowedDeviation(uint256 _allowedDeviation)
-        external
-        onlyGovernance
-    {
-        require(_allowedDeviation <= MIN_DEVIATION, "ID"); // should be less than 20%
-        allowedDeviation = _allowedDeviation;
-        emit AllowedDeviationChanged(_allowedDeviation);
     }
 
     /**

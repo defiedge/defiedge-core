@@ -198,7 +198,7 @@ describe("DefiEdgeTwapStrategy", () => {
     )) as TwapStrategyManager;
 
     // set deviation in strategy
-    await strategyManager.changeAllowedDeviation("10000000000000000"); // 1%
+    await strategyManager.changeSwapDeviation("10000000000000000"); // 1%
 
     const PeripheryFactory = ethers.getContractFactory("Periphery", {
       libraries: { LiquidityHelper: liquidityHelper.address },
