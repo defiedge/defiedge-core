@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./interfaces/IDefiEdgeStrategyDeployer.sol";
 import "./interfaces/IStrategyBase.sol";
 
-contract DefiEdgeStrategyFactory is IStrategyFactory{
+contract DefiEdgeStrategyFactory is IStrategyFactory {
     using SafeMath for uint256;
 
     mapping(uint256 => address) public override strategyByIndex; // map strategies by index
@@ -84,8 +84,12 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
     //  * @param _operator Address of the operator
     //  * @param _ticks Array of the ticks
     //  */
-    function createStrategy(CreateStrategyParams calldata params) external payable override{
-        require(msg.value == strategyCreationFee, "INSUFFICIENT_FEES"); 
+    function createStrategy(CreateStrategyParams calldata params)
+        external
+        payable
+        override
+    {
+        require(msg.value == strategyCreationFee, "INSUFFICIENT_FEES");
 
         IUniswapV3Pool pool = IUniswapV3Pool(params.pool);
 
@@ -118,16 +122,15 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
             )
         );
 
-        address strategy = deployerProxy.createStrategy
-            (
-                IStrategyFactory(address(this)),
-                params.pool,
-                oneInchRouter,
-                chainlinkRegistry,
-                IStrategyManager(manager),
-                params.usdAsBase,
-                params.ticks
-            );
+        address strategy = deployerProxy.createStrategy(
+            IStrategyFactory(address(this)),
+            params.pool,
+            oneInchRouter,
+            chainlinkRegistry,
+            IStrategyManager(manager),
+            params.usdAsBase,
+            params.ticks
+        );
 
         strategyByManager[manager] = strategy;
 
@@ -171,7 +174,10 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
      * @notice Changes protocol performance fees
      * @param _feeRate New fee in 1e8 format
      */
-    function changeProtocolPerformanceFeeRate(uint256 _feeRate) external onlyGovernance {
+    function changeProtocolPerformanceFeeRate(uint256 _feeRate)
+        external
+        onlyGovernance
+    {
         require(_feeRate <= MAX_PROTOCOL_PERFORMANCE_FEES_RATE, "IA"); // should be less than 20%
         protocolPerformanceFeeRate = _feeRate;
         emit ChangeProtocolPerformanceFee(protocolPerformanceFeeRate);
@@ -214,7 +220,10 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
      * @notice Changes strategy creation fees
      * @param _fee New fee in 1e18 format
      */
-    function changeFeeForStrategyCreation(uint256 _fee) external onlyGovernance {
+    function changeFeeForStrategyCreation(uint256 _fee)
+        external
+        onlyGovernance
+    {
         strategyCreationFee = _fee;
         emit ChangeStrategyCreationFee(strategyCreationFee);
     }
@@ -224,7 +233,7 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
      */
     function claimFees(address _to) external onlyGovernance {
         uint256 balance = address(this).balance;
-        if(balance > 0){
+        if (balance > 0) {
             payable(_to).transfer(balance);
             emit ClaimFees(_to, balance);
         }
@@ -236,7 +245,11 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
      * @param _quote quote token address
      * @param _period heartbeat in seconds
      */
-    function setMinHeartbeat(address _base, address _quote, uint256 _period) external onlyGovernance {
+    function setMinHeartbeat(
+        address _base,
+        address _quote,
+        uint256 _period
+    ) external onlyGovernance {
         _heartBeat[_base][_quote] = _period;
         _heartBeat[_quote][_base] = _period;
     }
@@ -246,8 +259,13 @@ contract DefiEdgeStrategyFactory is IStrategyFactory{
      * @param _base base token address
      * @param _quote quote token address
      */
-    function getHeartBeat(address _base, address _quote) external override view returns(uint256){
-        if(_heartBeat[_base][_quote] == 0){
+    function getHeartBeat(address _base, address _quote)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        if (_heartBeat[_base][_quote] == 0) {
             return 3600;
         } else {
             return _heartBeat[_base][_quote];
