@@ -29,7 +29,9 @@ interface ITwapStrategyFactory {
 
     function allowedSlippage() external view returns (uint256); // 1e18 means 100%
 
-    function twapPricePeriod() external view returns (uint256); //in seconds
+    function defaultTwapPricePeriod() external view returns (uint256);
+
+    function twapPricePeriod(address) external view returns (uint256); //in seconds
 
     function isValidStrategy(address) external view returns (bool);
 
@@ -77,4 +79,5 @@ interface ITwapStrategyFactory {
     event StrategyStatusChanged(bool status);
     event ChangeStrategyCreationFee(uint256 amount);
     event ClaimFees(address to, uint256 amount);
+    event TwapPricePeriodChanged(address pool, uint256 period);
 }

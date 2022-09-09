@@ -2,12 +2,11 @@
 pragma solidity ^0.7.6;
 
 // libraries
-import "../libraries/TwapShareHelper.sol";
-import "../libraries/TwapOracleLibrary.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 // interfaces
 import "../interfaces/ITwapStrategyFactory.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "../interfaces/ITwapStrategyBase.sol";
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
@@ -24,7 +23,6 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
     event MaxSwapLimitChanged(uint256 limit);
     event ClaimFee(uint256 managerFee, uint256 protocolFee);
     event PerformanceFeeChanged(uint256 performanceFeeRate);
-    event TwapPricePeriodChanged(uint256 period);
     event StrategyModeUpdated(bool status); // true - private, false - public
     event EmergencyActivated();
 
@@ -67,9 +65,6 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
     uint256 public lastSwapTimestamp = 0;
 
     bool public isStrategyPrivate = false; // if strategy is private or public
-
-    // Priceperiod for UniswapV3 TWAP
-    uint256 private _defaultTwapPricePeriod = 0;
 
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE"); // can only rebalance and swap
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE"); // can control everything
@@ -163,11 +158,13 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
           return default value from the factory
      */
     function twapPricePeriod() public view override returns (uint256) {
-        if (_defaultTwapPricePeriod > 0) {
-            return _defaultTwapPricePeriod;
-        } else {
-            return ITwapStrategyFactory(factory).twapPricePeriod();
-        }
+        uint256 twapPeriodByPool = factory.twapPricePeriod(
+            address(ITwapStrategyBase(strategy()).pool())
+        );
+        return
+            twapPeriodByPool > 0
+                ? twapPeriodByPool
+                : factory.defaultTwapPricePeriod();
     }
 
     function strategy() public view returns (address) {
@@ -309,14 +306,5 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
     function changeMaxSwapLimit(uint256 _limit) external onlyGovernance {
         maxAllowedSwap = _limit;
         emit MaxSwapLimitChanged(maxAllowedSwap);
-    }
-
-    /**
-     * @notice Change strategy maximum swap limit for a day
-     * @param _period Maximum number of swap that can be performed in a day
-     */
-    function changeTwapPricePeriod(uint256 _period) external onlyGovernance {
-        _defaultTwapPricePeriod = _period;
-        emit TwapPricePeriodChanged(_defaultTwapPricePeriod);
     }
 }

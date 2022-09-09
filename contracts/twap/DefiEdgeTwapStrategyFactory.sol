@@ -20,6 +20,10 @@ contract DefiEdgeTwapStrategyFactory is ITwapStrategyFactory {
 
     mapping(address => mapping(address => uint256)) internal _heartBeat; // map heartBeat for base and quote token
 
+    mapping(address => uint256) public override twapPricePeriod;
+
+    uint256 public override defaultTwapPricePeriod = 20;
+
     // total number of strategies
     uint256 public override totalIndex;
 
@@ -29,7 +33,6 @@ contract DefiEdgeTwapStrategyFactory is ITwapStrategyFactory {
     uint256 public override protocolFeeRate; // 1e8 means 100%
     uint256 public override allowedDeviation; // 1e18 means 100%
     uint256 public override allowedSlippage; // 1e18 means 100%
-    uint256 public override twapPricePeriod; // in seconds
 
     uint256 public constant MAX_DECIMAL = 18; // pool token decimal should be less then 18
 
@@ -141,13 +144,15 @@ contract DefiEdgeTwapStrategyFactory is ITwapStrategyFactory {
 
     /**
      * @notice Changes default TWAP period
+     * @param _pool Address of the pool
      * @param _twapPricePeriod Timespan in seconds
      */
-    function changeDefaultTwapPeriod(uint256 _twapPricePeriod)
+    function changeDefaultTwapPeriod(address _pool, uint256 _twapPricePeriod)
         external
         onlyGovernance
     {
-        twapPricePeriod = _twapPricePeriod;
+        twapPricePeriod[_pool] = _twapPricePeriod;
+        emit TwapPricePeriodChanged(_pool, _twapPricePeriod);
     }
 
     function changeDefaultAllowedDeviation(uint256 _allowedDeviation)
