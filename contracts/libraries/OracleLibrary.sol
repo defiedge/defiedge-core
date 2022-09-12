@@ -90,7 +90,10 @@ library OracleLibrary {
         address _quote,
         uint256 _validPeriod
     ) internal view returns (uint256 price) {
-        (, int256 _price, , uint256 updatedAt, ) = _registry.latestRoundData(_base, _quote);
+        (, int256 _price, , uint256 updatedAt, ) = _registry.latestRoundData(
+            _base,
+            _quote
+        );
 
         require(block.timestamp.sub(updatedAt) < _validPeriod, "OLD_PRICE");
 
@@ -124,11 +127,20 @@ library OracleLibrary {
         address _token,
         bool _isBase
     ) internal view returns (uint256 price) {
-
         if (_isBase) {
-            price = getChainlinkPrice(_registry, _token, Denominations.USD, _factory.getHeartBeat(_token, Denominations.USD));
+            price = getChainlinkPrice(
+                _registry,
+                _token,
+                Denominations.USD,
+                _factory.getHeartBeat(_token, Denominations.USD)
+            );
         } else {
-            price = getChainlinkPrice(_registry, _token, Denominations.ETH, _factory.getHeartBeat(_token, Denominations.ETH));
+            price = getChainlinkPrice(
+                _registry,
+                _token,
+                Denominations.ETH,
+                _factory.getHeartBeat(_token, Denominations.ETH)
+            );
 
             price = FullMath.mulDiv(
                 price,

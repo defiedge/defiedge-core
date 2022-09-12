@@ -2,12 +2,11 @@
 pragma solidity ^0.7.6;
 
 // libraries
-import "../libraries/TwapShareHelper.sol";
-import "../libraries/TwapOracleLibrary.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 // interfaces
 import "../interfaces/ITwapStrategyFactory.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "../interfaces/ITwapStrategyBase.sol";
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
@@ -19,12 +18,10 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
     event OperatorProposed(address indexed operator);
     event OperatorChanged(address indexed operator);
     event LimitChanged(uint256 limit);
-    event AllowedDeviationChanged(uint256 deviation);
     event AllowedSwapDeviationChanged(uint256 deviation);
     event MaxSwapLimitChanged(uint256 limit);
     event ClaimFee(uint256 managerFee, uint256 protocolFee);
     event PerformanceFeeChanged(uint256 performanceFeeRate);
-    event TwapPricePeriodChanged(uint256 period);
     event StrategyModeUpdated(bool status); // true - private, false - public
     event EmergencyActivated();
 
@@ -38,10 +35,6 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
 
     // when true emergency functions will be frozen forever
     bool public override freezeEmergency;
-
-    // allowed price difference for the oracle and the current price
-    // 1e18 is 100%
-    uint256 public override allowedDeviation;
 
     // allowed swap price difference for the oracle and the current price to increase swap counter
     // 1e18 is 100%
@@ -68,14 +61,12 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
 
     bool public isStrategyPrivate = false; // if strategy is private or public
 
-    // Priceperiod for UniswapV3 TWAP
-    uint256 public override twapPricePeriod = 1800;
-
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE"); // can only rebalance and swap
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE"); // can control everything
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE"); /// only can burn the liquidity
 
-    bytes32 public constant USER_WHITELIST_ROLE = keccak256("USER_WHITELIST_ROLE"); /// user have access to strategy - mint & burn
+    bytes32 public constant USER_WHITELIST_ROLE =
+        keccak256("USER_WHITELIST_ROLE"); /// user have access to strategy - mint & burn
 
     constructor(
         ITwapStrategyFactory _factory,
@@ -98,15 +89,13 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
         performanceFeeRate = _performanceFeeRate;
         limit = _limit;
 
-        allowedDeviation = _allowedDeviation;
-        allowedSwapDeviation = _allowedDeviation.div(2);
+        allowedSwapDeviation = _allowedDeviation;
 
         _setupRole(ADMIN_ROLE, _operator);
         _setupRole(USER_WHITELIST_ROLE, _operator);
         _setRoleAdmin(MANAGER_ROLE, ADMIN_ROLE);
         _setRoleAdmin(BURNER_ROLE, ADMIN_ROLE);
         _setRoleAdmin(USER_WHITELIST_ROLE, ADMIN_ROLE);
-
     }
 
     // Modifiers
@@ -126,19 +115,50 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
         _;
     }
 
-    function isUserWhiteListed(address _account) public view override returns (bool) {
-        return isStrategyPrivate ? hasRole(USER_WHITELIST_ROLE, _account) : true;
+    function isUserWhiteListed(address _account)
+        public
+        view
+        override
+        returns (bool)
+    {
+        return
+            isStrategyPrivate ? hasRole(USER_WHITELIST_ROLE, _account) : true;
     }
 
-    function isAllowedToManage(address _account) public view override returns (bool) {
+    function isAllowedToManage(address _account)
+        public
+        view
+        override
+        returns (bool)
+    {
         return hasRole(ADMIN_ROLE, _account) || hasRole(MANAGER_ROLE, _account);
     }
 
-    function isAllowedToBurn(address _account) public view override returns (bool) {
-        return 
-            hasRole(ADMIN_ROLE, _account) || 
-            hasRole (MANAGER_ROLE, _account) ||
-            hasRole (BURNER_ROLE, _account);
+    function isAllowedToBurn(address _account)
+        public
+        view
+        override
+        returns (bool)
+    {
+        return
+            hasRole(ADMIN_ROLE, _account) ||
+            hasRole(MANAGER_ROLE, _account) ||
+            hasRole(BURNER_ROLE, _account);
+    }
+
+    /**
+     * @notice Returns latest twap price period
+     * @dev If default price of the twap is not setup for the strategy, 
+          return default value from the factory
+     */
+    function twapPricePeriod() public view override returns (uint256) {
+        uint256 twapPeriodByPool = factory.twapPricePeriod(
+            address(ITwapStrategyBase(strategy()).pool())
+        );
+        return
+            twapPeriodByPool > 0
+                ? twapPeriodByPool
+                : factory.defaultTwapPricePeriod();
     }
 
     function strategy() public view returns (address) {
@@ -211,10 +231,7 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
      * @notice Manager can update strategy mode -  public, private
      * @param _isPrivate true - private strategy, false - public strategy
      */
-    function updateStrategyMode(bool _isPrivate)
-        external
-        onlyOperator
-    {
+    function updateStrategyMode(bool _isPrivate) external onlyOperator {
         isStrategyPrivate = _isPrivate;
         emit StrategyModeUpdated(isStrategyPrivate);
     }
@@ -229,26 +246,13 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
 
     /**
      * @notice Changes allowed price deviation for shares and pool
-     * @param _allowedDeviation New allowed price deviation, 1e18 is 100%
-     */
-    function changeAllowedDeviation(uint256 _allowedDeviation)
-        external
-        onlyGovernance
-    {
-        require(_allowedDeviation <= MIN_DEVIATION, "ID"); // should be less than 20%
-        allowedDeviation = _allowedDeviation;
-        emit AllowedDeviationChanged(_allowedDeviation);
-    }
-
-    /**
-     * @notice Changes allowed price deviation for shares and pool
      * @param _allowedSwapDeviation New allowed price deviation, 1e18 is 100%
      */
     function changeSwapDeviation(uint256 _allowedSwapDeviation)
         external
         onlyGovernance
     {
-        require(_allowedSwapDeviation <= MIN_DEVIATION, "ID");// should be less than 20%
+        require(_allowedSwapDeviation <= MIN_DEVIATION, "ID"); // should be less than 20%
         allowedSwapDeviation = _allowedSwapDeviation;
         emit AllowedSwapDeviationChanged(allowedSwapDeviation);
     }
@@ -258,8 +262,8 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
      *         Can only be called by strategy contract
      */
     function increamentSwapCounter() external override onlyStrategy {
-        uint256 currentDay = block.timestamp /  1 days;
-        uint256 swapDay = lastSwapTimestamp /  1 days;
+        uint256 currentDay = block.timestamp / 1 days;
+        uint256 swapDay = lastSwapTimestamp / 1 days;
 
         if (currentDay == swapDay) {
             // last swap happened on same day
@@ -269,7 +273,6 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
 
             lastSwapTimestamp = block.timestamp;
             swapCounter = _counter + 1;
-            
         } else {
             // last swap happened on other day
             swapCounter = 1;
@@ -284,14 +287,5 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
     function changeMaxSwapLimit(uint256 _limit) external onlyGovernance {
         maxAllowedSwap = _limit;
         emit MaxSwapLimitChanged(maxAllowedSwap);
-    }
-
-    /**
-     * @notice Change strategy maximum swap limit for a day
-     * @param _period Maximum number of swap that can be performed in a day
-     */
-    function changeTwapPricePeriod(uint256 _period) external onlyGovernance {
-        twapPricePeriod = _period;
-        emit TwapPricePeriodChanged(twapPricePeriod);
     }
 }

@@ -7,7 +7,7 @@ import "./DefiEdgeStrategy.sol";
 import "./interfaces/IStrategyBase.sol";
 import "./interfaces/IDefiEdgeStrategyDeployer.sol";
 
-contract DefiEdgeStrategyDeployer is IDefiEdgeStrategyDeployer{
+contract DefiEdgeStrategyDeployer is IDefiEdgeStrategyDeployer {
     function createStrategy(
         IStrategyFactory _factory,
         IUniswapV3Pool _pool,
@@ -30,6 +30,5 @@ contract DefiEdgeStrategyDeployer is IDefiEdgeStrategyDeployer{
         );
 
         emit StrategyDeployed(address(strategy));
-
     }
 }

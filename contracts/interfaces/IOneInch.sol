@@ -2,7 +2,6 @@
 pragma solidity ^0.7.6;
 
 interface IOneInch {
-
     struct SwapDescription {
         address srcToken;
         address dstToken;
@@ -13,5 +12,4 @@ interface IOneInch {
         uint256 flags;
         bytes permit;
     }
-
 }

@@ -35,7 +35,6 @@ library ShareHelper {
         uint256 _totalAmount1,
         uint256 _totalShares
     ) public view returns (uint256 share) {
-
         address _token0 = _pool.token0();
         address _token1 = _pool.token1();
 
@@ -126,7 +125,9 @@ library ShareHelper {
         }
 
         managerShare = managementManagerShare.add(managerShare);
-        protocolShare = managementProtocolShare.add(protocolShare).add(_accProtocolPerformanceFee);
+        protocolShare = managementProtocolShare.add(protocolShare).add(
+            _accProtocolPerformanceFee
+        );
 
         // moved here for saving bytecode
         managerFeeTo = _manager.feeTo();

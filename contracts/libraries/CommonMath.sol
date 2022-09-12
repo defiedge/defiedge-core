@@ -24,29 +24,18 @@ library CommonMath {
      *
      * @return  The maximum value for uint256
      */
-    function maxUInt256()
-        internal
-        pure
-        returns (uint256)
-    {
-        return 2 ** 256 - 1;
+    function maxUInt256() internal pure returns (uint256) {
+        return 2**256 - 1;
     }
 
     /**
-    * @dev Performs the power on a specified value, reverts on overflow.
-    */
-    function safePower(
-        uint256 a,
-        uint256 pow
-    )
-        internal
-        pure
-        returns (uint256)
-    {
+     * @dev Performs the power on a specified value, reverts on overflow.
+     */
+    function safePower(uint256 a, uint256 pow) internal pure returns (uint256) {
         require(a > 0);
 
         uint256 result = 1;
-        for (uint256 i = 0; i < pow; i++){
+        for (uint256 i = 0; i < pow; i++) {
             uint256 previousResult = result;
 
             // Using safemath multiplication prevents overflows
@@ -68,11 +57,7 @@ library CommonMath {
         uint256 _principal,
         uint256 _numerator,
         uint256 _denominator
-    )
-        internal
-        pure
-        returns (uint256)
-    {
+    ) internal pure returns (uint256) {
         // Get remainder of partial amount (if 0 not a partial amount)
         uint256 remainder = mulmod(_principal, _numerator, _denominator);
 
@@ -82,7 +67,9 @@ library CommonMath {
         }
 
         // Calculate error percentage
-        uint256 errPercentageTimes1000000 = remainder.mul(1000000).div(_numerator.mul(_principal));
+        uint256 errPercentageTimes1000000 = remainder.mul(1000000).div(
+            _numerator.mul(_principal)
+        );
 
         // Require error percentage is less than 0.1%.
         require(
@@ -92,5 +79,4 @@ library CommonMath {
 
         return _principal.mul(_numerator).div(_denominator);
     }
-
 }

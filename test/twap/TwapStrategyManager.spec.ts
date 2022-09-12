@@ -193,7 +193,7 @@ describe("TwapStrategyManager", () => {
     )) as TwapStrategyManager;
         
     // set deviation in strategy
-    await strategyManager.changeAllowedDeviation("10000000000000000"); // 1%
+    await strategyManager.changeSwapDeviation("10000000000000000"); // 1%
 
     const PeripheryFactory = ethers.getContractFactory("Periphery", {
       libraries: { LiquidityHelper: liquidityHelper.address },
@@ -245,6 +245,8 @@ describe("TwapStrategyManager", () => {
     // whitelist user 1 address
     let userWhiteListRole = await strategyManager.USER_WHITELIST_ROLE();
     await strategyManager.grantRole(userWhiteListRole, signers[1].address)
+    await factory.changeDefaultTwapPeriod(pool.address, 1800);
+
 
   });
 
@@ -274,8 +276,8 @@ describe("TwapStrategyManager", () => {
       expect(await strategyManager.limit()).to.equal("0");
     });
 
-    it("should set the allowedDeviation address correctly", async () => {
-      expect(await strategyManager.allowedDeviation()).to.equal("10000000000000000");
+    it("should set the allowedSwapDeviation correctly", async () => {
+      expect(await strategyManager.allowedSwapDeviation()).to.equal("10000000000000000"); // 1%
     });
   });
 
@@ -447,22 +449,6 @@ describe("TwapStrategyManager", () => {
     });
   });
 
-  describe("#changeTwapPricePeriod", async () => {
-    it("should revert if operator is not calling", async () => {
-      expect(strategyManager.connect(signers[1]).changeTwapPricePeriod(1000)).to.be.revertedWith("N");
-    });
-
-    it("should update price period", async () => {
-      await strategyManager.changeTwapPricePeriod(1000);
-      expect(await strategyManager.twapPricePeriod()).to.equal(1000);
-    });
-    it("should emit changeLimit function", async () => {
-      await expect(await strategyManager.changeTwapPricePeriod(10))
-        .to.emit(strategyManager, "TwapPricePeriodChanged")
-        .withArgs(10);
-    });
-  });
-
   describe("#updateStrategyMode", async () => {
     it("should revert if operator is not calling", async () => {
       expect(strategyManager.connect(signers[1]).updateStrategyMode(true)).to.be.revertedWith("N");
@@ -527,26 +513,6 @@ describe("TwapStrategyManager", () => {
     it("should emit freezeEmergency event", async () => {
       await expect(await strategyManager.freezeEmergencyFunctions())
         .to.emit(strategyManager, "EmergencyActivated")
-    });
-  });
-
-
-  describe("#changeAllowedDeviation", async () => {
-    it("should revert if operator is not calling", async () => {
-      await expect(strategyManager.connect(signers[1]).changeAllowedDeviation(1)).to.be.revertedWith(
-        "N"
-      );
-    });
-
-    it("should set deviation to 1%", async () => {
-      await strategyManager.changeAllowedDeviation(1000000);
-      expect(await strategyManager.allowedDeviation()).to.equal(1000000);
-    });
-
-    it("should emit changeAllowedDeviation event", async () => {
-      await expect(await strategyManager.changeAllowedDeviation(1000000))
-        .to.emit(strategyManager, "AllowedDeviationChanged")
-        .withArgs(1000000);
     });
   });
 

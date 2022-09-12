@@ -197,7 +197,7 @@ describe("TwapShareHelper", () => {
     )) as TwapStrategyManager;
         
     // set deviation in strategy
-    await strategyManager.changeAllowedDeviation("10000000000000000"); // 1%
+    await strategyManager.changeSwapDeviation("10000000000000000"); // 1%
 
     const PeripheryFactory = ethers.getContractFactory("Periphery", {
       libraries: { LiquidityHelper: liquidityHelper.address },
@@ -247,6 +247,8 @@ describe("TwapShareHelper", () => {
     oracle = (await (
       await UniswapV3OracleTestFactory
     ).deploy()) as UniswapV3OracleTest;
+    await factory.changeDefaultTwapPeriod(pool.address, 1800);
+
   });
 
   describe("#calculateShares", async () => {

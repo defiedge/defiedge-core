@@ -44,6 +44,7 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
         uint256 amount0;
         uint256 amount1;
     }
+
     /**
      * @param _factory Address of the strategy factory
      * @param _pool Address of the pool

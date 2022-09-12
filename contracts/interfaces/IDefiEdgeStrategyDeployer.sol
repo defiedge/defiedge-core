@@ -20,5 +20,5 @@ interface IDefiEdgeStrategyDeployer {
         IStrategyBase.Tick[] memory _ticks
     ) external returns (address);
 
-    event StrategyDeployed (address strategy);
+    event StrategyDeployed(address strategy);
 }

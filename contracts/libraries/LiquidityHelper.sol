@@ -10,7 +10,7 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
-library LiquidityHelper{
+library LiquidityHelper {
     using SafeMath for uint256;
 
     /**
@@ -29,7 +29,6 @@ library LiquidityHelper{
         uint256 _amount0,
         uint256 _amount1
     ) public view returns (uint128 liquidity) {
-
         // get sqrtRatios required to calculate liquidity
         (uint160 sqrtRatioX96, , , , , , ) = _pool.slot0();
 
@@ -56,7 +55,6 @@ library LiquidityHelper{
         int24 _tickUpper,
         uint128 _liquidity
     ) public view returns (uint256 amount0, uint256 amount1) {
-
         // get sqrtRatios required to calculate liquidity
         (uint160 sqrtRatioX96, , , , , , ) = _pool.slot0();
 
