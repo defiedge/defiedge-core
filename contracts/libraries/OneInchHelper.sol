@@ -37,10 +37,7 @@ library OneInchHelper {
 
         if (selector == 0x7c025200) {
             // call swap() method
-            (, description, ) = abi.decode(
-                data[4:],
-                (address, IOneInch.SwapDescription, bytes)
-            );
+            (, description, ) = abi.decode(data[4:], (address, IOneInch.SwapDescription, bytes));
 
             srcToken = IERC20(description.srcToken);
             dstToken = IERC20(description.dstToken);
@@ -48,27 +45,19 @@ library OneInchHelper {
         } else if (selector == 0x2e95b6c8) {
             // call unoswap() method
             address tokenIn;
-            (tokenIn, amount, , ) = abi.decode(
-                data[4:],
-                (address, uint256, uint256, bytes32[])
-            );
+            (tokenIn, amount, , ) = abi.decode(data[4:], (address, uint256, uint256, bytes32[]));
 
             srcToken = IERC20(tokenIn);
             dstToken = srcToken == token0 ? token1 : token0;
         } else if (selector == 0xe449022e) {
             // call uniswapV3Swap() method
             uint256[] memory pools;
-            (amount, , pools) = abi.decode(
-                data[4:],
-                (uint256, uint256, uint256[])
-            );
+            (amount, , pools) = abi.decode(data[4:], (uint256, uint256, uint256[]));
 
             uint256 _pool = pools[0];
             bool zeroForOne = _pool >> 255 == 0;
 
-            address tokenIn = zeroForOne
-                ? IUniswapV3Pool(_pool).token0()
-                : IUniswapV3Pool(_pool).token1();
+            address tokenIn = zeroForOne ? IUniswapV3Pool(_pool).token0() : IUniswapV3Pool(_pool).token1();
             srcToken = IERC20(tokenIn);
             dstToken = srcToken == token0 ? token1 : token0;
         } else {

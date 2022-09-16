@@ -44,33 +44,18 @@ library ShareHelper {
         _totalAmount1 = OracleLibrary.normalise(_token1, _totalAmount1);
 
         // price in USD
-        uint256 token0Price = OracleLibrary.getPriceInUSD(
-            _factory,
-            _registry,
-            _token0,
-            _isBase[0]
-        );
+        uint256 token0Price = OracleLibrary.getPriceInUSD(_factory, _registry, _token0, _isBase[0]);
 
-        uint256 token1Price = OracleLibrary.getPriceInUSD(
-            _factory,
-            _registry,
-            _token1,
-            _isBase[1]
-        );
+        uint256 token1Price = OracleLibrary.getPriceInUSD(_factory, _registry, _token1, _isBase[1]);
 
         if (_totalShares > 0) {
-            uint256 numerator = (token0Price.mul(_amount0)).add(
-                token1Price.mul(_amount1)
-            );
+            uint256 numerator = (token0Price.mul(_amount0)).add(token1Price.mul(_amount1));
 
-            uint256 denominator = (token0Price.mul(_totalAmount0)).add(
-                token1Price.mul(_totalAmount1)
-            );
+            uint256 denominator = (token0Price.mul(_totalAmount0)).add(token1Price.mul(_totalAmount1));
 
             share = FullMath.mulDiv(numerator, _totalShares, denominator);
         } else {
-            share = ((token0Price.mul(_amount0)).add(token1Price.mul(_amount1)))
-                .div(DIVISOR);
+            share = ((token0Price.mul(_amount0)).add(token1Price.mul(_amount1))).div(DIVISOR);
         }
     }
 
@@ -104,30 +89,18 @@ library ShareHelper {
 
         // calculate the fees for protocol and manager from management fees
         if (_accManagementFee > 0) {
-            managementProtocolShare = FullMath.mulDiv(
-                _accManagementFee,
-                protocolFeeRate,
-                1e8
-            );
-            managementManagerShare = _accManagementFee.sub(
-                managementProtocolShare
-            );
+            managementProtocolShare = FullMath.mulDiv(_accManagementFee, protocolFeeRate, 1e8);
+            managementManagerShare = _accManagementFee.sub(managementProtocolShare);
         }
 
         // calculate the fees for protocol and manager from performance fees
         if (_accPerformanceFee > 0) {
-            protocolShare = FullMath.mulDiv(
-                _accPerformanceFee,
-                protocolFeeRate,
-                1e8
-            );
+            protocolShare = FullMath.mulDiv(_accPerformanceFee, protocolFeeRate, 1e8);
             managerShare = _accPerformanceFee.sub(protocolShare);
         }
 
         managerShare = managementManagerShare.add(managerShare);
-        protocolShare = managementProtocolShare.add(protocolShare).add(
-            _accProtocolPerformanceFee
-        );
+        protocolShare = managementProtocolShare.add(protocolShare).add(_accProtocolPerformanceFee);
 
         // moved here for saving bytecode
         managerFeeTo = _manager.feeTo();

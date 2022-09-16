@@ -20,9 +20,9 @@ contract StrategyBase is ERC20, IStrategyBase {
     // store ticks
     Tick[] public ticks;
 
-    uint256 public override accManagementFeeShares;
-    uint256 public override accPerformanceFeeShares;
-    uint256 public override accProtocolPerformanceFeeShares;
+    uint256 public override accManagementFeeShares; // stores the management fee shares
+    uint256 public override accPerformanceFeeShares; // stores the performance fee shares
+    uint256 public override accProtocolPerformanceFeeShares; // stores the protocol performance fee shares
 
     IStrategyFactory public override factory; // instance of the strategy factory
     IUniswapV3Pool public override pool; // instance of the Uniswap V3 pool
@@ -48,12 +48,9 @@ contract StrategyBase is ERC20, IStrategyBase {
     /**
      * @dev Replaces old ticks with new ticks
      * @param _ticks New ticks
+     * @return invalid true if the ticks are valid and not repeated
      */
-    function isInvalidTicks(Tick[] memory _ticks)
-        internal
-        pure
-        returns (bool invalid)
-    {
+    function isInvalidTicks(Tick[] memory _ticks) internal pure returns (bool invalid) {
         for (uint256 i = 0; i < _ticks.length; i++) {
             int24 tickLower = _ticks[i].tickLower;
             int24 tickUpper = _ticks[i].tickUpper;
@@ -65,7 +62,6 @@ contract StrategyBase is ERC20, IStrategyBase {
                         invalid = true;
                         return invalid;
                     }
-                    // require(tickUpper != _ticks[j].tickUpper, "TS");
                 }
             }
         }
@@ -84,16 +80,7 @@ contract StrategyBase is ERC20, IStrategyBase {
      * @dev checks if the pool is manipulated
      */
     modifier onlyHasDeviation() {
-        require(
-            !OracleLibrary.hasDeviation(
-                factory,
-                pool,
-                chainlinkRegistry,
-                usdAsBase,
-                address(manager)
-            ),
-            "D"
-        );
+        require(!OracleLibrary.hasDeviation(factory, pool, chainlinkRegistry, usdAsBase, address(manager)), "D");
         _;
     }
 
@@ -104,6 +91,7 @@ contract StrategyBase is ERC20, IStrategyBase {
      * @param _totalAmount0 Total amount0 in the specific strategy
      * @param _totalAmount1 Total amount1 in the specific strategy
      * @param _user address where shares should be issued
+     * @return share Number of shares issued
      */
     function issueShare(
         uint256 _amount0,
@@ -145,12 +133,12 @@ contract StrategyBase is ERC20, IStrategyBase {
         _mint(_user, share);
     }
 
+    /**
+     * @notice Adds all the shares stored in the state variables
+     * @return total supply of shares, including virtual supply
+     */
     function totalSupply() public view override returns (uint256) {
-        return
-            _totalSupply
-                .add(accManagementFeeShares)
-                .add(accPerformanceFeeShares)
-                .add(accProtocolPerformanceFeeShares);
+        return _totalSupply.add(accManagementFeeShares).add(accPerformanceFeeShares).add(accProtocolPerformanceFeeShares);
     }
 
     /**
@@ -158,18 +146,13 @@ contract StrategyBase is ERC20, IStrategyBase {
      * Protocol receives X percentage from manager fee
      */
     function claimFee() external override {
-        (
-            address managerFeeTo,
-            address protocolFeeTo,
-            uint256 managerShare,
-            uint256 protocolShare
-        ) = ShareHelper.calculateFeeShares(
-                factory,
-                manager,
-                accManagementFeeShares,
-                accPerformanceFeeShares,
-                accProtocolPerformanceFeeShares
-            );
+        (address managerFeeTo, address protocolFeeTo, uint256 managerShare, uint256 protocolShare) = ShareHelper.calculateFeeShares(
+            factory,
+            manager,
+            accManagementFeeShares,
+            accPerformanceFeeShares,
+            accProtocolPerformanceFeeShares
+        );
 
         if (managerShare > 0) {
             _mint(managerFeeTo, managerShare);
@@ -189,6 +172,7 @@ contract StrategyBase is ERC20, IStrategyBase {
 
     /**
      * @notice Returns the current ticks
+     * @return Array of the ticks
      */
     function getTicks() public view returns (Tick[] memory) {
         return ticks;

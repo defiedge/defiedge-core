@@ -25,11 +25,7 @@ library OracleLibrary {
 
     using SafeMath for uint256;
 
-    function normalise(address _token, uint256 _amount)
-        internal
-        view
-        returns (uint256 normalised)
-    {
+    function normalise(address _token, uint256 _amount) internal view returns (uint256 normalised) {
         // return uint256(_amount) * (10**(18 - IERC20Minimal(_token).decimals()));
         normalised = _amount;
         uint256 _decimals = IERC20Minimal(_token).decimals();
@@ -47,11 +43,7 @@ library OracleLibrary {
      * @notice Gets latest Uniswap price in the pool, price of token1 represented in token0
      * @notice _pool Address of the Uniswap V3 pool
      */
-    function getUniswapPrice(IUniswapV3Pool _pool)
-        internal
-        view
-        returns (uint256 price)
-    {
+    function getUniswapPrice(IUniswapV3Pool _pool) internal view returns (uint256 price) {
         (uint160 sqrtPriceX96, , , , , , ) = _pool.slot0();
         uint256 priceX192 = uint256(sqrtPriceX96).mul(sqrtPriceX96);
         price = FullMath.mulDiv(priceX192, BASE, 1 << 192);
@@ -61,9 +53,7 @@ library OracleLibrary {
 
         bool decimalCheck = token0Decimals > token1Decimals;
 
-        uint256 decimalsDelta = decimalCheck
-            ? token0Decimals - token1Decimals
-            : token1Decimals - token0Decimals;
+        uint256 decimalsDelta = decimalCheck ? token0Decimals - token1Decimals : token1Decimals - token0Decimals;
 
         // normalise the price to 18 decimals
 
@@ -90,10 +80,7 @@ library OracleLibrary {
         address _quote,
         uint256 _validPeriod
     ) internal view returns (uint256 price) {
-        (, int256 _price, , uint256 updatedAt, ) = _registry.latestRoundData(
-            _base,
-            _quote
-        );
+        (, int256 _price, , uint256 updatedAt, ) = _registry.latestRoundData(_base, _quote);
 
         require(block.timestamp.sub(updatedAt) < _validPeriod, "OLD_PRICE");
 
@@ -128,19 +115,9 @@ library OracleLibrary {
         bool _isBase
     ) internal view returns (uint256 price) {
         if (_isBase) {
-            price = getChainlinkPrice(
-                _registry,
-                _token,
-                Denominations.USD,
-                _factory.getHeartBeat(_token, Denominations.USD)
-            );
+            price = getChainlinkPrice(_registry, _token, Denominations.USD, _factory.getHeartBeat(_token, Denominations.USD));
         } else {
-            price = getChainlinkPrice(
-                _registry,
-                _token,
-                Denominations.ETH,
-                _factory.getHeartBeat(_token, Denominations.ETH)
-            );
+            price = getChainlinkPrice(_registry, _token, Denominations.ETH, _factory.getHeartBeat(_token, Denominations.ETH));
 
             price = FullMath.mulDiv(
                 price,
@@ -177,24 +154,16 @@ library OracleLibrary {
         );
 
         // get price of token0 from Chainlink in USD
-        uint256 chainlinkPriceInUSD = getPriceInUSD(
-            _factory,
-            _registry,
-            _pool.token0(),
-            _usdAsBase[0]
-        );
+        uint256 chainlinkPriceInUSD = getPriceInUSD(_factory, _registry, _pool.token0(), _usdAsBase[0]);
 
         uint256 diff;
 
         diff = FullMath.mulDiv(uniswapPriceInUSD, BASE, chainlinkPriceInUSD);
 
-        uint256 _allowedDeviation = IStrategyManager(_manager)
-            .allowedDeviation();
+        uint256 _allowedDeviation = IStrategyManager(_manager).allowedDeviation();
 
         // check if the price is above deviation and return
-        return
-            diff > BASE.add(_allowedDeviation) ||
-            diff < BASE.sub(_allowedDeviation);
+        return diff > BASE.add(_allowedDeviation) || diff < BASE.sub(_allowedDeviation);
     }
 
     /**
@@ -222,20 +191,15 @@ library OracleLibrary {
         _amountIn = normalise(_tokenIn, _amountIn);
         _amountOut = normalise(_tokenOut, _amountOut);
 
-        (bool usdAsBaseAmountIn, bool usdAsBaseAmountOut) = _pool.token0() ==
-            _tokenIn
+        (bool usdAsBaseAmountIn, bool usdAsBaseAmountOut) = _pool.token0() == _tokenIn
             ? (_usdAsBase[0], _usdAsBase[1])
             : (_usdAsBase[1], _usdAsBase[0]);
 
         // get tokenIn prce in USD fron chainlink
-        uint256 amountInUSD = _amountIn.mul(
-            getPriceInUSD(_factory, _registry, _tokenIn, usdAsBaseAmountIn)
-        );
+        uint256 amountInUSD = _amountIn.mul(getPriceInUSD(_factory, _registry, _tokenIn, usdAsBaseAmountIn));
 
         // get tokenout prce in USD fron chainlink
-        uint256 amountOutUSD = _amountOut.mul(
-            getPriceInUSD(_factory, _registry, _tokenOut, usdAsBaseAmountOut)
-        );
+        uint256 amountOutUSD = _amountOut.mul(getPriceInUSD(_factory, _registry, _tokenOut, usdAsBaseAmountOut));
 
         uint256 diff;
 
@@ -278,29 +242,18 @@ library OracleLibrary {
         _amountIn = normalise(_tokenIn, _amountIn);
         _amountOut = normalise(_tokenOut, _amountOut);
 
-        (bool usdAsBaseAmountIn, bool usdAsBaseAmountOut) = _pool.token0() ==
-            _tokenIn
+        (bool usdAsBaseAmountIn, bool usdAsBaseAmountOut) = _pool.token0() == _tokenIn
             ? (_isBase[0], _isBase[1])
             : (_isBase[1], _isBase[0]);
 
         // get price of token0 Uniswap and convert it to USD
         uint256 amountInUSD = _amountIn.mul(
-            getPriceInUSD(
-                _factory,
-                FeedRegistryInterface(_factory.chainlinkRegistry()),
-                _tokenIn,
-                usdAsBaseAmountIn
-            )
+            getPriceInUSD(_factory, FeedRegistryInterface(_factory.chainlinkRegistry()), _tokenIn, usdAsBaseAmountIn)
         );
 
         // get price of token0 Uniswap and convert it to USD
         uint256 amountOutUSD = _amountOut.mul(
-            getPriceInUSD(
-                _factory,
-                FeedRegistryInterface(_factory.chainlinkRegistry()),
-                _tokenOut,
-                usdAsBaseAmountOut
-            )
+            getPriceInUSD(_factory, FeedRegistryInterface(_factory.chainlinkRegistry()), _tokenOut, usdAsBaseAmountOut)
         );
 
         uint256 diff;
@@ -309,10 +262,7 @@ library OracleLibrary {
 
         uint256 _allowedSlippage = _factory.allowedSlippage();
         // check if the price is above deviation
-        if (
-            diff > (BASE.add(_allowedSlippage)) ||
-            diff < (BASE.sub(_allowedSlippage))
-        ) {
+        if (diff > (BASE.add(_allowedSlippage)) || diff < (BASE.sub(_allowedSlippage))) {
             return false;
         }
 

@@ -15,18 +15,8 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
     using SafeMath for uint256;
 
     // events
-    event Mint(
-        address indexed user,
-        uint256 share,
-        uint256 amount0,
-        uint256 amount1
-    );
-    event Burn(
-        address indexed user,
-        uint256 share,
-        uint256 amount0,
-        uint256 amount1
-    );
+    event Mint(address indexed user, uint256 share, uint256 amount0, uint256 amount1);
+    event Burn(address indexed user, uint256 share, uint256 amount0, uint256 amount1);
     event Hold();
     event Rebalance(NewTick[] ticks);
     event PartialRebalance(PartialTick[] ticks);
@@ -86,6 +76,9 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
      * @param _amount0Min Minimum amount of token0 to be minted
      * @param _amount1Min Minimum amount of token1 to be minted
      * @param _minShare Minimum amount of shares to be received to the user
+     * @return amount0 Amount of token0 deployed
+     * @return amount1 Amount of token1 deployed
+     * @return share Number of shares minted
      */
     function mint(
         uint256 _amount0,
@@ -105,50 +98,26 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         require(manager.isUserWhiteListed(msg.sender), "UA");
 
         // get total amounts with fees
-        (uint256 totalAmount0, uint256 totalAmount1, , ) = this.getAUMWithFees(
-            true
-        );
+        (uint256 totalAmount0, uint256 totalAmount1, , ) = this.getAUMWithFees(true);
 
         if (_amount0 > 0 && _amount1 > 0 && ticks.length > 0) {
             Tick storage tick = ticks[0];
             // index 0 will always be an primary tick
-            (amount0, amount1) = mintLiquidity(
-                tick.tickLower,
-                tick.tickUpper,
-                _amount0,
-                _amount1,
-                msg.sender
-            );
+            (amount0, amount1) = mintLiquidity(tick.tickLower, tick.tickUpper, _amount0, _amount1, msg.sender);
         } else {
             amount0 = _amount0;
             amount1 = _amount1;
 
             if (amount0 > 0) {
-                TransferHelper.safeTransferFrom(
-                    address(token0),
-                    msg.sender,
-                    address(this),
-                    amount0
-                );
+                TransferHelper.safeTransferFrom(address(token0), msg.sender, address(this), amount0);
             }
             if (amount1 > 0) {
-                TransferHelper.safeTransferFrom(
-                    address(token1),
-                    msg.sender,
-                    address(this),
-                    amount1
-                );
+                TransferHelper.safeTransferFrom(address(token1), msg.sender, address(this), amount1);
             }
         }
 
         // issue share based on the liquidity added
-        share = issueShare(
-            amount0,
-            amount1,
-            totalAmount0,
-            totalAmount1,
-            msg.sender
-        );
+        share = issueShare(amount0, amount1, totalAmount0, totalAmount1, msg.sender);
 
         // prevent front running of strategy fee
         require(share >= _minShare, "SC");
@@ -169,6 +138,8 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
      * @param _shares Shares to be burned
      * @param _amount0Min Mimimum amount of token0 to be received
      * @param _amount1Min Minimum amount of token1 to be received
+     * @return collect0 The amount of token0 returned to the user
+     * @return collect1 The amount of token1 returned to the user
      */
     function burn(
         uint256 _shares,
@@ -188,12 +159,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             uint256 fee0;
             uint256 fee1;
             // burn liquidity and collect fees
-            (amount0, amount1, fee0, fee1) = burnLiquidity(
-                tick.tickLower,
-                tick.tickUpper,
-                _shares,
-                0
-            );
+            (amount0, amount1, fee0, fee1) = burnLiquidity(tick.tickLower, tick.tickUpper, _shares, 0);
 
             // add to total amounts
             collect0 = collect0.add(amount0);
@@ -207,15 +173,11 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         uint256 _totalSupply = totalSupply();
 
         if (total0 > collect0) {
-            collect0 = collect0.add(
-                FullMath.mulDiv(total0 - collect0, _shares, _totalSupply)
-            );
+            collect0 = collect0.add(FullMath.mulDiv(total0 - collect0, _shares, _totalSupply));
         }
 
         if (total1 > collect1) {
-            collect1 = collect1.add(
-                FullMath.mulDiv(total1 - collect1, _shares, _totalSupply)
-            );
+            collect1 = collect1.add(FullMath.mulDiv(total1 - collect1, _shares, _totalSupply));
         }
 
         // check slippage
@@ -275,18 +237,9 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                     tick = ticks[_existingTicks[i].index];
                 }
 
-                if (
-                    _existingTicks[i].amount0 > 0 ||
-                    _existingTicks[i].amount1 > 0
-                ) {
+                if (_existingTicks[i].amount0 > 0 || _existingTicks[i].amount1 > 0) {
                     // mint liquidity
-                    mintLiquidity(
-                        _tick.tickLower,
-                        _tick.tickUpper,
-                        _existingTicks[i].amount0,
-                        _existingTicks[i].amount1,
-                        address(this)
-                    );
+                    mintLiquidity(_tick.tickLower, _tick.tickUpper, _existingTicks[i].amount0, _existingTicks[i].amount1, address(this));
 
                     if (_existingTicks[i].burn) {
                         // push to ticks array
@@ -321,28 +274,26 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
             NewTick memory tick = _ticks[i];
 
             // mint liquidity
-            mintLiquidity(
-                tick.tickLower,
-                tick.tickUpper,
-                tick.amount0,
-                tick.amount1,
-                address(this)
-            );
+            mintLiquidity(tick.tickLower, tick.tickUpper, tick.amount0, tick.amount1, address(this));
 
             // push to ticks array
             ticks.push(Tick(tick.tickLower, tick.tickUpper));
         }
     }
 
-    // TODO: Make this function work correctly
+    /**
+     * @notice Withdraws funds from the contract in case of emergency
+     * @dev only governance can withdraw the funds, it can be frozen from the factory permenently
+     * @param _token Token to transfer
+     * @param _to Where to transfer the token
+     * @param _amount Amount to be withdrawn
+     */
     function emergencyWithdraw(
         address _token,
         address _to,
         uint256 _amount
     ) external {
-        require(
-            msg.sender == factory.governance() && !manager.freezeEmergency()
-        );
+        require(msg.sender == factory.governance() && !manager.freezeEmergency());
         TransferHelper.safeTransfer(_token, _to, _amount);
     }
 }

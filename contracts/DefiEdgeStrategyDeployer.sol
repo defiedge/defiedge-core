@@ -7,6 +7,11 @@ import "./DefiEdgeStrategy.sol";
 import "./interfaces/IStrategyBase.sol";
 import "./interfaces/IDefiEdgeStrategyDeployer.sol";
 
+/**
+ * @title DefiEdge Strategy Deployer
+ * @notice The contract seperately deploys the strategy contracts and factory connects it with manager
+ */
+
 contract DefiEdgeStrategyDeployer is IDefiEdgeStrategyDeployer {
     function createStrategy(
         IStrategyFactory _factory,
@@ -17,17 +22,7 @@ contract DefiEdgeStrategyDeployer is IDefiEdgeStrategyDeployer {
         bool[2] memory _usdAsBase,
         IStrategyBase.Tick[] memory _ticks
     ) external override returns (address strategy) {
-        strategy = address(
-            new DefiEdgeStrategy(
-                _factory,
-                _pool,
-                _swapRouter,
-                _chainlinkRegistry,
-                _manager,
-                _usdAsBase,
-                _ticks
-            )
-        );
+        strategy = address(new DefiEdgeStrategy(_factory, _pool, _swapRouter, _chainlinkRegistry, _manager, _usdAsBase, _ticks));
 
         emit StrategyDeployed(address(strategy));
     }
