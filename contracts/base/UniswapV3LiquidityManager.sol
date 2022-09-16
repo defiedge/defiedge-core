@@ -45,6 +45,8 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
      * @param _amount0 Amount of token0
      * @param _amount1 Amount of token1
      * @param _payer Address which is adding the liquidity
+     * @return amount0 Amount of token0 deployed to the pool
+     * @return amount1 Amount of token1 deployed to the pool
      */
     function mintLiquidity(
         int24 _tickLower,
@@ -53,13 +55,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         uint256 _amount1,
         address _payer
     ) internal onlyHasDeviation returns (uint256 amount0, uint256 amount1) {
-        uint128 liquidity = LiquidityHelper.getLiquidityForAmounts(
-            pool,
-            _tickLower,
-            _tickUpper,
-            _amount0,
-            _amount1
-        );
+        uint128 liquidity = LiquidityHelper.getLiquidityForAmounts(pool, _tickLower, _tickUpper, _amount0, _amount1);
         // add liquidity to Uniswap pool
         (amount0, amount1) = pool.mint(
             address(this),
@@ -75,6 +71,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
      * @param _tickLower Lower Tick
      * @param _tickUpper Upper Tick
      * @param _shares The amount of liquidity to be burned based on shares
+     * @param _currentLiquidity Liquidity to be burned
      */
     function burnLiquidity(
         int24 _tickLower,
@@ -95,44 +92,20 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         uint256 collect1;
 
         if (_shares > 0) {
-            (_currentLiquidity, , , , ) = pool.positions(
-                PositionKey.compute(address(this), _tickLower, _tickUpper)
-            );
+            (_currentLiquidity, , , , ) = pool.positions(PositionKey.compute(address(this), _tickLower, _tickUpper));
             if (_currentLiquidity > 0) {
-                uint256 liquidity = FullMath.mulDiv(
-                    _currentLiquidity,
-                    _shares,
-                    totalSupply()
-                );
+                uint256 liquidity = FullMath.mulDiv(_currentLiquidity, _shares, totalSupply());
 
-                (tokensBurned0, tokensBurned1) = pool.burn(
-                    _tickLower,
-                    _tickUpper,
-                    liquidity.toUint128()
-                );
+                (tokensBurned0, tokensBurned1) = pool.burn(_tickLower, _tickUpper, liquidity.toUint128());
             }
         } else {
-            (tokensBurned0, tokensBurned1) = pool.burn(
-                _tickLower,
-                _tickUpper,
-                _currentLiquidity
-            );
+            (tokensBurned0, tokensBurned1) = pool.burn(_tickLower, _tickUpper, _currentLiquidity);
         }
         // collect fees
-        (collect0, collect1) = pool.collect(
-            address(this),
-            _tickLower,
-            _tickUpper,
-            type(uint128).max,
-            type(uint128).max
-        );
+        (collect0, collect1) = pool.collect(address(this), _tickLower, _tickUpper, type(uint128).max, type(uint128).max);
 
-        fee0 = collect0 > tokensBurned0
-            ? uint256(collect0).sub(tokensBurned0)
-            : 0;
-        fee1 = collect1 > tokensBurned1
-            ? uint256(collect1).sub(tokensBurned1)
-            : 0;
+        fee0 = collect0 > tokensBurned0 ? uint256(collect0).sub(tokensBurned0) : 0;
+        fee1 = collect1 > tokensBurned1 ? uint256(collect1).sub(tokensBurned1) : 0;
 
         // mint performance fees
         addPerformanceFees(fee0, fee1);
@@ -149,9 +122,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         // address feeTo = manager.feeTo();
 
         // get total amounts with fees
-        (uint256 totalAmount0, uint256 totalAmount1, , ) = this.getAUMWithFees(
-            false
-        );
+        (uint256 totalAmount0, uint256 totalAmount1, , ) = this.getAUMWithFees(false);
 
         accPerformanceFeeShares = accPerformanceFeeShares.add(
             ShareHelper.calculateShares(
@@ -194,21 +165,10 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         for (uint256 _tickIndex = 0; _tickIndex < ticks.length; _tickIndex++) {
             Tick storage tick = ticks[_tickIndex];
 
-            (uint128 currentLiquidity, , , , ) = pool.positions(
-                PositionKey.compute(
-                    address(this),
-                    tick.tickLower,
-                    tick.tickUpper
-                )
-            );
+            (uint128 currentLiquidity, , , , ) = pool.positions(PositionKey.compute(address(this), tick.tickLower, tick.tickUpper));
 
             if (currentLiquidity > 0) {
-                burnLiquidity(
-                    tick.tickLower,
-                    tick.tickUpper,
-                    0,
-                    currentLiquidity
-                );
+                burnLiquidity(tick.tickLower, tick.tickUpper, 0, currentLiquidity);
             }
         }
     }
@@ -216,6 +176,10 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
     /**
      * @notice Burn liquidity from specific tick
      * @param _tickIndex Index of tick which needs to be burned
+     * @return amount0 Amount of token0's liquidity burned
+     * @return amount1 Amount of token1's liquidity burned
+     * @return fee0 Fee of token0 accumulated in the position which is being burned
+     * @return fee1 Fee of token1 accumulated in the position which is being burned
      */
     function burnLiquiditySingle(uint256 _tickIndex)
         public
@@ -231,17 +195,10 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
 
         Tick storage tick = ticks[_tickIndex];
 
-        (uint128 currentLiquidity, , , , ) = pool.positions(
-            PositionKey.compute(address(this), tick.tickLower, tick.tickUpper)
-        );
+        (uint128 currentLiquidity, , , , ) = pool.positions(PositionKey.compute(address(this), tick.tickLower, tick.tickUpper));
 
         if (currentLiquidity > 0) {
-            (amount0, amount1, fee0, fee1) = burnLiquidity(
-                tick.tickLower,
-                tick.tickUpper,
-                0,
-                currentLiquidity
-            );
+            (amount0, amount1, fee0, fee1) = burnLiquidity(tick.tickLower, tick.tickUpper, 0, currentLiquidity);
         }
 
         // shift the index element at last of array
@@ -257,14 +214,9 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
     function swap(bytes calldata data) public onlyOperator onlyHasDeviation {
         LocalVariables_Balances memory balances;
 
-        (IERC20 srcToken, IERC20 dstToken, uint256 amount) = OneInchHelper
-            .decodeData(IERC20(token0), IERC20(token1), data);
+        (IERC20 srcToken, IERC20 dstToken, uint256 amount) = OneInchHelper.decodeData(IERC20(token0), IERC20(token1), data);
 
-        require(
-            (srcToken == token0 && dstToken == token1) ||
-                (srcToken == token1 && dstToken == token0),
-            "IA"
-        );
+        require((srcToken == token0 && dstToken == token1) || (srcToken == token1 && dstToken == token0), "IA");
 
         balances.tokenInBalBefore = srcToken.balanceOf(address(this));
         balances.tokenOutBalBefore = dstToken.balanceOf(address(this));
@@ -272,9 +224,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         srcToken.safeIncreaseAllowance(address(oneInchRouter), amount);
 
         // Interact with 1inch through contract call with data
-        (bool success, bytes memory returnData) = address(oneInchRouter).call{
-            value: 0
-        }(data);
+        (bool success, bytes memory returnData) = address(oneInchRouter).call{value: 0}(data);
 
         // Verify return status and data
         if (!success) {
@@ -301,12 +251,8 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         balances.tokenInBalAfter = srcToken.balanceOf(address(this));
         balances.tokenOutBalAfter = dstToken.balanceOf(address(this));
 
-        uint256 amountIn = balances.tokenInBalBefore.sub(
-            balances.tokenInBalAfter
-        );
-        uint256 amountOut = balances.tokenOutBalAfter.sub(
-            balances.tokenOutBalBefore
-        );
+        uint256 amountIn = balances.tokenInBalBefore.sub(balances.tokenInBalAfter);
+        uint256 amountOut = balances.tokenOutBalAfter.sub(balances.tokenOutBalBefore);
 
         // check if swap exceed allowed deviation and revert if maximum swap limits reached
         if (
@@ -326,15 +272,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         }
 
         require(
-            OracleLibrary.allowSwap(
-                pool,
-                factory,
-                amountIn,
-                amountOut,
-                address(srcToken),
-                address(dstToken),
-                [usdAsBase[0], usdAsBase[1]]
-            ),
+            OracleLibrary.allowSwap(pool, factory, amountIn, amountOut, address(srcToken), address(dstToken), [usdAsBase[0], usdAsBase[1]]),
             "S"
         );
     }
@@ -353,36 +291,18 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         if (decoded.payer == address(this)) {
             // transfer tokens already in the contract
             if (amount0 > 0) {
-                TransferHelper.safeTransfer(
-                    address(token0),
-                    msg.sender,
-                    amount0
-                );
+                TransferHelper.safeTransfer(address(token0), msg.sender, amount0);
             }
             if (amount1 > 0) {
-                TransferHelper.safeTransfer(
-                    address(token1),
-                    msg.sender,
-                    amount1
-                );
+                TransferHelper.safeTransfer(address(token1), msg.sender, amount1);
             }
         } else {
             // take and transfer tokens to Uniswap V3 pool from the user
             if (amount0 > 0) {
-                TransferHelper.safeTransferFrom(
-                    address(token0),
-                    decoded.payer,
-                    msg.sender,
-                    amount0
-                );
+                TransferHelper.safeTransferFrom(address(token0), decoded.payer, msg.sender, amount0);
             }
             if (amount1 > 0) {
-                TransferHelper.safeTransferFrom(
-                    address(token1),
-                    decoded.payer,
-                    msg.sender,
-                    amount1
-                );
+                TransferHelper.safeTransferFrom(address(token1), decoded.payer, msg.sender, amount1);
             }
         }
     }
@@ -390,6 +310,10 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
     /**
      * @notice Get's assets under management with realtime fees
      * @param _includeFee Whether to include pool fees in AUM or not. (passing true will also collect fees from pool)
+     * @param amount0 Total AUM of token0 including the fees  ( if _includeFee is passed true)
+     * @param amount1 Total AUM of token1 including the fees  ( if _includeFee is passed true)
+     * @param totalFee0 Total fee of token0 including the fees  ( if _includeFee is passed true)
+     * @param totalFee1 Total fee of token1 including the fees  ( if _includeFee is passed true)
      */
     function getAUMWithFees(bool _includeFee)
         external
@@ -409,23 +333,16 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
             Tick memory tick = ticks[i];
 
             // get current liquidity from the pool
-            (uint128 currentLiquidity, , , , ) = pool.positions(
-                PositionKey.compute(
-                    address(this),
-                    tick.tickLower,
-                    tick.tickUpper
-                )
-            );
+            (uint128 currentLiquidity, , , , ) = pool.positions(PositionKey.compute(address(this), tick.tickLower, tick.tickUpper));
 
             if (currentLiquidity > 0) {
                 // calculate current positions in the pool from currentLiquidity
-                (uint256 position0, uint256 position1) = LiquidityHelper
-                    .getAmountsForLiquidity(
-                        pool,
-                        tick.tickLower,
-                        tick.tickUpper,
-                        currentLiquidity
-                    );
+                (uint256 position0, uint256 position1) = LiquidityHelper.getAmountsForLiquidity(
+                    pool,
+                    tick.tickLower,
+                    tick.tickUpper,
+                    currentLiquidity
+                );
 
                 amount0 = amount0.add(position0);
                 amount1 = amount1.add(position1);

@@ -14,6 +14,7 @@ import "./interfaces/IStrategyBase.sol";
  * @title DefiEdge Strategy Factory
  * @author DefiEdge Team
  * @notice A factory contract used to launch strategie's to manage assets on Uniswap V3
+ * @dev Deployer deploys the straegy and this contract connects it with manager contract
  */
 
 contract DefiEdgeStrategyFactory is IStrategyFactory {
