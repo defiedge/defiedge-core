@@ -10,6 +10,12 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./interfaces/IDefiEdgeStrategyDeployer.sol";
 import "./interfaces/IStrategyBase.sol";
 
+/**
+ * @title DefiEdge Strategy Factory
+ * @author DefiEdge Team
+ * @notice A factory contract used to launch strategie's to manage assets on Uniswap V3
+ */
+
 contract DefiEdgeStrategyFactory is IStrategyFactory {
     using SafeMath for uint256;
 
@@ -78,37 +84,19 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
         oneInchRouter = _oneInchRouter;
     }
 
-    // /**
-    //  * @notice Launches strategy contract
-    //  * @param _pool Address of the pool
-    //  * @param _operator Address of the operator
-    //  * @param _ticks Array of the ticks
-    //  */
-    function createStrategy(CreateStrategyParams calldata params)
-        external
-        payable
-        override
-    {
+    /**
+     * @inheritdoc IStrategyFactory
+     */
+    function createStrategy(CreateStrategyParams calldata params) external payable override {
         require(msg.value == strategyCreationFee, "INSUFFICIENT_FEES");
 
         IUniswapV3Pool pool = IUniswapV3Pool(params.pool);
 
-        require(
-            IERC20Minimal(pool.token0()).decimals() <= MAX_DECIMAL &&
-                IERC20Minimal(pool.token1()).decimals() <= MAX_DECIMAL,
-            "ID"
-        );
+        require(IERC20Minimal(pool.token0()).decimals() <= MAX_DECIMAL && IERC20Minimal(pool.token1()).decimals() <= MAX_DECIMAL, "ID");
 
-        address poolAddress = uniswapV3Factory.getPool(
-            pool.token0(),
-            pool.token1(),
-            pool.fee()
-        );
+        address poolAddress = uniswapV3Factory.getPool(pool.token0(), pool.token1(), pool.fee());
 
-        require(
-            poolAddress != address(0) && poolAddress == address(pool),
-            "IP"
-        );
+        require(poolAddress != address(0) && poolAddress == address(pool), "IP");
 
         address manager = address(
             new StrategyManager(
@@ -142,19 +130,22 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
         emit NewStrategy(strategy, msg.sender);
     }
 
-    function changeDefaultAllowedDeviation(uint256 _allowedDeviation)
-        external
-        onlyGovernance
-    {
+    /**
+     * @notice Change default allowed deviation for the Chainlink, Transaction will fail if the deviation is more than allowed deviation
+     * @dev It'll be copied to the all the new strategies and can be updated for the pool individually.
+     * @param _allowedDeviation The deviation which is allowed
+     */
+    function changeDefaultAllowedDeviation(uint256 _allowedDeviation) external onlyGovernance {
         require(_allowedDeviation <= 1e17, "IA"); // should be less than 10%
         allowedDeviation = _allowedDeviation;
         emit ChangeDeviation(allowedDeviation);
     }
 
-    function changeAllowedSlippage(uint256 _allowedSlippage)
-        external
-        onlyGovernance
-    {
+    /**
+     * @notice Change's allowed slippage for the swap()
+     * @param _allowedSlippage Allowed slippage
+     */
+    function changeAllowedSlippage(uint256 _allowedSlippage) external onlyGovernance {
         require(_allowedSlippage <= 1e17, "IA"); // should be less than 10%
         allowedSlippage = _allowedSlippage;
         emit ChangeSlippage(allowedSlippage);
@@ -174,10 +165,7 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
      * @notice Changes protocol performance fees
      * @param _feeRate New fee in 1e8 format
      */
-    function changeProtocolPerformanceFeeRate(uint256 _feeRate)
-        external
-        onlyGovernance
-    {
+    function changeProtocolPerformanceFeeRate(uint256 _feeRate) external onlyGovernance {
         require(_feeRate <= MAX_PROTOCOL_PERFORMANCE_FEES_RATE, "IA"); // should be less than 20%
         protocolPerformanceFeeRate = _feeRate;
         emit ChangeProtocolPerformanceFee(protocolPerformanceFeeRate);
@@ -200,7 +188,7 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
     }
 
     /**
-     * @notice Change the operator
+     * @notice Change the governance
      */
     function acceptGovernance() external {
         require(msg.sender == pendingGovernance);
@@ -210,6 +198,7 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
     /**
      * @notice Adds strategy to Denylist, rebalance and add liquidity will be stopped
      * @param _strategy Address of the strategy
+     * @param _status If true, it'll be blacklisted.
      */
     function deny(address _strategy, bool _status) external onlyGovernance {
         denied[_strategy] = _status;
@@ -220,16 +209,14 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
      * @notice Changes strategy creation fees
      * @param _fee New fee in 1e18 format
      */
-    function changeFeeForStrategyCreation(uint256 _fee)
-        external
-        onlyGovernance
-    {
+    function changeFeeForStrategyCreation(uint256 _fee) external onlyGovernance {
         strategyCreationFee = _fee;
         emit ChangeStrategyCreationFee(strategyCreationFee);
     }
 
     /**
      * @notice Governance claims fees received from strategy creation
+     * @param _to Address where the fees should be sent
      */
     function claimFees(address _to) external onlyGovernance {
         uint256 balance = address(this).balance;
@@ -259,12 +246,7 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
      * @param _base base token address
      * @param _quote quote token address
      */
-    function getHeartBeat(address _base, address _quote)
-        external
-        view
-        override
-        returns (uint256)
-    {
+    function getHeartBeat(address _base, address _quote) external view override returns (uint256) {
         if (_heartBeat[_base][_quote] == 0) {
             return 3600;
         } else {

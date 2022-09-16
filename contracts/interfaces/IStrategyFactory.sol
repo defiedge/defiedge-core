@@ -11,13 +11,21 @@ import "./IDefiEdgeStrategyDeployer.sol";
 
 interface IStrategyFactory {
     struct CreateStrategyParams {
+        // address of the strategy operator (manager)
         address operator;
+        // address where all the strategy's fees should go
         address feeTo;
+        // management fee rate, 1e8 is 100%
         uint256 managementFeeRate;
+        // performance fee rate, 1e8 is 100%
         uint256 performanceFeeRate;
+        // limit in the form of shares
         uint256 limit;
+        // address of the pool
         IUniswapV3Pool pool;
+        // Chainlink's pair with USD, if token0 has pair with USD it should be true and v.v. same for token1
         bool[2] usdAsBase;
+        // initial ticks to setup
         IStrategyBase.Tick[] ticks;
     }
 
@@ -55,14 +63,9 @@ interface IStrategyFactory {
 
     function oneInchRouter() external view returns (IOneInchRouter);
 
-    function getHeartBeat(address _base, address _quote)
-        external
-        view
-        returns (uint256);
+    function getHeartBeat(address _base, address _quote) external view returns (uint256);
 
-    function createStrategy(CreateStrategyParams calldata params)
-        external
-        payable;
+    function createStrategy(CreateStrategyParams calldata params) external payable;
 
     event NewStrategy(address indexed strategy, address indexed creater);
     event ChangeDeviation(uint256 deviation);
