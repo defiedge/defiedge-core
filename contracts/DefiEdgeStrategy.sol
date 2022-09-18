@@ -300,6 +300,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
                 NewTick memory tick = _newTicks[tickIndex];
                 (uint128 currentLiquidity, , , , ) = pool.positions(PositionKey.compute(address(this), tick.tickLower, tick.tickUpper));
                 pool.burn(tick.tickLower, tick.tickUpper, currentLiquidity);
+                pool.collect(address(this), tick.tickLower, tick.tickUpper, type(uint128).max, type(uint128).max);
             }
         }
         if (_amount > 0) {
