@@ -140,21 +140,41 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
         emit NewStrategy(strategy, msg.sender);
     }
 
+    /**
+     * @notice Changes allowed slippage for specific pool
+     * @param _pool Address of the pool
+     * @param _allowedSlippage New allowed slippage specific to the pool
+     */
     function changeAllowedSlippage(address _pool, uint256 _allowedSlippage) external override onlyGovernance {
         _allowedSlippageByPool[_pool] = _allowedSlippage;
         emit ChangeAllowedSlippage(_pool, _allowedSlippage);
     }
 
+    /**
+     * @notice Changes allowed deviation, it is used to check deviation against the pool
+     * @param _pool Address of the pool
+     * @param _allowedDeviation New allowed deviation
+     */
     function changeAllowedDeviation(address _pool, uint256 _allowedDeviation) external override onlyGovernance {
         _allowedDeviationByPool[_pool] = _allowedDeviation;
         emit ChangeAllowedDeviation(_pool, _allowedDeviation);
     }
 
+    /**
+     * @notice Change allowed swap deviation
+     * @param _pool Address of the new pool
+     * @param _allowedSwapDeviation New allowed swap deviation value
+     */
     function changeAllowedSwapDeviation(address _pool, uint256 _allowedSwapDeviation) external override onlyGovernance {
         _allowedSwapDeviationByPool[_pool] = _allowedSwapDeviation;
         emit ChangeAllowedSwapDeviation(_pool, _allowedSwapDeviation);
     }
 
+    /**
+     * @notice Current allowed slippage if the slippage for specific pool is not defined it'll return default allowed slippage
+     * @param _pool Address of the pool
+     * @return Current allowed slippage
+     */
     function allowedSlippage(address _pool) public view override returns (uint256) {
         if (_allowedSlippageByPool[_pool] > 0) {
             return _allowedSlippageByPool[_pool];
@@ -163,6 +183,11 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
         }
     }
 
+    /**
+     * @notice Current allowed deviation, if specific to pool is defiened it'll return it otherwise returns the default value
+     * @param _pool Address of the pool
+     * @return Default value of for the allowed deviation.
+     */
     function allowedDeviation(address _pool) public view override returns (uint256) {
         if (_allowedDeviationByPool[_pool] > 0) {
             return _allowedDeviationByPool[_pool];
@@ -171,6 +196,11 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
         }
     }
 
+    /**
+     * @notice Current allowed swap deviation by pool, if by pool is not defiened it'll return the default vallue
+     * @param _pool Address of the pool
+     * @return Current allowed swap deviation
+     */
     function allowedSwapDeviation(address _pool) public view override returns (uint256) {
         if (_allowedSwapDeviationByPool[_pool] > 0) {
             return _allowedSwapDeviationByPool[_pool];
@@ -179,6 +209,12 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
         }
     }
 
+    /**
+     * @notice Changes default values for the slippage and deviation
+     * @param _allowedSlippage New default allowed slippage
+     * @param _allowedDeviation New Default allowed deviation
+     * @param _allowedSwapDeviation New default allowed deviation for the swap.
+     */
     function changeDefaultValues(
         uint256 _allowedSlippage,
         uint256 _allowedDeviation,
