@@ -116,7 +116,7 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
                 params.feeTo,
                 params.managementFeeRate,
                 params.performanceFeeRate,
-                params.limit,
+                params.limit
             )
         );
 
@@ -155,7 +155,7 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
         emit ChangeAllowedSwapDeviation(_pool, _allowedSwapDeviation);
     }
 
-    function allowedSlippage(address _pool) public view override  returns (uint256) {
+    function allowedSlippage(address _pool) public view override returns (uint256) {
         if (_allowedSlippageByPool[_pool] > 0) {
             return _allowedSlippageByPool[_pool];
         } else {
@@ -186,14 +186,17 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
     ) external override onlyGovernance {
         if (_allowedSlippage > 0) {
             defaultAllowedSlippage = _allowedSlippage;
+            emit ChangeAllowedSlippage(address(0), defaultAllowedSlippage);
         }
 
         if (_allowedDeviation > 0) {
             defaultAllowedDeviation = _allowedDeviation;
+            emit ChangeAllowedDeviation(address(0), defaultAllowedDeviation);
         }
 
         if (_allowedSwapDeviation > 0) {
-            defaultAllowedDeviation = _allowedDeviation;
+            defaultAllowedSwapDeviation = _allowedSwapDeviation;
+            emit ChangeAllowedSwapDeviation(address(0), defaultAllowedSwapDeviation);
         }
     }
 
