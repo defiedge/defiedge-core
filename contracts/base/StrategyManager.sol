@@ -25,7 +25,6 @@ contract StrategyManager is AccessControl, IStrategyManager {
     event ClaimFee(uint256 managerFee, uint256 protocolFee);
     event PerformanceFeeChanged(uint256 performanceFeeRate);
     event StrategyModeUpdated(bool status); // true - private, false - public
-    event EmergencyActivated();
 
     uint256 public constant MIN_FEE = 20e6; // minimum 20%
     uint256 public constant MIN_DEVIATION = 2e17; // minimum 20%
@@ -34,9 +33,6 @@ contract StrategyManager is AccessControl, IStrategyManager {
     address public override operator;
     address public pendingOperator;
     address public override feeTo;
-
-    // when true emergency functions will be frozen forever
-    bool public override freezeEmergency;
 
     // allowed price difference for the oracle and the current price
     // 1e18 is 100%
@@ -203,14 +199,6 @@ contract StrategyManager is AccessControl, IStrategyManager {
     function updateStrategyMode(bool _isPrivate) external onlyOperator {
         isStrategyPrivate = _isPrivate;
         emit StrategyModeUpdated(isStrategyPrivate);
-    }
-
-    /**
-     * @notice Freeze emergency function, can be done only once
-     */
-    function freezeEmergencyFunctions() external onlyGovernance {
-        freezeEmergency = true;
-        emit EmergencyActivated();
     }
 
     /**

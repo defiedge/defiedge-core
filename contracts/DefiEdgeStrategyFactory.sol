@@ -59,6 +59,9 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
     // mapping of blacklisted strategies
     mapping(address => bool) public override denied;
 
+    // when true emergency functions will be frozen forever
+    bool public override freezeEmergency;
+
     // Modifiers
     modifier onlyGovernance() {
         require(msg.sender == governance, "NO");
@@ -253,5 +256,13 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
         } else {
             return _heartBeat[_base][_quote];
         }
+    }
+
+    /**
+     * @notice Freeze emergency function, can be done only once
+     */
+    function freezeEmergencyFunctions() external override onlyGovernance {
+        freezeEmergency = true;
+        emit EmergencyFrozen();
     }
 }
