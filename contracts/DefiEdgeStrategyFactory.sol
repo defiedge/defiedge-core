@@ -155,7 +155,7 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
         emit ChangeAllowedSwapDeviation(_pool, _allowedSwapDeviation);
     }
 
-    function allowedSlippage(address _pool) public view override onlyGovernance returns (uint256) {
+    function allowedSlippage(address _pool) public view override  returns (uint256) {
         if (_allowedSlippageByPool[_pool] > 0) {
             return _allowedSlippageByPool[_pool];
         } else {
@@ -163,7 +163,7 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
         }
     }
 
-    function allowedDeviation(address _pool) public view override onlyGovernance returns (uint256) {
+    function allowedDeviation(address _pool) public view override returns (uint256) {
         if (_allowedDeviationByPool[_pool] > 0) {
             return _allowedDeviationByPool[_pool];
         } else {
@@ -171,7 +171,7 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
         }
     }
 
-    function allowedSwapDeviation(address _pool) public view override onlyGovernance returns (uint256) {
+    function allowedSwapDeviation(address _pool) public view override returns (uint256) {
         if (_allowedSwapDeviationByPool[_pool] > 0) {
             return _allowedSwapDeviationByPool[_pool];
         } else {
