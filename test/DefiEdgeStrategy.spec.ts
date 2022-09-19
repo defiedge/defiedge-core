@@ -197,8 +197,8 @@ describe("DeFiEdgeStrategy", () => {
       await strategy.manager()
     )) as StrategyManager;
 
-    // set deviation in strategy
-    await strategyManager.changeAllowedDeviation("10000000000000000"); // 1%
+    // set deviation for strategy
+    await factory.changeAllowedDeviation(pool.address, "10000000000000000"); // 1%
 
     const PeripheryFactory = ethers.getContractFactory("Periphery", {
       libraries: { LiquidityHelper: liquidityHelper.address },
@@ -1795,6 +1795,85 @@ describe("DeFiEdgeStrategy", () => {
       });
     });
   });
+
+  describe("#emergencyWithdraw", async () => {
+    it("should revert if caller is not governance", async () => {
+      await expect(
+            strategy.connect(signers[1]).emergencyWithdraw(token0.address, signers[0].address, expandTo18Decimals(1), [])
+        ).to.be.reverted;
+    })
+
+    it("should revert if freeze emergency is activated", async () => {
+      await factory.freezeEmergencyFunctions();
+
+      await expect(
+            strategy.connect(signers[0]).emergencyWithdraw(token0.address, signers[0].address, 0, [])
+        ).to.be.reverted;
+    })
+
+    it("should not revert if caller is governance & freeze emergency is not activated", async () => {
+      await expect(
+            strategy.emergencyWithdraw(token0.address, signers[0].address, 0, [])
+        ).to.be.not.reverted;
+    })
+
+    it("should burn liquidity from provided ticks", async () => {
+      await mint(signers[1]);
+
+      let token0A = await ethers.getContractAt("TestERC20", await pool.token0());
+      let token1A = await ethers.getContractAt("TestERC20", await pool.token1());
+
+      let token0BalBefore = await token0A.balanceOf(strategy.address);
+      let token1BalBefore = await token1A.balanceOf(strategy.address);
+
+      await strategy.emergencyWithdraw(token0.address, signers[0].address, 0, [
+        {
+          amount0: 0,
+          amount1: 0,
+          tickLower: calculateTick(2500, 60),
+          tickUpper: calculateTick(3500, 60),
+        },
+      ])
+
+      expect(await token0A.balanceOf(strategy.address)).to.gt(token0BalBefore);
+      expect(await token1A.balanceOf(strategy.address)).to.gt(token1BalBefore);
+
+    })
+
+    it("should transfer tokens from strategy to provided address", async () => {
+      await mint(signers[1]);
+
+      let token0A = await ethers.getContractAt("TestERC20", await pool.token0());
+      let token1A = await ethers.getContractAt("TestERC20", await pool.token1());
+
+      // burn liquidity
+      await strategy.emergencyWithdraw(token0.address, signers[0].address, 0, [
+        {
+          amount0: 0,
+          amount1: 0,
+          tickLower: calculateTick(2500, 60),
+          tickUpper: calculateTick(3500, 60),
+        },
+      ])
+
+      let token0BalBefore = await token0A.balanceOf(strategy.address);
+      let token1BalBefore = await token1A.balanceOf(strategy.address);
+
+      // transfer all token0
+      await strategy.emergencyWithdraw(token0A.address, signers[5].address, token0BalBefore, [])
+
+      // transfer all token1
+      await strategy.emergencyWithdraw(token1A.address, signers[5].address, token1BalBefore, [])
+
+      expect(await token0A.balanceOf(strategy.address)).to.eq("0");
+      expect(await token1A.balanceOf(strategy.address)).to.eq("0");
+
+      expect(await token0A.balanceOf(signers[5].address)).to.eq(token0BalBefore);
+      expect(await token1A.balanceOf(signers[5].address)).to.eq(token1BalBefore);
+
+    })
+
+  })
 
   // describe("#Swap", async () => {
   //   beforeEach("add some liquidity", async () => {

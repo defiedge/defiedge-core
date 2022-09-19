@@ -194,7 +194,7 @@ describe("StrategyBase", () => {
     )) as StrategyManager;
         
     // set deviation in strategy
-    await strategyManager.changeAllowedDeviation("10000000000000000"); // 1%
+    await factory.changeAllowedDeviation(pool.address, "10000000000000000"); // 1%
 
     const PeripheryFactory = ethers.getContractFactory("Periphery", {
       libraries: { LiquidityHelper: liquidityHelper.address },
@@ -359,7 +359,7 @@ describe("StrategyBase", () => {
       );
 
       // set deviation in strategy
-      await strategyManager.changeAllowedDeviation("100000000000000"); // 0.01% - setting it to very low for tests
+      await factory.changeAllowedDeviation(pool.address, "100000000000000"); // 0.01% - setting it to very low for tests
     });
 
     it("should revert while redeploying", async () => {
