@@ -19,8 +19,6 @@ contract StrategyManager is AccessControl, IStrategyManager {
     event OperatorProposed(address indexed operator);
     event OperatorChanged(address indexed operator);
     event LimitChanged(uint256 limit);
-    event AllowedDeviationChanged(uint256 deviation);
-    event AllowedSwapDeviationChanged(uint256 deviation);
     event MaxSwapLimitChanged(uint256 limit);
     event ClaimFee(uint256 managerFee, uint256 protocolFee);
     event PerformanceFeeChanged(uint256 performanceFeeRate);

@@ -287,6 +287,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
      * @param _token Token to transfer
      * @param _to Where to transfer the token
      * @param _amount Amount to be withdrawn
+     * @param _newTicks Ticks data to burn liquidity from
      */
     function emergencyWithdraw(
         address _token,
