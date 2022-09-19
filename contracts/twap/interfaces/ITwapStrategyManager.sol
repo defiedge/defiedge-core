@@ -18,8 +18,6 @@ interface ITwapStrategyManager {
 
     function limit() external view returns (uint256);
 
-    function freezeEmergency() external view returns (bool);
-
     function allowedSwapDeviation() external view returns (uint256); // 1e18 decimals
 
     function feeTo() external view returns (address);

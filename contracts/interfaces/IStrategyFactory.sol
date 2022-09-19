@@ -92,8 +92,6 @@ interface IStrategyFactory {
     ) external;
 
     event NewStrategy(address indexed strategy, address indexed creater);
-    event ChangeDeviation(uint256 deviation);
-    event ChangeSlippage(uint256 slippage);
     event ChangeProtocolFee(uint256 fee);
     event ChangeProtocolPerformanceFee(uint256 fee);
     event StrategyStatusChanged(bool status);

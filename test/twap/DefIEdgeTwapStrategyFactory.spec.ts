@@ -199,7 +199,7 @@ describe("DefIEdgeTwapStrategyFactory", () => {
       )) as TwapStrategyManager;
         
     // set deviation in strategy
-    await strategyManager.changeSwapDeviation("10000000000000000"); // 1%
+    await factory.changeAllowedSwapDeviation(pool.address, "10000000000000000"); // 1%
 
     const PeripheryFactory = ethers.getContractFactory("Periphery", {
       libraries: { LiquidityHelper: liquidityHelper.address },
@@ -268,11 +268,11 @@ describe("DefIEdgeTwapStrategyFactory", () => {
     it("should set uniswap chainlinkRegistry contract address", async () => {
       expect(await factory.chainlinkRegistry()).to.be.equal(chainlinkRegistry.address);
     });
-    it("should set uniswap allowedSlippage", async () => {
-      expect(await factory.allowedSlippage()).to.be.equal("10000000000000000");
+    it("should set uniswap defaultAllowedSlippage", async () => {
+      expect(await factory.defaultAllowedSlippage()).to.be.equal("10000000000000000");
     });
-    it("should set uniswap allowedDeviation", async () => {
-      expect(await factory.allowedDeviation()).to.be.equal("10000000000000000");
+    it("should set uniswap defaultAllowedSwapDeviation", async () => {
+      expect(await factory.defaultAllowedSwapDeviation()).to.be.equal("10000000000000000");
     });
   });
 
@@ -679,39 +679,105 @@ describe("DefIEdgeTwapStrategyFactory", () => {
 
   })
 
-  describe("#changeDefaultAllowedDeviation", async () => {
+  describe("#changeDefaultValues", async () => {
     it("should be called by governance only", async () => {
-      await expect(factory.connect(signers[1]).changeDefaultAllowedDeviation(10000000)).to.be.revertedWith("NO");
+      await expect(factory.connect(signers[1]).changeDefaultValues(10000000, 20000000)).to.be.revertedWith("NO");
     });
-    it("should revert if deviation is higher", async () => {
-      await expect(factory.changeDefaultAllowedDeviation("200000000000000000")).to.be.revertedWith("IA");
+    it("should change default values", async () => {
+      expect(await factory.defaultAllowedSlippage()).to.be.equal("10000000000000000");
+      expect(await factory.defaultAllowedSwapDeviation()).to.be.equal("10000000000000000");
+
+      await factory.changeDefaultValues(10000000, 30000000);
+
+      expect(await factory.defaultAllowedSlippage()).to.be.equal("10000000");
+      expect(await factory.defaultAllowedSwapDeviation()).to.be.equal("30000000");
     });
-    it("should change deviation", async () => {
-      await factory.changeDefaultAllowedDeviation(1000000);
-      expect(await factory.allowedDeviation()).to.equal(1000000);
-    });
-    it("should emit changeDefaultAllowedDeviation event", async () => {
-      expect(await factory.changeDefaultAllowedDeviation("1000000"))
-        .to.emit(factory, "ChangeDeviation").withArgs("1000000")
+
+    it("should emit proper event", async () => {
+      let tx = await factory.changeDefaultValues(10000000, 30000000)
+      await expect(tx).to.emit(factory, "ChangeAllowedSlippage").withArgs(ethers.constants.AddressZero, "10000000")
+      await expect(tx).to.emit(factory, "ChangeAllowedSwapDeviation").withArgs(ethers.constants.AddressZero, "30000000")
     })
+
   });
 
   describe("#changeAllowedSlippage", async () => {
     it("should be called by governance only", async () => {
-      await expect(factory.connect(signers[1]).changeAllowedSlippage(10000000)).to.be.revertedWith("NO");
+      await expect(factory.connect(signers[1]).changeAllowedSlippage(pool.address, 10000000)).to.be.revertedWith("NO");
     });
-    it("should revert if slippage is higher", async () => {
-      await expect(factory.changeAllowedSlippage("200000000000000000")).to.be.revertedWith("IA");
-    });
+    // it("should revert if slippage is higher", async () => {
+    //   await expect(factory.changeAllowedSlippage(pool.address, "200000000000000000")).to.be.revertedWith("IA");
+    // });
     it("should change slippage", async () => {
-      await factory.changeAllowedSlippage(1000000);
-      expect(await factory.allowedSlippage()).to.equal(1000000);
+      expect(await factory.allowedSlippage(pool.address)).to.be.equal("10000000000000000");
+
+      await factory.changeAllowedSlippage(pool.address, 1000000);
+      expect(await factory.allowedSlippage(pool.address)).to.equal(1000000);
+
+      expect(await factory.allowedSlippage(pool.address)).to.be.equal("1000000");
+
     });
     it("should emit changeAllowedSlippage event", async () => {
-      expect(await factory.changeAllowedSlippage("1000000"))
-        .to.emit(factory, "ChangeSlippage").withArgs("1000000")
+      expect(await factory.changeAllowedSlippage(pool.address, "1000000"))
+        .to.emit(factory, "ChangeAllowedSlippage").withArgs(pool.address, "1000000")
     })
   });
+
+  describe("#changeAllowedSwapDeviation", async () => {
+    it("should revert if operator is not calling", async () => {
+      await expect(factory.connect(signers[1]).changeAllowedSwapDeviation(pool.address, 1)).to.be.revertedWith(
+        "NO"
+      );
+    });
+
+    it("should set  correct deviation", async () => {
+      expect(await factory.allowedSwapDeviation(pool.address)).to.be.equal("10000000000000000");
+
+      await factory.changeAllowedSwapDeviation(pool.address, "1000");
+      expect(await factory.allowedSwapDeviation(pool.address)).to.equal("1000");
+
+      expect(await factory.allowedSwapDeviation(pool.address)).to.be.equal("1000");
+    });
+    it("should emit changeSwapDeviation event", async () => {
+      await expect(await factory.changeAllowedSwapDeviation(pool.address, 1000000))
+        .to.emit(factory, "ChangeAllowedSwapDeviation")
+        .withArgs(pool.address, 1000000);
+    });
+  });
+
+  // describe("#changeDefaultAllowedDeviation", async () => {
+  //   it("should be called by governance only", async () => {
+  //     await expect(factory.connect(signers[1]).changeDefaultAllowedDeviation(10000000)).to.be.revertedWith("NO");
+  //   });
+  //   it("should revert if deviation is higher", async () => {
+  //     await expect(factory.changeDefaultAllowedDeviation("200000000000000000")).to.be.revertedWith("IA");
+  //   });
+  //   it("should change deviation", async () => {
+  //     await factory.changeDefaultAllowedDeviation(1000000);
+  //     expect(await factory.allowedDeviation()).to.equal(1000000);
+  //   });
+  //   it("should emit changeDefaultAllowedDeviation event", async () => {
+  //     expect(await factory.changeDefaultAllowedDeviation("1000000"))
+  //       .to.emit(factory, "ChangeDeviation").withArgs("1000000")
+  //   })
+  // });
+
+  // describe("#changeAllowedSlippage", async () => {
+  //   it("should be called by governance only", async () => {
+  //     await expect(factory.connect(signers[1]).changeAllowedSlippage(10000000)).to.be.revertedWith("NO");
+  //   });
+  //   it("should revert if slippage is higher", async () => {
+  //     await expect(factory.changeAllowedSlippage("200000000000000000")).to.be.revertedWith("IA");
+  //   });
+  //   it("should change slippage", async () => {
+  //     await factory.changeAllowedSlippage(1000000);
+  //     expect(await factory.allowedSlippage()).to.equal(1000000);
+  //   });
+  //   it("should emit changeAllowedSlippage event", async () => {
+  //     expect(await factory.changeAllowedSlippage("1000000"))
+  //       .to.emit(factory, "ChangeSlippage").withArgs("1000000")
+  //   })
+  // });
 
   describe("#changeProtocolFeeRate", async () => {
     it("should be called by governance only", async () => {
@@ -932,6 +998,20 @@ describe("DefIEdgeTwapStrategyFactory", () => {
     });
   });
 
+  describe("#freezeEmergencyFunctions", async () => {
+    it("should revert if operator is not calling", async () => {
+      expect(factory.connect(signers[1]).freezeEmergencyFunctions()).to.be.revertedWith("N");
+    });
+
+    it("should set freezeEmergency to true", async () => {
+      await factory.freezeEmergencyFunctions();
+      expect(await factory.freezeEmergency()).to.equal(true);
+    });
+    it("should emit freezeEmergency event", async () => {
+      await expect(await factory.freezeEmergencyFunctions())
+        .to.emit(factory, "EmergencyFrozen")
+    });
+  });
   // describe("#allowAgain", async () => {
   //   it("should be called by governance only", async () => {
   //     expect(factory.connect(signers[1]).allowAgain(strategy.address)).to.be
