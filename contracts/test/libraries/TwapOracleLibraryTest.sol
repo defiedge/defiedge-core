@@ -256,17 +256,10 @@ contract TwapOracleLibraryTest {
         address _manager,
         bool[2] memory _useTwap
     ) public view returns (bool) {
-        IUniswapV3Pool _pool = IUniswapV3Pool(pool);
         ITwapStrategyFactory _factory = ITwapStrategyFactory(factory);
 
         _amountIn = normalise(_tokenIn, _amountIn);
         _amountOut = normalise(_tokenOut, _amountOut);
-
-        if(_pool.token0() == _tokenIn) {
-            _useTwap = [_useTwap[0], _useTwap[1]]; 
-        } else {
-            _useTwap = [_useTwap[1], _useTwap[0]];
-        }
 
         // get price of _tokenIn in USD
         uint256 amountInUSD = _amountIn.mul(
@@ -292,11 +285,9 @@ contract TwapOracleLibraryTest {
             )
         );
 
-        uint256 diff;
+        uint256 diff = amountInUSD.div(amountOutUSD.div(BASE));
 
-        diff = amountInUSD.div(amountOutUSD.div(BASE));
-
-        uint256 _allowedSlippage = _factory.allowedSlippage();
+        uint256 _allowedSlippage = _factory.allowedSlippage(pool);
         // check if the price is above deviation
         if (
             diff > (BASE.add(_allowedSlippage)) ||

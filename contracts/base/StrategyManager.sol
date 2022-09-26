@@ -19,13 +19,10 @@ contract StrategyManager is AccessControl, IStrategyManager {
     event OperatorProposed(address indexed operator);
     event OperatorChanged(address indexed operator);
     event LimitChanged(uint256 limit);
-    event AllowedDeviationChanged(uint256 deviation);
-    event AllowedSwapDeviationChanged(uint256 deviation);
     event MaxSwapLimitChanged(uint256 limit);
     event ClaimFee(uint256 managerFee, uint256 protocolFee);
     event PerformanceFeeChanged(uint256 performanceFeeRate);
     event StrategyModeUpdated(bool status); // true - private, false - public
-    event EmergencyActivated();
 
     uint256 public constant MIN_FEE = 20e6; // minimum 20%
     uint256 public constant MIN_DEVIATION = 2e17; // minimum 20%
@@ -34,17 +31,6 @@ contract StrategyManager is AccessControl, IStrategyManager {
     address public override operator;
     address public pendingOperator;
     address public override feeTo;
-
-    // when true emergency functions will be frozen forever
-    bool public override freezeEmergency;
-
-    // allowed price difference for the oracle and the current price
-    // 1e18 is 100%
-    uint256 public override allowedDeviation;
-
-    // allowed swap price difference for the oracle and the current price to increase swap counter
-    // 1e18 is 100%
-    uint256 public override allowedSwapDeviation;
 
     // fee to take when user adds the liquidity
     uint256 public override managementFeeRate; // 1e8 is 100%
@@ -79,12 +65,10 @@ contract StrategyManager is AccessControl, IStrategyManager {
         address _feeTo,
         uint256 _managementFeeRate,
         uint256 _performanceFeeRate,
-        uint256 _limit,
-        uint256 _allowedDeviation
+        uint256 _limit
     ) {
         require(_managementFeeRate <= MIN_FEE); // should be less than 20%
         require(_performanceFeeRate <= MIN_FEE); // should be less than 20%
-        require(_allowedDeviation <= MIN_DEVIATION); // should be less than 20%
 
         factory = _factory;
         operator = _operator;
@@ -93,9 +77,6 @@ contract StrategyManager is AccessControl, IStrategyManager {
         managementFeeRate = _managementFeeRate;
         performanceFeeRate = _performanceFeeRate;
         limit = _limit;
-
-        allowedDeviation = _allowedDeviation;
-        allowedSwapDeviation = _allowedDeviation.div(2);
 
         _setupRole(ADMIN_ROLE, _operator);
         _setupRole(USER_WHITELIST_ROLE, _operator);
@@ -205,32 +186,12 @@ contract StrategyManager is AccessControl, IStrategyManager {
         emit StrategyModeUpdated(isStrategyPrivate);
     }
 
-    /**
-     * @notice Freeze emergency function, can be done only once
-     */
-    function freezeEmergencyFunctions() external onlyGovernance {
-        freezeEmergency = true;
-        emit EmergencyActivated();
+    function allowedDeviation() public view override returns (uint256) {
+        return factory.allowedDeviation(address(IStrategyBase(strategy()).pool()));
     }
 
-    /**
-     * @notice Changes allowed price deviation for shares and pool
-     * @param _allowedDeviation New allowed price deviation, 1e18 is 100%
-     */
-    function changeAllowedDeviation(uint256 _allowedDeviation) external onlyGovernance {
-        require(_allowedDeviation <= MIN_DEVIATION, "ID"); // should be less than 20%
-        allowedDeviation = _allowedDeviation;
-        emit AllowedDeviationChanged(_allowedDeviation);
-    }
-
-    /**
-     * @notice Changes allowed price deviation for shares and pool
-     * @param _allowedSwapDeviation New allowed price deviation, 1e18 is 100%
-     */
-    function changeSwapDeviation(uint256 _allowedSwapDeviation) external onlyGovernance {
-        require(_allowedSwapDeviation <= MIN_DEVIATION, "ID"); // should be less than 20%
-        allowedSwapDeviation = _allowedSwapDeviation;
-        emit AllowedSwapDeviationChanged(allowedSwapDeviation);
+    function allowedSwapDeviation() public view override returns (uint256) {
+        return factory.allowedSwapDeviation(address(IStrategyBase(strategy()).pool()));
     }
 
     /**

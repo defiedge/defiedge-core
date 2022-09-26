@@ -260,7 +260,7 @@ library OracleLibrary {
 
         diff = amountInUSD.div(amountOutUSD.div(BASE));
 
-        uint256 _allowedSlippage = _factory.allowedSlippage();
+        uint256 _allowedSlippage = _factory.allowedSlippage(address(_pool));
         // check if the price is above deviation
         if (diff > (BASE.add(_allowedSlippage)) || diff < (BASE.sub(_allowedSlippage))) {
             return false;

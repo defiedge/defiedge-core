@@ -33,9 +33,17 @@ interface IStrategyFactory {
 
     function strategyCreationFee() external view returns (uint256); // fee for strategy creation in native token
 
-    function allowedDeviation() external view returns (uint256); // 1e18 means 100%
+    function defaultAllowedSlippage() external view returns (uint256); // 1e18 means 100%
 
-    function allowedSlippage() external view returns (uint256); // 1e18 means 100%
+    function defaultAllowedDeviation() external view returns (uint256); // 1e18 means 100%
+
+    function defaultAllowedSwapDeviation() external view returns (uint256); // 1e18 means 100%
+
+    function allowedDeviation(address _pool) external view returns (uint256); // 1e18 means 100%
+
+    function allowedSwapDeviation(address _pool) external view returns (uint256); // 1e18 means 100%
+
+    function allowedSlippage(address _pool) external view returns (uint256); // 1e18 means 100%
 
     function isValidStrategy(address) external view returns (bool);
 
@@ -63,16 +71,34 @@ interface IStrategyFactory {
 
     function oneInchRouter() external view returns (IOneInchRouter);
 
+    function freezeEmergency() external view returns (bool);
+
     function getHeartBeat(address _base, address _quote) external view returns (uint256);
 
     function createStrategy(CreateStrategyParams calldata params) external payable;
 
+    function freezeEmergencyFunctions() external;
+
+    function changeAllowedSlippage(address, uint256) external;
+
+    function changeAllowedDeviation(address, uint256) external;
+
+    function changeAllowedSwapDeviation(address, uint256) external;
+
+    function changeDefaultValues(
+        uint256,
+        uint256,
+        uint256
+    ) external;
+
     event NewStrategy(address indexed strategy, address indexed creater);
-    event ChangeDeviation(uint256 deviation);
-    event ChangeSlippage(uint256 slippage);
     event ChangeProtocolFee(uint256 fee);
     event ChangeProtocolPerformanceFee(uint256 fee);
     event StrategyStatusChanged(bool status);
     event ChangeStrategyCreationFee(uint256 amount);
     event ClaimFees(address to, uint256 amount);
+    event ChangeAllowedSlippage(address pool, uint256 value);
+    event ChangeAllowedDeviation(address pool, uint256 value);
+    event ChangeAllowedSwapDeviation(address pool, uint256 value);
+    event EmergencyFrozen();
 }

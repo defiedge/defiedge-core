@@ -193,7 +193,7 @@ describe("StrategyManager", () => {
     )) as StrategyManager;
         
     // set deviation in strategy
-    await strategyManager.changeAllowedDeviation("10000000000000000"); // 1%
+    await factory.changeAllowedDeviation(pool.address, "10000000000000000"); // 1%
 
     const PeripheryFactory = ethers.getContractFactory("Periphery", {
       libraries: { LiquidityHelper: liquidityHelper.address },
@@ -495,59 +495,6 @@ describe("StrategyManager", () => {
     it("should emit changePerformanceFeeRate event", async () => {
       await expect(await strategyManager.changePerformanceFeeRate(1000000))
         .to.emit(strategyManager, "PerformanceFeeChanged")
-        .withArgs(1000000);
-    });
-  });
-
-  describe("#freezeEmergencyFunctions", async () => {
-    it("should revert if operator is not calling", async () => {
-      expect(strategyManager.connect(signers[1]).freezeEmergencyFunctions()).to.be.revertedWith("N");
-    });
-
-    it("should set freezeEmergency to true", async () => {
-      await strategyManager.freezeEmergencyFunctions();
-      expect(await strategyManager.freezeEmergency()).to.equal(true);
-    });
-    it("should emit freezeEmergency event", async () => {
-      await expect(await strategyManager.freezeEmergencyFunctions())
-        .to.emit(strategyManager, "EmergencyActivated")
-    });
-  });
-
-
-  describe("#changeAllowedDeviation", async () => {
-    it("should revert if operator is not calling", async () => {
-      await expect(strategyManager.connect(signers[1]).changeAllowedDeviation(1)).to.be.revertedWith(
-        "N"
-      );
-    });
-
-    it("should set deviation to 1%", async () => {
-      await strategyManager.changeAllowedDeviation(1000000);
-      expect(await strategyManager.allowedDeviation()).to.equal(1000000);
-    });
-
-    it("should emit changeAllowedDeviation event", async () => {
-      await expect(await strategyManager.changeAllowedDeviation(1000000))
-        .to.emit(strategyManager, "AllowedDeviationChanged")
-        .withArgs(1000000);
-    });
-  });
-
-  describe("#changeSwapDeviation", async () => {
-    it("should revert if operator is not calling", async () => {
-      await expect(strategyManager.connect(signers[1]).changeSwapDeviation(1)).to.be.revertedWith(
-        "N"
-      );
-    });
-
-    it("should set  correct deviation", async () => {
-      await strategyManager.changeSwapDeviation("1000");
-      expect(await strategyManager.allowedSwapDeviation()).to.equal("1000");
-    });
-    it("should emit changeSwapDeviation event", async () => {
-      await expect(await strategyManager.changeSwapDeviation(1000000))
-        .to.emit(strategyManager, "AllowedSwapDeviationChanged")
         .withArgs(1000000);
     });
   });

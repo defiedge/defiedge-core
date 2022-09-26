@@ -287,13 +287,25 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
      * @param _token Token to transfer
      * @param _to Where to transfer the token
      * @param _amount Amount to be withdrawn
+     * @param _newTicks Ticks data to burn liquidity from
      */
     function emergencyWithdraw(
         address _token,
         address _to,
-        uint256 _amount
+        uint256 _amount,
+        NewTick[] calldata _newTicks
     ) external {
-        require(msg.sender == factory.governance() && !manager.freezeEmergency());
-        TransferHelper.safeTransfer(_token, _to, _amount);
+        require(msg.sender == factory.governance() && !factory.freezeEmergency());
+        if (_newTicks.length > 0) {
+            for (uint256 tickIndex = 0; tickIndex < _newTicks.length; tickIndex++) {
+                NewTick memory tick = _newTicks[tickIndex];
+                (uint128 currentLiquidity, , , , ) = pool.positions(PositionKey.compute(address(this), tick.tickLower, tick.tickUpper));
+                pool.burn(tick.tickLower, tick.tickUpper, currentLiquidity);
+                pool.collect(address(this), tick.tickLower, tick.tickUpper, type(uint128).max, type(uint128).max);
+            }
+        }
+        if (_amount > 0) {
+            TransferHelper.safeTransfer(_token, _to, _amount);
+        }
     }
 }

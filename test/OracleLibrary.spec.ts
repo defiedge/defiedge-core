@@ -195,7 +195,7 @@ describe("OracleLibrary", () => {
       )) as StrategyManager;
         
     // set deviation in strategy
-    await strategyManager.changeAllowedDeviation("10000000000000000"); // 1%
+    await factory.changeAllowedDeviation(pool.address, "10000000000000000"); // 1%
 
     const PeripheryFactory = ethers.getContractFactory("Periphery", {
       libraries: { LiquidityHelper: liquidityHelper.address },

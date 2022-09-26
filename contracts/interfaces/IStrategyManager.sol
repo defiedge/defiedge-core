@@ -18,8 +18,6 @@ interface IStrategyManager {
 
     function limit() external view returns (uint256);
 
-    function freezeEmergency() external view returns (bool);
-
     function allowedDeviation() external view returns (uint256); // 1e18 decimals
 
     function allowedSwapDeviation() external view returns (uint256); // 1e18 decimals

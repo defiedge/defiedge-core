@@ -34,8 +34,14 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
     uint256 public override protocolPerformanceFeeRate; // 1e8 means 100%
 
     uint256 public override protocolFeeRate; // 1e8 means 100%
-    uint256 public override allowedDeviation; // 1e18 means 100%
-    uint256 public override allowedSlippage; // 1e18 means 100%
+
+    uint256 public override defaultAllowedSlippage;
+    uint256 public override defaultAllowedDeviation;
+    uint256 public override defaultAllowedSwapDeviation;
+
+    mapping(address => uint256) internal _allowedSlippageByPool; // allowed slippage on the swap
+    mapping(address => uint256) internal _allowedDeviationByPool; // allowed deviation between Chainlink price and pool price
+    mapping(address => uint256) internal _allowedSwapDeviationByPool; // allowed swap deviation between slippage and per swap
 
     uint256 public constant MAX_DECIMAL = 18; // pool token decimal should be less then 18
 
@@ -59,6 +65,9 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
     // mapping of blacklisted strategies
     mapping(address => bool) public override denied;
 
+    // when true emergency functions will be frozen forever
+    bool public override freezeEmergency;
+
     // Modifiers
     modifier onlyGovernance() {
         require(msg.sender == governance, "NO");
@@ -80,8 +89,9 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
         deployerProxy = _deployerProxy;
         uniswapV3Factory = _uniswapV3factory;
         chainlinkRegistry = _chainlinkRegistry;
-        allowedSlippage = _allowedSlippage;
-        allowedDeviation = _allowedDeviation;
+        defaultAllowedSlippage = _allowedSlippage;
+        defaultAllowedDeviation = _allowedDeviation;
+        defaultAllowedSwapDeviation = _allowedDeviation.div(2);
         oneInchRouter = _oneInchRouter;
     }
 
@@ -106,8 +116,7 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
                 params.feeTo,
                 params.managementFeeRate,
                 params.performanceFeeRate,
-                params.limit,
-                allowedDeviation
+                params.limit
             )
         );
 
@@ -132,24 +141,99 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
     }
 
     /**
-     * @notice Change default allowed deviation for the Chainlink, Transaction will fail if the deviation is more than allowed deviation
-     * @dev It'll be copied to the all the new strategies and can be updated for the pool individually.
-     * @param _allowedDeviation The deviation which is allowed
+     * @notice Changes allowed slippage for specific pool
+     * @param _pool Address of the pool
+     * @param _allowedSlippage New allowed slippage specific to the pool
      */
-    function changeDefaultAllowedDeviation(uint256 _allowedDeviation) external onlyGovernance {
-        require(_allowedDeviation <= 1e17, "IA"); // should be less than 10%
-        allowedDeviation = _allowedDeviation;
-        emit ChangeDeviation(allowedDeviation);
+    function changeAllowedSlippage(address _pool, uint256 _allowedSlippage) external override onlyGovernance {
+        _allowedSlippageByPool[_pool] = _allowedSlippage;
+        emit ChangeAllowedSlippage(_pool, _allowedSlippage);
     }
 
     /**
-     * @notice Change's allowed slippage for the swap()
-     * @param _allowedSlippage Allowed slippage
+     * @notice Changes allowed deviation, it is used to check deviation against the pool
+     * @param _pool Address of the pool
+     * @param _allowedDeviation New allowed deviation
      */
-    function changeAllowedSlippage(uint256 _allowedSlippage) external onlyGovernance {
-        require(_allowedSlippage <= 1e17, "IA"); // should be less than 10%
-        allowedSlippage = _allowedSlippage;
-        emit ChangeSlippage(allowedSlippage);
+    function changeAllowedDeviation(address _pool, uint256 _allowedDeviation) external override onlyGovernance {
+        _allowedDeviationByPool[_pool] = _allowedDeviation;
+        emit ChangeAllowedDeviation(_pool, _allowedDeviation);
+    }
+
+    /**
+     * @notice Change allowed swap deviation
+     * @param _pool Address of the new pool
+     * @param _allowedSwapDeviation New allowed swap deviation value
+     */
+    function changeAllowedSwapDeviation(address _pool, uint256 _allowedSwapDeviation) external override onlyGovernance {
+        _allowedSwapDeviationByPool[_pool] = _allowedSwapDeviation;
+        emit ChangeAllowedSwapDeviation(_pool, _allowedSwapDeviation);
+    }
+
+    /**
+     * @notice Current allowed slippage if the slippage for specific pool is not defined it'll return default allowed slippage
+     * @param _pool Address of the pool
+     * @return Current allowed slippage
+     */
+    function allowedSlippage(address _pool) public view override returns (uint256) {
+        if (_allowedSlippageByPool[_pool] > 0) {
+            return _allowedSlippageByPool[_pool];
+        } else {
+            return defaultAllowedSlippage;
+        }
+    }
+
+    /**
+     * @notice Current allowed deviation, if specific to pool is defiened it'll return it otherwise returns the default value
+     * @param _pool Address of the pool
+     * @return Default value of for the allowed deviation.
+     */
+    function allowedDeviation(address _pool) public view override returns (uint256) {
+        if (_allowedDeviationByPool[_pool] > 0) {
+            return _allowedDeviationByPool[_pool];
+        } else {
+            return defaultAllowedDeviation;
+        }
+    }
+
+    /**
+     * @notice Current allowed swap deviation by pool, if by pool is not defiened it'll return the default vallue
+     * @param _pool Address of the pool
+     * @return Current allowed swap deviation
+     */
+    function allowedSwapDeviation(address _pool) public view override returns (uint256) {
+        if (_allowedSwapDeviationByPool[_pool] > 0) {
+            return _allowedSwapDeviationByPool[_pool];
+        } else {
+            return defaultAllowedSwapDeviation;
+        }
+    }
+
+    /**
+     * @notice Changes default values for the slippage and deviation
+     * @param _allowedSlippage New default allowed slippage
+     * @param _allowedDeviation New Default allowed deviation
+     * @param _allowedSwapDeviation New default allowed deviation for the swap.
+     */
+    function changeDefaultValues(
+        uint256 _allowedSlippage,
+        uint256 _allowedDeviation,
+        uint256 _allowedSwapDeviation
+    ) external override onlyGovernance {
+        if (_allowedSlippage > 0) {
+            defaultAllowedSlippage = _allowedSlippage;
+            emit ChangeAllowedSlippage(address(0), defaultAllowedSlippage);
+        }
+
+        if (_allowedDeviation > 0) {
+            defaultAllowedDeviation = _allowedDeviation;
+            emit ChangeAllowedDeviation(address(0), defaultAllowedDeviation);
+        }
+
+        if (_allowedSwapDeviation > 0) {
+            defaultAllowedSwapDeviation = _allowedSwapDeviation;
+            emit ChangeAllowedSwapDeviation(address(0), defaultAllowedSwapDeviation);
+        }
     }
 
     /**
@@ -253,5 +337,13 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
         } else {
             return _heartBeat[_base][_quote];
         }
+    }
+
+    /**
+     * @notice Freeze emergency function, can be done only once
+     */
+    function freezeEmergencyFunctions() external override onlyGovernance {
+        freezeEmergency = true;
+        emit EmergencyFrozen();
     }
 }

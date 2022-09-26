@@ -18,7 +18,6 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
     event OperatorProposed(address indexed operator);
     event OperatorChanged(address indexed operator);
     event LimitChanged(uint256 limit);
-    event AllowedSwapDeviationChanged(uint256 deviation);
     event MaxSwapLimitChanged(uint256 limit);
     event ClaimFee(uint256 managerFee, uint256 protocolFee);
     event PerformanceFeeChanged(uint256 performanceFeeRate);
@@ -32,13 +31,6 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
     address public override operator;
     address public pendingOperator;
     address public override feeTo;
-
-    // when true emergency functions will be frozen forever
-    bool public override freezeEmergency;
-
-    // allowed swap price difference for the oracle and the current price to increase swap counter
-    // 1e18 is 100%
-    uint256 public override allowedSwapDeviation;
 
     // fee to take when user adds the liquidity
     uint256 public override managementFeeRate; // 1e8 is 100%
@@ -74,12 +66,10 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
         address _feeTo,
         uint256 _managementFeeRate,
         uint256 _performanceFeeRate,
-        uint256 _limit,
-        uint256 _allowedDeviation
+        uint256 _limit
     ) {
         require(_managementFeeRate <= MIN_FEE); // should be less than 20%
         require(_performanceFeeRate <= MIN_FEE); // should be less than 20%
-        require(_allowedDeviation <= MIN_DEVIATION); // should be less than 20%
 
         factory = _factory;
         operator = _operator;
@@ -88,8 +78,6 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
         managementFeeRate = _managementFeeRate;
         performanceFeeRate = _performanceFeeRate;
         limit = _limit;
-
-        allowedSwapDeviation = _allowedDeviation;
 
         _setupRole(ADMIN_ROLE, _operator);
         _setupRole(USER_WHITELIST_ROLE, _operator);
@@ -237,24 +225,10 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
     }
 
     /**
-     * @notice Freeze emergency function, can be done only once
+     * @notice Returns swap deviation for the pool
      */
-    function freezeEmergencyFunctions() external onlyGovernance {
-        freezeEmergency = true;
-        emit EmergencyActivated();
-    }
-
-    /**
-     * @notice Changes allowed price deviation for shares and pool
-     * @param _allowedSwapDeviation New allowed price deviation, 1e18 is 100%
-     */
-    function changeSwapDeviation(uint256 _allowedSwapDeviation)
-        external
-        onlyGovernance
-    {
-        require(_allowedSwapDeviation <= MIN_DEVIATION, "ID"); // should be less than 20%
-        allowedSwapDeviation = _allowedSwapDeviation;
-        emit AllowedSwapDeviationChanged(allowedSwapDeviation);
+    function allowedSwapDeviation() public view override returns (uint256) {
+        return factory.allowedSwapDeviation(address(ITwapStrategyBase(strategy()).pool()));
     }
 
     /**

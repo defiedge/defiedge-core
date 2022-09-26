@@ -193,7 +193,7 @@ describe("TwapStrategyManager", () => {
     )) as TwapStrategyManager;
         
     // set deviation in strategy
-    await strategyManager.changeSwapDeviation("10000000000000000"); // 1%
+    await factory.changeAllowedSwapDeviation(pool.address, "10000000000000000"); // 1%
 
     const PeripheryFactory = ethers.getContractFactory("Periphery", {
       libraries: { LiquidityHelper: liquidityHelper.address },
@@ -497,39 +497,6 @@ describe("TwapStrategyManager", () => {
     it("should emit changePerformanceFeeRate event", async () => {
       await expect(await strategyManager.changePerformanceFeeRate(1000000))
         .to.emit(strategyManager, "PerformanceFeeChanged")
-        .withArgs(1000000);
-    });
-  });
-
-  describe("#freezeEmergencyFunctions", async () => {
-    it("should revert if operator is not calling", async () => {
-      expect(strategyManager.connect(signers[1]).freezeEmergencyFunctions()).to.be.revertedWith("N");
-    });
-
-    it("should set freezeEmergency to true", async () => {
-      await strategyManager.freezeEmergencyFunctions();
-      expect(await strategyManager.freezeEmergency()).to.equal(true);
-    });
-    it("should emit freezeEmergency event", async () => {
-      await expect(await strategyManager.freezeEmergencyFunctions())
-        .to.emit(strategyManager, "EmergencyActivated")
-    });
-  });
-
-  describe("#changeSwapDeviation", async () => {
-    it("should revert if operator is not calling", async () => {
-      await expect(strategyManager.connect(signers[1]).changeSwapDeviation(1)).to.be.revertedWith(
-        "N"
-      );
-    });
-
-    it("should set  correct deviation", async () => {
-      await strategyManager.changeSwapDeviation("1000");
-      expect(await strategyManager.allowedSwapDeviation()).to.equal("1000");
-    });
-    it("should emit changeSwapDeviation event", async () => {
-      await expect(await strategyManager.changeSwapDeviation(1000000))
-        .to.emit(strategyManager, "AllowedSwapDeviationChanged")
         .withArgs(1000000);
     });
   });
