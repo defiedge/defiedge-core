@@ -15,9 +15,11 @@ import "../../interfaces/IOneInch.sol";
 // libraries
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract UniswapV3TwapLiquidityManager is
     TwapStrategyBase,
+    ReentrancyGuard,
     IUniswapV3MintCallback
 {
     using SafeMath for uint256;
@@ -224,9 +226,14 @@ contract UniswapV3TwapLiquidityManager is
     /**
      * @notice Burn liquidity from specific tick
      * @param _tickIndex Index of tick which needs to be burned
+     * @return amount0 Amount of token0's liquidity burned
+     * @return amount1 Amount of token1's liquidity burned
+     * @return fee0 Fee of token0 accumulated in the position which is being burned
+     * @return fee1 Fee of token1 accumulated in the position which is being burned
      */
     function burnLiquiditySingle(uint256 _tickIndex)
         public
+        nonReentrant
         returns (
             uint256 amount0,
             uint256 amount1,
@@ -235,7 +242,22 @@ contract UniswapV3TwapLiquidityManager is
         )
     {
         require(manager.isAllowedToBurn(msg.sender), "N");
+        return _burnLiquiditySingle(_tickIndex);
+    }
 
+    /**
+     * @notice Burn liquidity from specific tick
+     * @param _tickIndex Index of tick which needs to be burned
+     */
+    function _burnLiquiditySingle(uint256 _tickIndex)
+        internal
+        returns (
+            uint256 amount0,
+            uint256 amount1,
+            uint256 fee0,
+            uint256 fee1
+        )
+    {
         Tick storage tick = ticks[_tickIndex];
 
         (uint128 currentLiquidity, , , , ) = pool.positions(
@@ -258,10 +280,18 @@ contract UniswapV3TwapLiquidityManager is
     }
 
     /**
-     * @notice Swap the fudns to 1Inch
+     * @notice Swap the funds to 1Inch
      * @param data Swap data to perform exchange from 1inch
      */
-    function swap(bytes calldata data) public onlyOperator {
+    function swap(bytes calldata data) public onlyOperator nonReentrant{
+        _swap(data);
+    }
+
+    /**
+     * @notice Swap the funds to 1Inch
+     * @param data Swap data to perform exchange from 1inch
+     */
+    function _swap(bytes calldata data) internal {
         LocalVariables_Balances memory balances;
 
         (IERC20 srcToken, IERC20 dstToken, uint256 amount) = OneInchHelper

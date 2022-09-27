@@ -15,8 +15,9 @@ import "../interfaces/IOneInch.sol";
 // libraries
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
+contract UniswapV3LiquidityManager is StrategyBase, ReentrancyGuard, IUniswapV3MintCallback {
     using SafeMath for uint256;
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
@@ -183,6 +184,7 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
      */
     function burnLiquiditySingle(uint256 _tickIndex)
         public
+        nonReentrant
         onlyHasDeviation
         returns (
             uint256 amount0,
@@ -192,7 +194,22 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
         )
     {
         require(manager.isAllowedToBurn(msg.sender), "N");
+        return _burnLiquiditySingle(_tickIndex);
+    }
 
+    /**
+     * @notice Burn liquidity from specific tick
+     * @param _tickIndex Index of tick which needs to be burned
+     */
+    function _burnLiquiditySingle(uint256 _tickIndex) 
+        internal
+        returns (
+            uint256 amount0,
+            uint256 amount1,
+            uint256 fee0,
+            uint256 fee1
+        ) 
+    {
         Tick storage tick = ticks[_tickIndex];
 
         (uint128 currentLiquidity, , , , ) = pool.positions(PositionKey.compute(address(this), tick.tickLower, tick.tickUpper));
@@ -208,10 +225,18 @@ contract UniswapV3LiquidityManager is StrategyBase, IUniswapV3MintCallback {
     }
 
     /**
-     * @notice Swap the fudns to 1Inch
+     * @notice Swap the funds to 1Inch
      * @param data Swap data to perform exchange from 1inch
      */
-    function swap(bytes calldata data) public onlyOperator onlyHasDeviation {
+    function swap(bytes calldata data) public onlyOperator nonReentrant {
+        _swap(data);
+    }
+
+    /**
+     * @notice Swap the funds to 1Inch
+     * @param data Swap data to perform exchange from 1inch
+     */
+    function _swap(bytes calldata data) internal onlyHasDeviation {
         LocalVariables_Balances memory balances;
 
         (IERC20 srcToken, IERC20 dstToken, uint256 amount) = OneInchHelper.decodeData(IERC20(token0), IERC20(token1), data);
