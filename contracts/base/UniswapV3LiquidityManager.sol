@@ -239,7 +239,7 @@ contract UniswapV3LiquidityManager is StrategyBase, ReentrancyGuard, IUniswapV3M
     function _swap(bytes calldata data) internal onlyHasDeviation {
         LocalVariables_Balances memory balances;
 
-        (IERC20 srcToken, IERC20 dstToken, uint256 amount) = OneInchHelper.decodeData(IERC20(token0), IERC20(token1), data);
+        (IERC20 srcToken, IERC20 dstToken, uint256 amount) = OneInchHelper.decodeData(address(factory), IERC20(token0), IERC20(token1), data);
 
         require((srcToken == token0 && dstToken == token1) || (srcToken == token1 && dstToken == token0), "IA");
 

@@ -25,6 +25,8 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
 
     mapping(address => address) public override strategyByManager; // strategy manager contracts linked with strategies
 
+    mapping(address => bool) public override isAllowedOneInchCaller; // check if oneinch caller is valid or not
+
     mapping(address => mapping(address => uint256)) internal _heartBeat; // map heartBeat for base and quote token
 
     // total number of strategies
@@ -337,6 +339,18 @@ contract DefiEdgeStrategyFactory is IStrategyFactory {
         } else {
             return _heartBeat[_base][_quote];
         }
+    }
+
+    /**
+     * @notice Add or remove OneInch caller contract address
+     * @param _caller Contract address of OneInch caller
+     * @param _status whether to add or remove caller address
+     */
+    function addOrRemoveOneInchCaller(
+        address _caller,
+        bool _status
+    ) external onlyGovernance {
+        isAllowedOneInchCaller[_caller] = _status;
     }
 
     /**

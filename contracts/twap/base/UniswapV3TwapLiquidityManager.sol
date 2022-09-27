@@ -295,7 +295,7 @@ contract UniswapV3TwapLiquidityManager is
         LocalVariables_Balances memory balances;
 
         (IERC20 srcToken, IERC20 dstToken, uint256 amount) = OneInchHelper
-            .decodeData(IERC20(token0), IERC20(token1), data);
+            .decodeData(address(factory), IERC20(token0), IERC20(token1), data);
 
         require(
             (srcToken == token0 && dstToken == token1) ||

@@ -2,24 +2,18 @@
 pragma solidity ^0.7.6;
 pragma abicoder v2;
 
-import "../interfaces/IOneInch.sol";
+import "../../interfaces/IOneInch.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IDEFactory {
-    function isAllowedOneInchCaller(address) external view returns (bool);
-}
-
-library OneInchHelper {
+library PrivateOneInchHelper {
     /**
      * @dev Function decodeds srcToken, dstToken and source swap amount from the given data
-     * @param factory DefiEdge factory address
      * @param token0 token0 address of strategy
      * @param token1 token1 address of strategy
      * @param data bytes data to decode
      */
     function decodeData(
-        address factory,
         IERC20 token0,
         IERC20 token1,
         bytes calldata data
@@ -42,11 +36,8 @@ library OneInchHelper {
         }
 
         if (selector == 0x7c025200) {
-            address caller;
             // call swap() method
-            (caller, description, ) = abi.decode(data[4:], (address, IOneInch.SwapDescription, bytes));
-
-            require(IDEFactory(factory).isAllowedOneInchCaller(caller), "IC");
+            (, description, ) = abi.decode(data[4:], (address, IOneInch.SwapDescription, bytes));
 
             srcToken = IERC20(description.srcToken);
             dstToken = IERC20(description.dstToken);
