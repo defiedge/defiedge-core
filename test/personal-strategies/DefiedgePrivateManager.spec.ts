@@ -12,7 +12,7 @@ const UniswapV3OracleTestFactory = ethers.getContractFactory(
 );
 
 const LiquidityHelperLibrary = ethers.getContractFactory("LiquidityHelper");
-const OneInchHelperLibrary = ethers.getContractFactory("OneInchHelper");
+const PrivateOneInchHelperLibrary = ethers.getContractFactory("PrivateOneInchHelper");
 const OracleLibraryLibrary = ethers.getContractFactory("OracleLibrary");
 const ChainlinkRegistryMockFactory = ethers.getContractFactory(
   "ChainlinkRegistryMock"
@@ -31,7 +31,7 @@ import { Periphery } from "../../typechain/Periphery";
 import { UniswapV3OracleTest } from "../../typechain/UniswapV3OracleTest";
 import { ShareHelper } from "../../typechain/ShareHelper";
 import { LiquidityHelper } from "../../typechain/LiquidityHelper";
-import { OneInchHelper } from "../../typechain/OneInchHelper";
+import { PrivateOneInchHelper } from "../../typechain/PrivateOneInchHelper";
 import { OracleLibrary } from "../../typechain/OracleLibrary";
 import { ChainlinkRegistryMock } from "../../typechain/ChainlinkRegistryMock";
 import { SwapRouter } from "../../typechain/SwapRouter";
@@ -60,7 +60,7 @@ let periphery: Periphery;
 let oracle: UniswapV3OracleTest;
 let shareHelper: ShareHelper;
 let liquidityHelper: LiquidityHelper;
-let oneInchHelper: OneInchHelper;
+let privateOneInchHelper: PrivateOneInchHelper;
 let oracleLibrary: OracleLibrary;
 let chainlinkRegistry: ChainlinkRegistryMock;
 let router: SwapRouter;
@@ -113,9 +113,9 @@ describe("DeFiEdgeStrategy - Personal", () => {
       await LiquidityHelperLibrary
     ).deploy()) as LiquidityHelper;
 
-    oneInchHelper = (await (
-      await OneInchHelperLibrary
-    ).deploy()) as OneInchHelper;
+    privateOneInchHelper = (await (
+      await PrivateOneInchHelperLibrary
+    ).deploy()) as PrivateOneInchHelper;
 
     // const DefiEdgeStrategyDeployerContract = ethers.getContractFactory(
     //   "DefiEdgeStrategyDeployer",
@@ -148,7 +148,7 @@ describe("DeFiEdgeStrategy - Personal", () => {
       {
         libraries: {
           LiquidityHelper: liquidityHelper.address,
-          OneInchHelper: oneInchHelper.address,
+          PrivateOneInchHelper: privateOneInchHelper.address,
         },
       }
     );
