@@ -41,6 +41,7 @@ contract UniswapV3TwapLiquidityManager is
         uint256 tokenOutBalBefore;
         uint256 tokenInBalAfter;
         uint256 tokenOutBalAfter;
+        uint256 shareSupplyBefore;
     }
 
     /**
@@ -305,6 +306,7 @@ contract UniswapV3TwapLiquidityManager is
 
         balances.tokenInBalBefore = srcToken.balanceOf(address(this));
         balances.tokenOutBalBefore = dstToken.balanceOf(address(this));
+        balances.shareSupplyBefore = totalSupply();
 
         srcToken.safeIncreaseAllowance(address(oneInchRouter), amount);
 
@@ -334,6 +336,8 @@ contract UniswapV3TwapLiquidityManager is
                 revert(reason);
             }
         }
+
+        require(balances.shareSupplyBefore == totalSupply(), "MS");
 
         balances.tokenInBalAfter = srcToken.balanceOf(address(this));
         balances.tokenOutBalAfter = dstToken.balanceOf(address(this));

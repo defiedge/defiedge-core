@@ -37,6 +37,7 @@ contract UniswapV3LiquidityManager is StrategyBase, ReentrancyGuard, IUniswapV3M
         uint256 tokenOutBalBefore;
         uint256 tokenInBalAfter;
         uint256 tokenOutBalAfter;
+        uint256 shareSupplyBefore;
     }
 
     /**
@@ -245,6 +246,7 @@ contract UniswapV3LiquidityManager is StrategyBase, ReentrancyGuard, IUniswapV3M
 
         balances.tokenInBalBefore = srcToken.balanceOf(address(this));
         balances.tokenOutBalBefore = dstToken.balanceOf(address(this));
+        balances.shareSupplyBefore = totalSupply();
 
         srcToken.safeIncreaseAllowance(address(oneInchRouter), amount);
 
@@ -272,6 +274,8 @@ contract UniswapV3LiquidityManager is StrategyBase, ReentrancyGuard, IUniswapV3M
                 revert(reason);
             }
         }
+
+        require(balances.shareSupplyBefore == totalSupply(), "MS");
 
         balances.tokenInBalAfter = srcToken.balanceOf(address(this));
         balances.tokenOutBalAfter = dstToken.balanceOf(address(this));
