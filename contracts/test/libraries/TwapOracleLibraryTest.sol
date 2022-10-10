@@ -23,17 +23,12 @@ import "../../interfaces/IERC20Minimal.sol";
 
 import "hardhat/console.sol";
 
-
 contract TwapOracleLibraryTest {
     uint256 public constant BASE = 1e18;
 
     using SafeMath for uint256;
 
-    function normalise(address _token, uint256 _amount)
-        public
-        view
-        returns (uint256 normalised)
-    {
+    function normalise(address _token, uint256 _amount) public view returns (uint256 normalised) {
         // return uint256(_amount) * (10**(18 - IERC20Minimal(_token).decimals()));
         normalised = _amount;
         uint256 _decimals = IERC20Minimal(_token).decimals();
@@ -51,11 +46,7 @@ contract TwapOracleLibraryTest {
      * @notice Gets latest Uniswap price in the pool, price of token1 represented in token0
      * @notice pool Address of the Uniswap V3 pool
      */
-    function getUniswapPrice(address pool)
-        public
-        view
-        returns (uint256 price)
-    {
+    function getUniswapPrice(address pool) public view returns (uint256 price) {
         IUniswapV3Pool _pool = IUniswapV3Pool(pool);
 
         (uint160 sqrtPriceX96, , , , , , ) = _pool.slot0();
@@ -67,9 +58,7 @@ contract TwapOracleLibraryTest {
 
         bool decimalCheck = token0Decimals > token1Decimals;
 
-        uint256 decimalsDelta = decimalCheck
-            ? token0Decimals - token1Decimals
-            : token1Decimals - token0Decimals;
+        uint256 decimalsDelta = decimalCheck ? token0Decimals - token1Decimals : token1Decimals - token0Decimals;
 
         // normalise the price to 18 decimals
 
@@ -96,11 +85,10 @@ contract TwapOracleLibraryTest {
         address _quote,
         uint256 _validPeriod
     ) public view returns (uint256 price) {
-
         FeedRegistryInterface _registry = FeedRegistryInterface(registry);
 
         (, int256 _price, , uint256 updatedAt, ) = _registry.latestRoundData(_base, _quote);
-        
+
         require(block.timestamp.sub(updatedAt) < _validPeriod, "OLD_PRICE");
 
         if (_price <= 0) {
@@ -134,14 +122,7 @@ contract TwapOracleLibraryTest {
         address _priceOf,
         bool[2] memory _useTwap,
         address _manager
-    )
-        public
-        view
-        returns (
-            uint256 price
-        )
-    {
-
+    ) public view returns (uint256 price) {
         IUniswapV3Pool _pool = IUniswapV3Pool(pool);
         ITwapStrategyFactory _factory = ITwapStrategyFactory(factory);
         uint256 _period = ITwapStrategyManager(_manager).twapPricePeriod();
@@ -149,21 +130,29 @@ contract TwapOracleLibraryTest {
         // price of token0 denominated in token1
         uint256 _price = consult(address(_pool), uint32(_period)); // 1 token0 = _price token1
 
-        if(_useTwap[0]){
+        if (_useTwap[0]) {
             // token0 - twap , token1 - chainlink
-            uint256 token1ChainlinkPrice = getChainlinkPrice(registry, _pool.token1(), Denominations.USD, _factory.getHeartBeat(_pool.token1(), Denominations.USD));
+            uint256 token1ChainlinkPrice = getChainlinkPrice(
+                registry,
+                _pool.token1(),
+                Denominations.USD,
+                _factory.getHeartBeat(_pool.token1(), Denominations.USD)
+            );
 
             if (_priceOf == _pool.token1()) {
                 price = token1ChainlinkPrice;
             } else {
                 price = _price.mul(token1ChainlinkPrice).div(BASE);
             }
-
-
         } else {
             // token0 - chainlink , token1 - twap
 
-            uint256 token0ChainlinkPrice = getChainlinkPrice(registry, _pool.token0(), Denominations.USD, _factory.getHeartBeat(_pool.token0(), Denominations.USD));
+            uint256 token0ChainlinkPrice = getChainlinkPrice(
+                registry,
+                _pool.token0(),
+                Denominations.USD,
+                _factory.getHeartBeat(_pool.token0(), Denominations.USD)
+            );
 
             if (_priceOf == _pool.token0()) {
                 price = token0ChainlinkPrice;
@@ -171,69 +160,7 @@ contract TwapOracleLibraryTest {
                 _price = 1e36 / _price;
                 price = _price.mul(token0ChainlinkPrice).div(BASE);
             }
-
         }
-    }
-
-    /**
-     * @notice Checks the if swap exceed allowed swap deviation or not
-     * @param pool Address of the pool
-     * @param registry Chainlink registry interface
-     * @param _amountIn Amount to be swapped
-     * @param _amountOut Amount received after swap
-     * @param _tokenIn Token to be swapped
-     * @param _tokenOut Token to which tokenIn should be swapped
-     * @param _manager Manager contract address to check allowed deviation
-     */
-    function isSwapExceedDeviation(
-        address factory,
-        address pool,
-        address registry,
-        uint256 _amountIn,
-        uint256 _amountOut,
-        address _tokenIn,
-        address _tokenOut,
-        address _manager,
-        bool[2] memory _useTwap
-    ) public view returns (bool) {
-        IUniswapV3Pool _pool = IUniswapV3Pool(pool);
-
-        _amountIn = normalise(_tokenIn, _amountIn);
-        _amountOut = normalise(_tokenOut, _amountOut);
-
-
-        if(_pool.token0() == _tokenIn) {
-            _useTwap = [_useTwap[0], _useTwap[1]]; 
-        } else {
-            _useTwap = [_useTwap[1], _useTwap[0]];
-        }
-
-        // get tokenIn prce in USD fron chainlink
-        uint256 amountInUSD = _amountIn.mul(
-            getPriceInUSD(factory, pool, registry, _tokenIn, _useTwap, _manager)
-        );
-
-        // get tokenout prce in USD fron chainlink
-        uint256 amountOutUSD = _amountOut.mul(
-            getPriceInUSD(factory, pool, registry, _tokenOut, _useTwap, _manager)
-        );
-
-        uint256 diff;
-
-        diff = amountInUSD.div(amountOutUSD.div(BASE));
-
-        // check price deviation
-        uint256 deviation;
-        if (diff > BASE) {
-            deviation = diff.sub(BASE);
-        } else {
-            deviation = BASE.sub(diff);
-        }
-
-        if (deviation > ITwapStrategyManager(_manager).allowedSwapDeviation()) {
-            return true;
-        }
-        return false;
     }
 
     /**
@@ -263,69 +190,44 @@ contract TwapOracleLibraryTest {
 
         // get price of _tokenIn in USD
         uint256 amountInUSD = _amountIn.mul(
-            getPriceInUSD(
-                factory,
-                pool,
-                address(_factory.chainlinkRegistry()),
-                _tokenIn,
-                _useTwap,
-                _manager
-            )
+            getPriceInUSD(factory, pool, address(_factory.chainlinkRegistry()), _tokenIn, _useTwap, _manager)
         );
 
         // get price of _tokenOut in USD
         uint256 amountOutUSD = _amountOut.mul(
-            getPriceInUSD(
-                factory,
-                pool,
-                address(_factory.chainlinkRegistry()),
-                _tokenOut,
-                _useTwap,
-                _manager
-            )
+            getPriceInUSD(factory, pool, address(_factory.chainlinkRegistry()), _tokenOut, _useTwap, _manager)
         );
 
         uint256 diff = amountInUSD.div(amountOutUSD.div(BASE));
 
         uint256 _allowedSlippage = _factory.allowedSlippage(pool);
         // check if the price is above deviation
-        if (
-            diff > (BASE.add(_allowedSlippage)) ||
-            diff < (BASE.sub(_allowedSlippage))
-        ) {
+        if (diff > (BASE.add(_allowedSlippage)) || diff < (BASE.sub(_allowedSlippage))) {
             return false;
         }
 
         return true;
     }
 
-
     /**
      * @notice Gets time weighted tick to calculate price
      * @param _pool Address of the pool
      * @param _period Seconds to query data from
      */
-    function getTick(address _pool, uint32 _period)
-        internal
-        view
-        returns (int24 timeWeightedAverageTick)
-    {
+    function getTick(address _pool, uint32 _period) internal view returns (int24 timeWeightedAverageTick) {
         require(_period != 0, "BP");
 
         uint32[] memory secondAgos = new uint32[](2);
         secondAgos[0] = _period;
         secondAgos[1] = 0;
 
-        (int56[] memory tickCumulatives, ) = IUniswapV3Pool(_pool).observe(
-            secondAgos
-        );
+        (int56[] memory tickCumulatives, ) = IUniswapV3Pool(_pool).observe(secondAgos);
         int56 tickCumulativesDelta = tickCumulatives[1] - tickCumulatives[0];
 
         timeWeightedAverageTick = int24(tickCumulativesDelta / _period);
 
         // Always round to negative infinity
-        if (tickCumulativesDelta < 0 && (tickCumulativesDelta % _period != 0))
-            timeWeightedAverageTick--;
+        if (tickCumulativesDelta < 0 && (tickCumulativesDelta % _period != 0)) timeWeightedAverageTick--;
     }
 
     /**
@@ -334,11 +236,7 @@ contract TwapOracleLibraryTest {
      * @param _period Seconds from which the data needs to be queried
      * @return price Price of the assets calculated from Uniswap V3 Oracle
      */
-    function consult(address _pool, uint32 _period)
-        internal
-        view
-        returns (uint256 price)
-    {
+    function consult(address _pool, uint32 _period) internal view returns (uint256 price) {
         int24 tick = getTick(_pool, _period);
 
         uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(tick);
@@ -357,9 +255,7 @@ contract TwapOracleLibraryTest {
 
         bool decimalCheck = token0Decimals > token1Decimals;
 
-        uint256 decimalsDelta = decimalCheck
-            ? token0Decimals - token1Decimals
-            : token1Decimals - token0Decimals;
+        uint256 decimalsDelta = decimalCheck ? token0Decimals - token1Decimals : token1Decimals - token0Decimals;
 
         // normalise the price to 18 decimals
         if (token0Decimals == token1Decimals) {

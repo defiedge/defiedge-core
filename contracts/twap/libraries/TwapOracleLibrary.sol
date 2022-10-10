@@ -159,54 +159,6 @@ library TwapOracleLibrary {
     }
 
     /**
-     * @notice Checks the if swap exceed allowed swap deviation or not
-     * @param _pool Address of the pool
-     * @param _registry Chainlink registry interface
-     * @param _amountIn Amount to be swapped
-     * @param _amountOut Amount received after swap
-     * @param _tokenIn Token to be swapped
-     * @param _tokenOut Token to which tokenIn should be swapped
-     * @param _manager Manager contract address to check allowed deviation
-     */
-    function isSwapExceedDeviation(
-        ITwapStrategyFactory _factory,
-        IUniswapV3Pool _pool,
-        FeedRegistryInterface _registry,
-        uint256 _amountIn,
-        uint256 _amountOut,
-        address _tokenIn,
-        address _tokenOut,
-        ITwapStrategyManager _manager,
-        bool[2] memory _useTwap
-    ) public view returns (bool) {
-        _amountIn = normalise(_tokenIn, _amountIn);
-        _amountOut = normalise(_tokenOut, _amountOut);
-
-        // get tokenIn prce in USD fron chainlink
-        uint256 amountInUSD = _amountIn.mul(getPriceInUSD(_factory, _pool, _registry, _tokenIn, _useTwap, _manager));
-
-        // get tokenout prce in USD fron chainlink
-        uint256 amountOutUSD = _amountOut.mul(getPriceInUSD(_factory, _pool, _registry, _tokenOut, _useTwap, _manager));
-
-        uint256 diff;
-
-        diff = amountInUSD.div(amountOutUSD.div(BASE));
-
-        // check price deviation
-        uint256 deviation;
-        if (diff > BASE) {
-            deviation = diff.sub(BASE);
-        } else {
-            deviation = BASE.sub(diff);
-        }
-
-        if (deviation > ITwapStrategyManager(_manager).allowedSwapDeviation()) {
-            return true;
-        }
-        return false;
-    }
-
-    /**
      * @notice Checks for price slippage at the time of swap
      * @param _pool Address of the pool
      * @param _factory Address of the DefiEdge strategy factory

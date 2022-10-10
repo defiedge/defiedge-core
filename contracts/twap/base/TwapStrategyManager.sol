@@ -197,13 +197,6 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
     }
 
     /**
-     * @notice Returns swap deviation for the pool
-     */
-    function allowedSwapDeviation() public view override returns (uint256) {
-        return factory.allowedSwapDeviation(address(ITwapStrategyBase(strategy()).pool()));
-    }
-
-    /**
      * @notice Track total swap performed in a day and revert if maximum swap limit reached.
      *         Can only be called by strategy contract
      */
