@@ -231,13 +231,9 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
             for (uint256 i = 0; i < _existingTicks.length; i++) {
                 Tick memory _tick = ticks[_existingTicks[i].index];
 
-                Tick storage tick;
-
                 if (_existingTicks[i].burn) {
                     // burn liquidity from range
                     _burnLiquiditySingle(_existingTicks[i].index);
-                } else {
-                    tick = ticks[_existingTicks[i].index];
                 }
 
                 if (_existingTicks[i].amount0 > 0 || _existingTicks[i].amount1 > 0) {
