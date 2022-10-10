@@ -146,6 +146,9 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
         uint256 amount0;
         uint256 amount1;
 
+        uint256 totalFee0;
+        uint256 totalFee1;
+
         // burn liquidity based on shares from existing ticks
         for (uint256 i = 0; i < ticks.length; i++) {
             Tick storage tick = ticks[i];
@@ -155,10 +158,16 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
             // burn liquidity and collect fees
             (amount0, amount1, fee0, fee1) = burnLiquidity(tick.tickLower, tick.tickUpper, _shares, 0);
 
+            totalFee0 = totalFee0.add(fee0);
+            totalFee1 = totalFee1.add(fee1);
+
             // add to total amounts
             collect0 = collect0.add(amount0);
             collect1 = collect1.add(amount1);
         }
+
+        // transfer performance fees
+        _transferPerformanceFees(totalFee0, totalFee1);
 
         // give from unused amounts
         uint256 total0 = IERC20(token0).balanceOf(address(this));

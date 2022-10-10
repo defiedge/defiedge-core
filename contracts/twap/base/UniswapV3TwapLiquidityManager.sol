@@ -104,9 +104,6 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, ReentrancyGuard, IUn
 
         fee0 = collect0 > tokensBurned0 ? uint256(collect0).sub(tokensBurned0) : 0;
         fee1 = collect1 > tokensBurned1 ? uint256(collect1).sub(tokensBurned1) : 0;
-
-        // transfer performance fees
-        _transferPerformanceFees(fee0, fee1);
     }
 
     /**
