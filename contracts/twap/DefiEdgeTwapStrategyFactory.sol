@@ -18,6 +18,8 @@ contract DefiEdgeTwapStrategyFactory is ITwapStrategyFactory {
 
     mapping(address => address) public override strategyByManager; // strategy manager contracts linked with strategies
 
+    mapping(address => bool) public override isAllowedOneInchCaller; // check if oneinch caller is valid or not
+
     mapping(address => mapping(address => uint256)) internal _heartBeat; // map heartBeat for base and quote token
 
     mapping(address => uint256) public override twapPricePeriod;
@@ -338,6 +340,19 @@ contract DefiEdgeTwapStrategyFactory is ITwapStrategyFactory {
             return _heartBeat[_base][_quote];
         }
     }
+
+    /**
+     * @notice Add or remove OneInch caller contract address
+     * @param _caller Contract address of OneInch caller
+     * @param _status whether to add or remove caller address
+     */
+    function addOrRemoveOneInchCaller(
+        address _caller,
+        bool _status
+    ) external onlyGovernance {
+        isAllowedOneInchCaller[_caller] = _status;
+    }
+
 
     /**
      * @notice Freeze emergency function, can be done only once

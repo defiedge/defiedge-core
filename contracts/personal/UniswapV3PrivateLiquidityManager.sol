@@ -11,7 +11,7 @@ import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.so
 
 // interfaces
 import "../libraries/LiquidityHelper.sol";
-import "../libraries/OneInchHelper.sol";
+import "./libraries/PrivateOneInchHelper.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "../interfaces/IOneInch.sol";
 import "../interfaces/IOneInchRouter.sol";
@@ -312,7 +312,7 @@ contract UniswapV3PersonalLiquidityManager is
      * @param data Swap data to perform exchange from 1inch
      */
     function swap(bytes calldata data) public onlyOperator {
-        (IERC20 srcToken, IERC20 dstToken, uint256 amount) = OneInchHelper
+        (IERC20 srcToken, IERC20 dstToken, uint256 amount) = PrivateOneInchHelper
             .decodeData(IERC20(token0), IERC20(token1), data);
 
         require(

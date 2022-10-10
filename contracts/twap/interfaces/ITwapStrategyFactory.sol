@@ -39,6 +39,8 @@ interface ITwapStrategyFactory {
 
     function isValidStrategy(address) external view returns (bool);
 
+    function isAllowedOneInchCaller(address) external view returns (bool);
+
     function strategyByIndex(uint256) external view returns (address);
 
     function strategyByManager(address) external view returns (address);

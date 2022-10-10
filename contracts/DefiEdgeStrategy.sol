@@ -88,6 +88,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         uint256 _minShare
     )
         external
+        nonReentrant
         onlyValidStrategy
         returns (
             uint256 amount0,
@@ -145,7 +146,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         uint256 _shares,
         uint256 _amount0Min,
         uint256 _amount1Min
-    ) external returns (uint256 collect0, uint256 collect1) {
+    ) external nonReentrant returns (uint256 collect0, uint256 collect1) {
         // check if the user has sufficient shares
         require(balanceOf(msg.sender) >= _shares && _shares != 0, "INS");
 
@@ -209,7 +210,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         PartialTick[] calldata _existingTicks,
         NewTick[] calldata _newTicks,
         bool _burnAll
-    ) external onlyOperator onlyValidStrategy {
+    ) external onlyOperator onlyValidStrategy nonReentrant{
         if (_burnAll) {
             require(_existingTicks.length == 0, "IA");
             onHold = true;
@@ -220,7 +221,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
 
         //swap from 1inch if needed
         if (_swapData.length > 0) {
-            swap(_swapData);
+            _swap(_swapData);
         }
 
         // redeploy the partial ticks
@@ -232,7 +233,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
 
                 if (_existingTicks[i].burn) {
                     // burn liquidity from range
-                    burnLiquiditySingle(_existingTicks[i].index);
+                    _burnLiquiditySingle(_existingTicks[i].index);
                 } else {
                     tick = ticks[_existingTicks[i].index];
                 }
