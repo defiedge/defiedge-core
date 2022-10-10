@@ -200,11 +200,6 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, ReentrancyGuard, IUn
         if (currentLiquidity > 0) {
             (amount0, amount1, fee0, fee1) = burnLiquidity(tick.tickLower, tick.tickUpper, 0, currentLiquidity);
         }
-
-        // shift the index element at last of array
-        ticks[_tickIndex] = ticks[ticks.length - 1];
-        // remove last element
-        ticks.pop();
     }
 
     /**

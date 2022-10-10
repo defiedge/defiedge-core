@@ -245,6 +245,16 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
             emit PartialRebalance(_existingTicks);
         }
 
+        // remove ticks here to preserve the index
+        if (_existingTicks.length > 0) {
+            for (uint256 i = 0; i < _existingTicks.length; i++) {
+                // shift the index element at last of array
+                ticks[_existingTicks[i].index] = ticks[ticks.length - 1];
+                // remove last element
+                ticks.pop();
+            }
+        }
+
         // deploy liquidity into new ticks
         if (_newTicks.length > 0) {
             redeploy(_newTicks);
