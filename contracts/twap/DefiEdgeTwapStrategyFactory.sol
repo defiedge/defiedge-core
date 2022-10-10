@@ -24,7 +24,7 @@ contract DefiEdgeTwapStrategyFactory is ITwapStrategyFactory {
 
     mapping(address => uint256) public override twapPricePeriod;
 
-    uint256 public override defaultTwapPricePeriod = 20;
+    uint256 public override defaultTwapPricePeriod = 600;
 
     // total number of strategies
     uint256 public override totalIndex;
