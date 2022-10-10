@@ -107,7 +107,7 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, ReentrancyGuard, IUn
     }
 
     /**
-     * @notice Splits and stores the performance feees in the local variables
+     * @notice Splits and transfers the performance fee
      * @param _fee0 Amount of accumulated fee for token0
      * @param _fee1 Amount of accumulated fee for token1
      */
@@ -143,20 +143,22 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, ReentrancyGuard, IUn
     /**
      * @notice Burns all the liquidity and collects fees
      */
-    function burnAllLiquidity() internal {
+    function burnAllLiquidity() internal returns (uint256 totalFee0, uint256 totalFee1) {
         for (uint256 _tickIndex = 0; _tickIndex < ticks.length; _tickIndex++) {
             Tick storage tick = ticks[_tickIndex];
 
             (uint128 currentLiquidity, , , , ) = pool.positions(PositionKey.compute(address(this), tick.tickLower, tick.tickUpper));
 
             if (currentLiquidity > 0) {
-                burnLiquidity(tick.tickLower, tick.tickUpper, 0, currentLiquidity);
+                (, , uint256 fee0, uint256 fee1) = burnLiquidity(tick.tickLower, tick.tickUpper, 0, currentLiquidity);
+                totalFee0 = totalFee0.add(fee0);
+                totalFee1 = totalFee1.add(fee1);
             }
         }
     }
 
     /**
-     * @notice Burn liquidity from specific tick
+     * @notice Burn liquidity from specific tick, used for limit orders
      * @param _tickIndex Index of tick which needs to be burned
      * @return amount0 Amount of token0's liquidity burned
      * @return amount1 Amount of token1's liquidity burned
@@ -174,7 +176,10 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, ReentrancyGuard, IUn
         )
     {
         require(manager.isAllowedToBurn(msg.sender), "N");
-        return _burnLiquiditySingle(_tickIndex);
+        (amount0, amount1, fee0, fee1) = _burnLiquiditySingle(_tickIndex);
+        if (fee0 > 0 || fee1 > 0) {
+            _transferPerformanceFees(fee0, fee1);
+        }
     }
 
     /**

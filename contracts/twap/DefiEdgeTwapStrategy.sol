@@ -166,8 +166,11 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
             collect1 = collect1.add(amount1);
         }
 
+        if (totalFee0 > 0 || totalFee1 > 0) {
+            _transferPerformanceFees(totalFee0, totalFee1);
+        }
+
         // transfer performance fees
-        _transferPerformanceFees(totalFee0, totalFee1);
 
         // give from unused amounts
         uint256 total0 = IERC20(token0).balanceOf(address(this));
@@ -213,10 +216,16 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
         NewTick[] calldata _newTicks,
         bool _burnAll
     ) external onlyOperator onlyValidStrategy nonReentrant {
+        uint256 totalFee0;
+        uint256 totalFee1;
+
         if (_burnAll) {
             require(_existingTicks.length == 0, "IA");
             onHold = true;
-            burnAllLiquidity();
+            (totalFee0, totalFee1) = burnAllLiquidity();
+            if (totalFee0 > 0 || totalFee1 > 0) {
+                _transferPerformanceFees(totalFee0, totalFee1);
+            }
             delete ticks;
             emit Hold();
         }
@@ -233,7 +242,10 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
 
                 if (_existingTicks[i].burn) {
                     // burn liquidity from range
-                    _burnLiquiditySingle(_existingTicks[i].index);
+                    (, , totalFee0, totalFee1) = _burnLiquiditySingle(_existingTicks[i].index);
+                    if (totalFee0 > 0 || totalFee1 > 0) {
+                        _transferPerformanceFees(totalFee0, totalFee1);
+                    }
                 }
 
                 if (_existingTicks[i].amount0 > 0 || _existingTicks[i].amount1 > 0) {
