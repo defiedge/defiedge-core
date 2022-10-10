@@ -211,7 +211,7 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, ReentrancyGuard, IUn
      * @notice Swap the funds to 1Inch
      * @param data Swap data to perform exchange from 1inch
      */
-    function swap(bytes calldata data) public onlyOperator nonReentrant {
+    function swap(bytes calldata data) public onlyOperator onlyValidStrategy nonReentrant {
         _swap(data);
     }
 
