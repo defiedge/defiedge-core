@@ -57,8 +57,7 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE"); // can control everything
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE"); /// only can burn the liquidity
 
-    bytes32 public constant USER_WHITELIST_ROLE =
-        keccak256("USER_WHITELIST_ROLE"); /// user have access to strategy - mint & burn
+    bytes32 public constant USER_WHITELIST_ROLE = keccak256("USER_WHITELIST_ROLE"); /// user have access to strategy - mint & burn
 
     constructor(
         ITwapStrategyFactory _factory,
@@ -103,35 +102,16 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
         _;
     }
 
-    function isUserWhiteListed(address _account)
-        public
-        view
-        override
-        returns (bool)
-    {
-        return
-            isStrategyPrivate ? hasRole(USER_WHITELIST_ROLE, _account) : true;
+    function isUserWhiteListed(address _account) public view override returns (bool) {
+        return isStrategyPrivate ? hasRole(USER_WHITELIST_ROLE, _account) : true;
     }
 
-    function isAllowedToManage(address _account)
-        public
-        view
-        override
-        returns (bool)
-    {
+    function isAllowedToManage(address _account) public view override returns (bool) {
         return hasRole(ADMIN_ROLE, _account) || hasRole(MANAGER_ROLE, _account);
     }
 
-    function isAllowedToBurn(address _account)
-        public
-        view
-        override
-        returns (bool)
-    {
-        return
-            hasRole(ADMIN_ROLE, _account) ||
-            hasRole(MANAGER_ROLE, _account) ||
-            hasRole(BURNER_ROLE, _account);
+    function isAllowedToBurn(address _account) public view override returns (bool) {
+        return hasRole(ADMIN_ROLE, _account) || hasRole(MANAGER_ROLE, _account) || hasRole(BURNER_ROLE, _account);
     }
 
     /**
@@ -140,13 +120,8 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
           return default value from the factory
      */
     function twapPricePeriod() public view override returns (uint256) {
-        uint256 twapPeriodByPool = factory.twapPricePeriod(
-            address(ITwapStrategyBase(strategy()).pool())
-        );
-        return
-            twapPeriodByPool > 0
-                ? twapPeriodByPool
-                : factory.defaultTwapPricePeriod();
+        uint256 twapPeriodByPool = factory.twapPricePeriod(address(ITwapStrategyBase(strategy()).pool()));
+        return twapPeriodByPool > 0 ? twapPeriodByPool : factory.defaultTwapPricePeriod();
     }
 
     function strategy() public view returns (address) {
@@ -206,10 +181,7 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
      * @notice Manager can set the performance fee
      * @param _performanceFeeRate New performance fee, should not be more than 20%
      */
-    function changePerformanceFeeRate(uint256 _performanceFeeRate)
-        external
-        onlyOperator
-    {
+    function changePerformanceFeeRate(uint256 _performanceFeeRate) external onlyOperator {
         require(_performanceFeeRate <= MIN_FEE); // should be less than 20%
         performanceFeeRate = _performanceFeeRate;
         emit PerformanceFeeChanged(performanceFeeRate);

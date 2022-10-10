@@ -26,11 +26,7 @@ library TwapOracleLibrary {
 
     using SafeMath for uint256;
 
-    function normalise(address _token, uint256 _amount)
-        internal
-        view
-        returns (uint256 normalised)
-    {
+    function normalise(address _token, uint256 _amount) internal view returns (uint256 normalised) {
         // return uint256(_amount) * (10**(18 - IERC20Minimal(_token).decimals()));
         normalised = _amount;
         uint256 _decimals = IERC20Minimal(_token).decimals();
@@ -48,11 +44,7 @@ library TwapOracleLibrary {
      * @notice Gets latest Uniswap price in the pool, price of token1 represented in token0
      * @notice _pool Address of the Uniswap V3 pool
      */
-    function getUniswapPrice(IUniswapV3Pool _pool)
-        internal
-        view
-        returns (uint256 price)
-    {
+    function getUniswapPrice(IUniswapV3Pool _pool) internal view returns (uint256 price) {
         (uint160 sqrtPriceX96, , , , , , ) = _pool.slot0();
         uint256 priceX192 = uint256(sqrtPriceX96).mul(sqrtPriceX96);
         price = FullMath.mulDiv(priceX192, BASE, 1 << 192);
@@ -62,9 +54,7 @@ library TwapOracleLibrary {
 
         bool decimalCheck = token0Decimals > token1Decimals;
 
-        uint256 decimalsDelta = decimalCheck
-            ? token0Decimals - token1Decimals
-            : token1Decimals - token0Decimals;
+        uint256 decimalsDelta = decimalCheck ? token0Decimals - token1Decimals : token1Decimals - token0Decimals;
 
         // normalise the price to 18 decimals
 
@@ -91,10 +81,7 @@ library TwapOracleLibrary {
         address _quote,
         uint256 _validPeriod
     ) internal view returns (uint256 price) {
-        (, int256 _price, , uint256 updatedAt, ) = _registry.latestRoundData(
-            _base,
-            _quote
-        );
+        (, int256 _price, , uint256 updatedAt, ) = _registry.latestRoundData(_base, _quote);
 
         require(block.timestamp.sub(updatedAt) < _validPeriod, "OLD_PRICE");
 
@@ -196,28 +183,10 @@ library TwapOracleLibrary {
         _amountOut = normalise(_tokenOut, _amountOut);
 
         // get tokenIn prce in USD fron chainlink
-        uint256 amountInUSD = _amountIn.mul(
-            getPriceInUSD(
-                _factory,
-                _pool,
-                _registry,
-                _tokenIn,
-                _useTwap,
-                _manager
-            )
-        );
+        uint256 amountInUSD = _amountIn.mul(getPriceInUSD(_factory, _pool, _registry, _tokenIn, _useTwap, _manager));
 
         // get tokenout prce in USD fron chainlink
-        uint256 amountOutUSD = _amountOut.mul(
-            getPriceInUSD(
-                _factory,
-                _pool,
-                _registry,
-                _tokenOut,
-                _useTwap,
-                _manager
-            )
-        );
+        uint256 amountOutUSD = _amountOut.mul(getPriceInUSD(_factory, _pool, _registry, _tokenOut, _useTwap, _manager));
 
         uint256 diff;
 
@@ -262,26 +231,12 @@ library TwapOracleLibrary {
 
         // get price of token0 Uniswap and convert it to USD
         uint256 amountInUSD = _amountIn.mul(
-            getPriceInUSD(
-                _factory,
-                _pool,
-                FeedRegistryInterface(_factory.chainlinkRegistry()),
-                _tokenIn,
-                _useTwap,
-                _manager
-            )
+            getPriceInUSD(_factory, _pool, FeedRegistryInterface(_factory.chainlinkRegistry()), _tokenIn, _useTwap, _manager)
         );
 
         // get price of token0 Uniswap and convert it to USD
         uint256 amountOutUSD = _amountOut.mul(
-            getPriceInUSD(
-                _factory,
-                _pool,
-                FeedRegistryInterface(_factory.chainlinkRegistry()),
-                _tokenOut,
-                _useTwap,
-                _manager
-            )
+            getPriceInUSD(_factory, _pool, FeedRegistryInterface(_factory.chainlinkRegistry()), _tokenOut, _useTwap, _manager)
         );
 
         uint256 diff;
@@ -290,10 +245,7 @@ library TwapOracleLibrary {
 
         uint256 _allowedSlippage = _factory.allowedSlippage(address(_pool));
         // check if the price is above deviation
-        if (
-            diff > (BASE.add(_allowedSlippage)) ||
-            diff < (BASE.sub(_allowedSlippage))
-        ) {
+        if (diff > (BASE.add(_allowedSlippage)) || diff < (BASE.sub(_allowedSlippage))) {
             return false;
         }
 
@@ -305,27 +257,20 @@ library TwapOracleLibrary {
      * @param _pool Address of the pool
      * @param _period Seconds to query data from
      */
-    function getTick(address _pool, uint32 _period)
-        internal
-        view
-        returns (int24 timeWeightedAverageTick)
-    {
+    function getTick(address _pool, uint32 _period) internal view returns (int24 timeWeightedAverageTick) {
         require(_period != 0, "BP");
 
         uint32[] memory secondAgos = new uint32[](2);
         secondAgos[0] = _period;
         secondAgos[1] = 0;
 
-        (int56[] memory tickCumulatives, ) = IUniswapV3Pool(_pool).observe(
-            secondAgos
-        );
+        (int56[] memory tickCumulatives, ) = IUniswapV3Pool(_pool).observe(secondAgos);
         int56 tickCumulativesDelta = tickCumulatives[1] - tickCumulatives[0];
 
         timeWeightedAverageTick = int24(tickCumulativesDelta / _period);
 
         // Always round to negative infinity
-        if (tickCumulativesDelta < 0 && (tickCumulativesDelta % _period != 0))
-            timeWeightedAverageTick--;
+        if (tickCumulativesDelta < 0 && (tickCumulativesDelta % _period != 0)) timeWeightedAverageTick--;
     }
 
     /**
@@ -334,11 +279,7 @@ library TwapOracleLibrary {
      * @param _period Seconds from which the data needs to be queried
      * @return price Price of the assets calculated from Uniswap V3 Oracle
      */
-    function consult(address _pool, uint32 _period)
-        internal
-        view
-        returns (uint256 price)
-    {
+    function consult(address _pool, uint32 _period) internal view returns (uint256 price) {
         int24 tick = getTick(_pool, _period);
 
         uint160 sqrtRatioX96 = TickMath.getSqrtRatioAtTick(tick);
@@ -348,24 +289,16 @@ library TwapOracleLibrary {
             uint256 ratioX192 = uint256(sqrtRatioX96).mul(sqrtRatioX96);
             price = FullMath.mulDiv(ratioX192, BASE, 1 << 192);
         } else {
-            uint256 ratioX128 = FullMath.mulDiv(
-                sqrtRatioX96,
-                sqrtRatioX96,
-                1 << 64
-            );
+            uint256 ratioX128 = FullMath.mulDiv(sqrtRatioX96, sqrtRatioX96, 1 << 64);
             price = FullMath.mulDiv(ratioX128, BASE, 1 << 128);
         }
 
-        uint256 token0Decimals = IERC20Minimal(IUniswapV3Pool(_pool).token0())
-            .decimals();
-        uint256 token1Decimals = IERC20Minimal(IUniswapV3Pool(_pool).token1())
-            .decimals();
+        uint256 token0Decimals = IERC20Minimal(IUniswapV3Pool(_pool).token0()).decimals();
+        uint256 token1Decimals = IERC20Minimal(IUniswapV3Pool(_pool).token1()).decimals();
 
         bool decimalCheck = token0Decimals > token1Decimals;
 
-        uint256 decimalsDelta = decimalCheck
-            ? token0Decimals - token1Decimals
-            : token1Decimals - token0Decimals;
+        uint256 decimalsDelta = decimalCheck ? token0Decimals - token1Decimals : token1Decimals - token0Decimals;
 
         // normalise the price to 18 decimals
         if (token0Decimals == token1Decimals) {
