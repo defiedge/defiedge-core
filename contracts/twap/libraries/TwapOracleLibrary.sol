@@ -41,7 +41,7 @@ library TwapOracleLibrary {
     }
 
     /**
-     * @notice Gets latest Uniswap price in the pool, price of token1 represented in token0
+     * @notice Gets latest Uniswap price in the pool, price of token0 represented in token1
      * @notice _pool Address of the Uniswap V3 pool
      */
     function getUniswapPrice(IUniswapV3Pool _pool) internal view returns (uint256 price) {
