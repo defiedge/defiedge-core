@@ -79,8 +79,6 @@ contract DefiEdgeTwapStrategyFactory is ITwapStrategyFactory {
         uint256 _allowedSlippage,
         uint256 _allowedDeviation
     ) {
-        require(_allowedSlippage <= 1e17); // should be <= 10%
-        require(_allowedDeviation <= 1e17); // should be <= 10%
         governance = _governance;
         deployerProxy = _deployerProxy;
         uniswapV3Factory = _uniswapV3factory;
