@@ -290,14 +290,6 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, ReentrancyGuard, IUn
             if (amount1 > 0) {
                 TransferHelper.safeTransfer(address(token1), msg.sender, amount1);
             }
-        } else {
-            // take and transfer tokens to Uniswap V3 pool from the user
-            if (amount0 > 0) {
-                TransferHelper.safeTransferFrom(address(token0), decoded.payer, msg.sender, amount0);
-            }
-            if (amount1 > 0) {
-                TransferHelper.safeTransferFrom(address(token1), decoded.payer, msg.sender, amount1);
-            }
         }
     }
 
