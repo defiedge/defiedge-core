@@ -22,7 +22,7 @@ interface ITwapStrategyManager {
 
     function factory() external view returns (ITwapStrategyFactory);
 
-    function increamentSwapCounter() external;
+    function incrementSwapCounter() external;
 
     function twapPricePeriod() external view returns (uint256);
 }

@@ -200,7 +200,7 @@ contract TwapStrategyManager is AccessControl, ITwapStrategyManager {
      * @notice Track total swap performed in a day and revert if maximum swap limit reached.
      *         Can only be called by strategy contract
      */
-    function increamentSwapCounter() external override onlyStrategy {
+    function incrementSwapCounter() external override onlyStrategy {
         uint256 currentDay = block.timestamp / 1 days;
         uint256 swapDay = lastSwapTimestamp / 1 days;
 

@@ -263,7 +263,7 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, ReentrancyGuard, IUn
         uint256 amountOut = balances.tokenOutBalAfter.sub(balances.tokenOutBalBefore);
 
         // used to limit number of swaps a manager can do per day
-        manager.increamentSwapCounter();
+        manager.incrementSwapCounter();
 
         require(
             TwapOracleLibrary.allowSwap(pool, factory, amountIn, amountOut, address(srcToken), address(dstToken), manager, useTwap),
