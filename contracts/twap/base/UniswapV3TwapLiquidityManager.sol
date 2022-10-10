@@ -270,22 +270,8 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, ReentrancyGuard, IUn
         uint256 amountIn = balances.tokenInBalBefore.sub(balances.tokenInBalAfter);
         uint256 amountOut = balances.tokenOutBalAfter.sub(balances.tokenOutBalBefore);
 
-        // check if swap exceed allowed deviation and revert if maximum swap limits reached
-        if (
-            TwapOracleLibrary.isSwapExceedDeviation(
-                factory,
-                pool,
-                chainlinkRegistry,
-                amountIn,
-                amountOut,
-                address(srcToken),
-                address(dstToken),
-                manager,
-                useTwap
-            )
-        ) {
-            manager.increamentSwapCounter();
-        }
+        // used to limit number of swaps a manager can do per day
+        manager.increamentSwapCounter();
 
         require(
             TwapOracleLibrary.allowSwap(pool, factory, amountIn, amountOut, address(srcToken), address(dstToken), manager, useTwap),
