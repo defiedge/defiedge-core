@@ -242,10 +242,12 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
 
                 if (_existingTicks[i].burn) {
                     // burn liquidity from range
-                    (, , totalFee0, totalFee1) = _burnLiquiditySingle(_existingTicks[i].index);
-                    if (totalFee0 > 0 || totalFee1 > 0) {
-                        _transferPerformanceFees(totalFee0, totalFee1);
-                    }
+                    (, , uint256 fee0, uint256 fee1) = _burnLiquiditySingle(_existingTicks[i].index);
+                    // if (totalFee0 > 0 || totalFee1 > 0) {
+                    //     _transferPerformanceFees(totalFee0, totalFee1);
+                    // }
+                    totalFee0 = totalFee0.add(fee0);
+                    totalFee1 = totalFee1.add(fee1);
                 }
 
                 if (_existingTicks[i].amount0 > 0 || _existingTicks[i].amount1 > 0) {
@@ -257,6 +259,10 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
                         ticks.push(Tick(_tick.tickLower, _tick.tickUpper));
                     }
                 }
+            }
+
+            if (totalFee0 > 0 || totalFee1 > 0) {
+                _transferPerformanceFees(totalFee0, totalFee1);
             }
 
             emit PartialRebalance(_existingTicks);
