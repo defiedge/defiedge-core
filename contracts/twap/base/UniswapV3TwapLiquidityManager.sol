@@ -180,6 +180,11 @@ contract UniswapV3TwapLiquidityManager is TwapStrategyBase, ReentrancyGuard, IUn
         if (fee0 > 0 || fee1 > 0) {
             _transferPerformanceFees(fee0, fee1);
         }
+
+        // shift the index element at last of array
+        ticks[_tickIndex] = ticks[ticks.length - 1];
+        // remove last element
+        ticks.pop();
     }
 
     /**

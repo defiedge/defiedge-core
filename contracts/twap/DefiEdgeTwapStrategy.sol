@@ -254,14 +254,7 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
                 if (_existingTicks[i].amount0 > 0 || _existingTicks[i].amount1 > 0) {
                     // mint liquidity
                     mintLiquidity(_tick.tickLower, _tick.tickUpper, _existingTicks[i].amount0, _existingTicks[i].amount1, address(this));
-                }
-
-                if (_existingTicks[i].burn) {
-                    // shift the index element at last of array
-                    ticks[_existingTicks[i].index] = ticks[ticks.length - 1];
-                    // remove last element
-                    ticks.pop();
-                }
+                } else if (_existingTicks[i].burn) {}
             }
 
             if (totalFee0 > 0 || totalFee1 > 0) {
@@ -270,18 +263,6 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
 
             emit PartialRebalance(_existingTicks);
         }
-
-        // // remove ticks here to preserve the index
-        // if (_existingTicks.length > 0) {
-        //     for (uint256 i = 0; i < _existingTicks.length; i++) {
-        //         if (_existingTicks[i].burn) {
-        //             // shift the index element at last of array
-        //             ticks[_existingTicks[i].index] = ticks[ticks.length - 1];
-        //             // remove last element
-        //             ticks.pop();
-        //         }
-        //     }
-        // }
 
         // deploy liquidity into new ticks
         if (_newTicks.length > 0) {

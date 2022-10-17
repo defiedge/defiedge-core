@@ -1262,31 +1262,31 @@ describe("DefiEdgeTwapStrategy", () => {
       expect(amounts1.amount1.toString()).to.eq("6904521962217222802627")
     })
 
-    // it("should burn and redeploy all liquidity", async () => {
-    //   const tick = await strategy.ticks(0)
-    //   let amounts = await pool.getAmountsForTick(strategy.address, tick.tickLower, tick.tickUpper)
-    //   expect(amounts.amount0.toString()).to.eq("999999999999999999")
-    //   expect(amounts.amount1.toString()).to.eq("3452260981108611401313")
+    it("should burn and redeploy all liquidity", async () => {
+      const tick = await strategy.ticks(0)
+      let amounts = await pool.getAmountsForTick(strategy.address, tick.tickLower, tick.tickUpper)
+      expect(amounts.amount0.toString()).to.eq("999999999999999999")
+      expect(amounts.amount1.toString()).to.eq("3452260981108611401313")
 
-    //   await strategy.rebalance(
-    //     "0x",
-    //     [
-    //       {
-    //         index: "0",
-    //         burn: true,
-    //         amount0: expandTo18Decimals(1),
-    //         amount1: expandTo18Decimals(3452),
-    //       },
-    //     ],
-    //     [],
-    //     false
-    //   )
+      await strategy.rebalance(
+        "0x",
+        [
+          {
+            index: "0",
+            burn: true,
+            amount0: expandTo18Decimals(1),
+            amount1: expandTo18Decimals(3452),
+          },
+        ],
+        [],
+        false
+      )
 
-    //   const tick1 = await strategy.ticks(0)
-    //   let amounts1 = await pool.getAmountsForTick(strategy.address, tick1.tickLower, tick1.tickUpper)
-    //   expect(amounts1.amount0.toString()).to.eq("999924402844964637")
-    //   expect(amounts1.amount1.toString()).to.eq("3451999999999999999997")
-    // })
+      const tick1 = await strategy.ticks(0)
+      let amounts1 = await pool.getAmountsForTick(strategy.address, tick1.tickLower, tick1.tickUpper)
+      expect(amounts1.amount0.toString()).to.eq("999924402844964637")
+      expect(amounts1.amount1.toString()).to.eq("3451999999999999999997")
+    })
   })
 
   describe("#Rebalance - newticks", async () => {

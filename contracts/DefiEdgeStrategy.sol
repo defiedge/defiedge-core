@@ -210,7 +210,7 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         PartialTick[] calldata _existingTicks,
         NewTick[] calldata _newTicks,
         bool _burnAll
-    ) external onlyOperator onlyValidStrategy nonReentrant{
+    ) external onlyOperator onlyValidStrategy nonReentrant {
         if (_burnAll) {
             require(_existingTicks.length == 0, "IA");
             onHold = true;
