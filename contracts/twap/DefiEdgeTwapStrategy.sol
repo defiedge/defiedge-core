@@ -238,14 +238,15 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
         // redeploy the partial ticks
         if (_existingTicks.length > 0) {
             for (uint256 i = 0; i < _existingTicks.length; i++) {
+                // require existing ticks to be in decreasing order
+                if (i > 0) require(_existingTicks[i - 1].index > _existingTicks[i].index, "IO"); // invalid order
+
                 Tick memory _tick = ticks[_existingTicks[i].index];
 
                 if (_existingTicks[i].burn) {
                     // burn liquidity from range
                     (, , uint256 fee0, uint256 fee1) = _burnLiquiditySingle(_existingTicks[i].index);
-                    // if (totalFee0 > 0 || totalFee1 > 0) {
-                    //     _transferPerformanceFees(totalFee0, totalFee1);
-                    // }
+
                     totalFee0 = totalFee0.add(fee0);
                     totalFee1 = totalFee1.add(fee1);
                 }
@@ -253,11 +254,13 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
                 if (_existingTicks[i].amount0 > 0 || _existingTicks[i].amount1 > 0) {
                     // mint liquidity
                     mintLiquidity(_tick.tickLower, _tick.tickUpper, _existingTicks[i].amount0, _existingTicks[i].amount1, address(this));
+                }
 
-                    if (_existingTicks[i].burn) {
-                        // push to ticks array
-                        ticks.push(Tick(_tick.tickLower, _tick.tickUpper));
-                    }
+                if (_existingTicks[i].burn) {
+                    // shift the index element at last of array
+                    ticks[_existingTicks[i].index] = ticks[ticks.length - 1];
+                    // remove last element
+                    ticks.pop();
                 }
             }
 
@@ -268,17 +271,17 @@ contract DefiEdgeTwapStrategy is UniswapV3TwapLiquidityManager {
             emit PartialRebalance(_existingTicks);
         }
 
-        // remove ticks here to preserve the index
-        if (_existingTicks.length > 0) {
-            for (uint256 i = 0; i < _existingTicks.length; i++) {
-                if (_existingTicks[i].burn) {
-                    // shift the index element at last of array
-                    ticks[_existingTicks[i].index] = ticks[ticks.length - 1];
-                    // remove last element
-                    ticks.pop();
-                }
-            }
-        }
+        // // remove ticks here to preserve the index
+        // if (_existingTicks.length > 0) {
+        //     for (uint256 i = 0; i < _existingTicks.length; i++) {
+        //         if (_existingTicks[i].burn) {
+        //             // shift the index element at last of array
+        //             ticks[_existingTicks[i].index] = ticks[ticks.length - 1];
+        //             // remove last element
+        //             ticks.pop();
+        //         }
+        //     }
+        // }
 
         // deploy liquidity into new ticks
         if (_newTicks.length > 0) {
