@@ -166,58 +166,58 @@ library OracleLibrary {
         return diff > BASE.add(_allowedDeviation) || diff < BASE.sub(_allowedDeviation);
     }
 
-    /**
-     * @notice Checks the if swap exceed allowed swap deviation or not
-     * @param _pool Address of the pool
-     * @param _registry Chainlink registry interface
-     * @param _amountIn Amount to be swapped
-     * @param _amountOut Amount received after swap
-     * @param _tokenIn Token to be swapped
-     * @param _tokenOut Token to which tokenIn should be swapped
-     * @param _usdAsBase checks if pegged to USD
-     * @param _manager Manager contract address to check allowed deviation
-     */
-    function isSwapExceedDeviation(
-        IStrategyFactory _factory,
-        IUniswapV3Pool _pool,
-        FeedRegistryInterface _registry,
-        uint256 _amountIn,
-        uint256 _amountOut,
-        address _tokenIn,
-        address _tokenOut,
-        bool[2] memory _usdAsBase,
-        address _manager
-    ) public view returns (bool) {
-        _amountIn = normalise(_tokenIn, _amountIn);
-        _amountOut = normalise(_tokenOut, _amountOut);
+    // /**
+    //  * @notice Checks the if swap exceed allowed swap deviation or not
+    //  * @param _pool Address of the pool
+    //  * @param _registry Chainlink registry interface
+    //  * @param _amountIn Amount to be swapped
+    //  * @param _amountOut Amount received after swap
+    //  * @param _tokenIn Token to be swapped
+    //  * @param _tokenOut Token to which tokenIn should be swapped
+    //  * @param _usdAsBase checks if pegged to USD
+    //  * @param _manager Manager contract address to check allowed deviation
+    //  */
+    // function isSwapExceedDeviation(
+    //     IStrategyFactory _factory,
+    //     IUniswapV3Pool _pool,
+    //     FeedRegistryInterface _registry,
+    //     uint256 _amountIn,
+    //     uint256 _amountOut,
+    //     address _tokenIn,
+    //     address _tokenOut,
+    //     bool[2] memory _usdAsBase,
+    //     address _manager
+    // ) public view returns (bool) {
+    //     _amountIn = normalise(_tokenIn, _amountIn);
+    //     _amountOut = normalise(_tokenOut, _amountOut);
 
-        (bool usdAsBaseAmountIn, bool usdAsBaseAmountOut) = _pool.token0() == _tokenIn
-            ? (_usdAsBase[0], _usdAsBase[1])
-            : (_usdAsBase[1], _usdAsBase[0]);
+    //     (bool usdAsBaseAmountIn, bool usdAsBaseAmountOut) = _pool.token0() == _tokenIn
+    //         ? (_usdAsBase[0], _usdAsBase[1])
+    //         : (_usdAsBase[1], _usdAsBase[0]);
 
-        // get tokenIn prce in USD fron chainlink
-        uint256 amountInUSD = _amountIn.mul(getPriceInUSD(_factory, _registry, _tokenIn, usdAsBaseAmountIn));
+    //     // get tokenIn prce in USD fron chainlink
+    //     uint256 amountInUSD = _amountIn.mul(getPriceInUSD(_factory, _registry, _tokenIn, usdAsBaseAmountIn));
 
-        // get tokenout prce in USD fron chainlink
-        uint256 amountOutUSD = _amountOut.mul(getPriceInUSD(_factory, _registry, _tokenOut, usdAsBaseAmountOut));
+    //     // get tokenout prce in USD fron chainlink
+    //     uint256 amountOutUSD = _amountOut.mul(getPriceInUSD(_factory, _registry, _tokenOut, usdAsBaseAmountOut));
 
-        uint256 diff;
+    //     uint256 diff;
 
-        diff = amountInUSD.div(amountOutUSD.div(BASE));
+    //     diff = amountInUSD.div(amountOutUSD.div(BASE));
 
-        // check price deviation
-        uint256 deviation;
-        if (diff > BASE) {
-            deviation = diff.sub(BASE);
-        } else {
-            deviation = BASE.sub(diff);
-        }
+    //     // check price deviation
+    //     uint256 deviation;
+    //     if (diff > BASE) {
+    //         deviation = diff.sub(BASE);
+    //     } else {
+    //         deviation = BASE.sub(diff);
+    //     }
 
-        if (deviation > IStrategyManager(_manager).allowedSwapDeviation()) {
-            return true;
-        }
-        return false;
-    }
+    //     if (deviation > IStrategyManager(_manager).allowedSwapDeviation()) {
+    //         return true;
+    //     }
+    //     return false;
+    // }
 
     /**
      * @notice Checks for price slippage at the time of swap
