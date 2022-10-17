@@ -227,25 +227,23 @@ contract DefiEdgeStrategy is UniswapV3LiquidityManager {
         // redeploy the partial ticks
         if (_existingTicks.length > 0) {
             for (uint256 i = 0; i < _existingTicks.length; i++) {
-                Tick memory _tick = ticks[_existingTicks[i].index];
+                if (i > 0) require(_existingTicks[i - 1].index > _existingTicks[i].index, "IO"); // invalid order
 
-                Tick storage tick;
+                Tick memory _tick = ticks[_existingTicks[i].index];
 
                 if (_existingTicks[i].burn) {
                     // burn liquidity from range
                     _burnLiquiditySingle(_existingTicks[i].index);
-                } else {
-                    tick = ticks[_existingTicks[i].index];
                 }
 
                 if (_existingTicks[i].amount0 > 0 || _existingTicks[i].amount1 > 0) {
                     // mint liquidity
                     mintLiquidity(_tick.tickLower, _tick.tickUpper, _existingTicks[i].amount0, _existingTicks[i].amount1, address(this));
-
-                    if (_existingTicks[i].burn) {
-                        // push to ticks array
-                        ticks.push(Tick(_tick.tickLower, _tick.tickUpper));
-                    }
+                } else if (_existingTicks[i].burn) {
+                    // shift the index element at last of array
+                    ticks[_existingTicks[i].index] = ticks[ticks.length - 1];
+                    // remove last element
+                    ticks.pop();
                 }
             }
 
