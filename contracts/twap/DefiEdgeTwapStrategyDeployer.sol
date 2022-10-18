@@ -17,17 +17,7 @@ contract DefiEdgeTwapStrategyDeployer is IDefiEdgeTwapStrategyDeployer {
         bool[2] memory _useTwap,
         ITwapStrategyBase.Tick[] memory _ticks
     ) external override returns (address strategy) {
-        strategy = address(
-            new DefiEdgeTwapStrategy(
-                _factory,
-                _pool,
-                _swapRouter,
-                _chainlinkRegistry,
-                _manager,
-                _useTwap,
-                _ticks
-            )
-        );
+        strategy = address(new DefiEdgeTwapStrategy(_factory, _pool, _swapRouter, _chainlinkRegistry, _manager, _useTwap, _ticks));
 
         emit StrategyDeployed(address(strategy));
     }

@@ -195,6 +195,10 @@ contract UniswapV3LiquidityManager is StrategyBase, ReentrancyGuard, IUniswapV3M
         )
     {
         require(manager.isAllowedToBurn(msg.sender), "N");
+        // shift the index element at last of array
+        ticks[_tickIndex] = ticks[ticks.length - 1];
+        // remove last element
+        ticks.pop();
         return _burnLiquiditySingle(_tickIndex);
     }
 
@@ -202,14 +206,14 @@ contract UniswapV3LiquidityManager is StrategyBase, ReentrancyGuard, IUniswapV3M
      * @notice Burn liquidity from specific tick
      * @param _tickIndex Index of tick which needs to be burned
      */
-    function _burnLiquiditySingle(uint256 _tickIndex) 
+    function _burnLiquiditySingle(uint256 _tickIndex)
         internal
         returns (
             uint256 amount0,
             uint256 amount1,
             uint256 fee0,
             uint256 fee1
-        ) 
+        )
     {
         Tick storage tick = ticks[_tickIndex];
 
@@ -218,18 +222,13 @@ contract UniswapV3LiquidityManager is StrategyBase, ReentrancyGuard, IUniswapV3M
         if (currentLiquidity > 0) {
             (amount0, amount1, fee0, fee1) = burnLiquidity(tick.tickLower, tick.tickUpper, 0, currentLiquidity);
         }
-
-        // shift the index element at last of array
-        ticks[_tickIndex] = ticks[ticks.length - 1];
-        // remove last element
-        ticks.pop();
     }
 
     /**
      * @notice Swap the funds to 1Inch
      * @param data Swap data to perform exchange from 1inch
      */
-    function swap(bytes calldata data) public onlyOperator nonReentrant {
+    function swap(bytes calldata data) public onlyOperator onlyValidStrategy nonReentrant {
         _swap(data);
     }
 
@@ -240,7 +239,12 @@ contract UniswapV3LiquidityManager is StrategyBase, ReentrancyGuard, IUniswapV3M
     function _swap(bytes calldata data) internal onlyHasDeviation {
         LocalVariables_Balances memory balances;
 
-        (IERC20 srcToken, IERC20 dstToken, uint256 amount) = OneInchHelper.decodeData(address(factory), IERC20(token0), IERC20(token1), data);
+        (IERC20 srcToken, IERC20 dstToken, uint256 amount) = OneInchHelper.decodeData(
+            address(factory),
+            IERC20(token0),
+            IERC20(token1),
+            data
+        );
 
         require((srcToken == token0 && dstToken == token1) || (srcToken == token1 && dstToken == token0), "IA");
 
@@ -283,22 +287,7 @@ contract UniswapV3LiquidityManager is StrategyBase, ReentrancyGuard, IUniswapV3M
         uint256 amountIn = balances.tokenInBalBefore.sub(balances.tokenInBalAfter);
         uint256 amountOut = balances.tokenOutBalAfter.sub(balances.tokenOutBalBefore);
 
-        // check if swap exceed allowed deviation and revert if maximum swap limits reached
-        if (
-            OracleLibrary.isSwapExceedDeviation(
-                factory,
-                pool,
-                chainlinkRegistry,
-                amountIn,
-                amountOut,
-                address(srcToken),
-                address(dstToken),
-                [usdAsBase[0], usdAsBase[1]],
-                address(manager)
-            )
-        ) {
-            manager.increamentSwapCounter();
-        }
+        manager.increamentSwapCounter();
 
         require(
             OracleLibrary.allowSwap(pool, factory, amountIn, amountOut, address(srcToken), address(dstToken), [usdAsBase[0], usdAsBase[1]]),

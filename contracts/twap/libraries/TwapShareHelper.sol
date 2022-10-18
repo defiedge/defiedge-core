@@ -52,15 +52,9 @@ library TwapShareHelper {
             }
         } else {
             // price in USD
-            (uint256 token0Price, uint256 token1Price) = _getPrice(
-                _pool,
-                _registry,
-                _useTwap,
-                _manager
-            );
+            (uint256 token0Price, uint256 token1Price) = _getPrice(_pool, _registry, _useTwap, _manager);
 
-            share = ((token0Price.mul(_amount0)).add(token1Price.mul(_amount1)))
-                .div(DIVISOR);
+            share = ((token0Price.mul(_amount0)).add(token1Price.mul(_amount1))).div(DIVISOR);
         }
     }
 
@@ -88,11 +82,7 @@ library TwapShareHelper {
 
         // calculate the fees for protocol and manager from management fees
         if (_accManagementFee > 0) {
-            protocolShare = FullMath.mulDiv(
-                _accManagementFee,
-                protocolFeeRate,
-                1e8
-            );
+            protocolShare = FullMath.mulDiv(_accManagementFee, protocolFeeRate, 1e8);
             managerShare = _accManagementFee.sub(protocolShare);
         }
 
@@ -132,49 +122,24 @@ library TwapShareHelper {
         uint256 performanceFeeRate = _manager.performanceFeeRate();
 
         // protocol performance fee
-        uint256 protocolPerformanceFeeRate = _factory
-            .protocolPerformanceFeeRate();
+        uint256 protocolPerformanceFeeRate = _factory.protocolPerformanceFeeRate();
 
         // calculate the fees for protocol and manager from performance fees
-        uint256 performanceToken0Amount = FullMath.mulDiv(
-            _fee0,
-            performanceFeeRate,
-            1e8
-        );
-        uint256 performanceToken1Amount = FullMath.mulDiv(
-            _fee1,
-            performanceFeeRate,
-            1e8
-        );
+        uint256 performanceToken0Amount = FullMath.mulDiv(_fee0, performanceFeeRate, 1e8);
+        uint256 performanceToken1Amount = FullMath.mulDiv(_fee1, performanceFeeRate, 1e8);
 
         if (performanceToken0Amount > 0) {
-            protocolToken0Amount = FullMath.mulDiv(
-                performanceToken0Amount,
-                protocolFeeRate,
-                1e8
-            );
-            managerToken0Amount = performanceToken0Amount.sub(
-                protocolToken0Amount
-            );
+            protocolToken0Amount = FullMath.mulDiv(performanceToken0Amount, protocolFeeRate, 1e8);
+            managerToken0Amount = performanceToken0Amount.sub(protocolToken0Amount);
         }
 
         if (performanceToken1Amount > 0) {
-            protocolToken1Amount = FullMath.mulDiv(
-                performanceToken1Amount,
-                protocolFeeRate,
-                1e8
-            );
-            managerToken1Amount = performanceToken1Amount.sub(
-                protocolToken1Amount
-            );
+            protocolToken1Amount = FullMath.mulDiv(performanceToken1Amount, protocolFeeRate, 1e8);
+            managerToken1Amount = performanceToken1Amount.sub(protocolToken1Amount);
         }
 
-        protocolToken0Amount = protocolToken0Amount.add(
-            FullMath.mulDiv(_fee0, protocolPerformanceFeeRate, 1e8)
-        );
-        protocolToken1Amount = protocolToken1Amount.add(
-            FullMath.mulDiv(_fee1, protocolPerformanceFeeRate, 1e8)
-        );
+        protocolToken0Amount = protocolToken0Amount.add(FullMath.mulDiv(_fee0, protocolPerformanceFeeRate, 1e8));
+        protocolToken1Amount = protocolToken1Amount.add(FullMath.mulDiv(_fee1, protocolPerformanceFeeRate, 1e8));
 
         // moved here for saving bytecode
         managerFeeTo = _manager.feeTo();
@@ -204,16 +169,12 @@ library TwapShareHelper {
                 (amount0, amount1) = (_amount0, 0);
                 return (amount0, amount1);
             }
-            uint256 amount1Optimal = _amount0.mul(_totalAmount1).div(
-                _totalAmount0
-            );
+            uint256 amount1Optimal = _amount0.mul(_totalAmount1).div(_totalAmount0);
             if (amount1Optimal <= _amount1) {
                 require(amount1Optimal >= _amount1Min, "INSUFFICIENT_AMOUNT_1");
                 (amount0, amount1) = (_amount0, amount1Optimal);
             } else {
-                uint256 amount0Optimal = _amount1.mul(_totalAmount0).div(
-                    _totalAmount1
-                );
+                uint256 amount0Optimal = _amount1.mul(_totalAmount0).div(_totalAmount1);
                 assert(amount0Optimal <= _amount0);
                 require(amount0Optimal >= _amount0Min, "INSUFFICIENT_AMOUNT_0");
                 (amount0, amount1) = (amount0Optimal, _amount1);
@@ -229,22 +190,8 @@ library TwapShareHelper {
         ITwapStrategyManager _manager
     ) internal view returns (uint256 token0Price, uint256 token1Price) {
         // price in USD
-        token0Price = TwapOracleLibrary.getPriceInUSD(
-            _manager.factory(),
-            _pool,
-            _registry,
-            _pool.token0(),
-            _useTwap,
-            _manager
-        );
+        token0Price = TwapOracleLibrary.getPriceInUSD(_manager.factory(), _pool, _registry, _pool.token0(), _useTwap, _manager);
 
-        token1Price = TwapOracleLibrary.getPriceInUSD(
-            _manager.factory(),
-            _pool,
-            _registry,
-            _pool.token1(),
-            _useTwap,
-            _manager
-        );
+        token1Price = TwapOracleLibrary.getPriceInUSD(_manager.factory(), _pool, _registry, _pool.token1(), _useTwap, _manager);
     }
 }

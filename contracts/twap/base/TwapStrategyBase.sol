@@ -47,11 +47,7 @@ contract TwapStrategyBase is ERC20, ITwapStrategyBase {
      * @dev Replaces old ticks with new ticks
      * @param _ticks New ticks
      */
-    function isInvalidTicks(Tick[] memory _ticks)
-        internal
-        pure
-        returns (bool invalid)
-    {
+    function isInvalidTicks(Tick[] memory _ticks) internal pure returns (bool invalid) {
         for (uint256 i = 0; i < _ticks.length; i++) {
             int24 tickLower = _ticks[i].tickLower;
             int24 tickUpper = _ticks[i].tickUpper;
@@ -136,16 +132,11 @@ contract TwapStrategyBase is ERC20, ITwapStrategyBase {
      * Protocol receives X percentage from manager fee
      */
     function claimFee() external override {
-        (
-            address managerFeeTo,
-            address protocolFeeTo,
-            uint256 managerShare,
-            uint256 protocolShare
-        ) = TwapShareHelper.calculateFeeShares(
-                factory,
-                manager,
-                accManagementFeeShares
-            );
+        (address managerFeeTo, address protocolFeeTo, uint256 managerShare, uint256 protocolShare) = TwapShareHelper.calculateFeeShares(
+            factory,
+            manager,
+            accManagementFeeShares
+        );
 
         if (managerShare > 0) {
             _mint(managerFeeTo, managerShare);

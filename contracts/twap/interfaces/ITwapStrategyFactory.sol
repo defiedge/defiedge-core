@@ -57,10 +57,7 @@ interface ITwapStrategyFactory {
 
     function pendingGovernance() external view returns (address);
 
-    function deployerProxy()
-        external
-        view
-        returns (IDefiEdgeTwapStrategyDeployer);
+    function deployerProxy() external view returns (IDefiEdgeTwapStrategyDeployer);
 
     function uniswapV3Factory() external view returns (IUniswapV3Factory);
 
@@ -70,14 +67,9 @@ interface ITwapStrategyFactory {
 
     function freezeEmergency() external view returns (bool);
 
-    function getHeartBeat(address _base, address _quote)
-        external
-        view
-        returns (uint256);
+    function getHeartBeat(address _base, address _quote) external view returns (uint256);
 
-    function createStrategy(CreateStrategyParams calldata params)
-        external
-        payable;
+    function createStrategy(CreateStrategyParams calldata params) external payable;
 
     function freezeEmergencyFunctions() external;
 

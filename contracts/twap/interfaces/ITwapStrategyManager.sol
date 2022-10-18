@@ -18,13 +18,11 @@ interface ITwapStrategyManager {
 
     function limit() external view returns (uint256);
 
-    function allowedSwapDeviation() external view returns (uint256); // 1e18 decimals
-
     function feeTo() external view returns (address);
 
     function factory() external view returns (ITwapStrategyFactory);
 
-    function increamentSwapCounter() external;
+    function incrementSwapCounter() external;
 
     function twapPricePeriod() external view returns (uint256);
 }
