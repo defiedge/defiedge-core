@@ -195,11 +195,11 @@ contract UniswapV3LiquidityManager is StrategyBase, ReentrancyGuard, IUniswapV3M
         )
     {
         require(manager.isAllowedToBurn(msg.sender), "N");
+        (amount0, amount1, fee0, fee1) = _burnLiquiditySingle(_tickIndex);
         // shift the index element at last of array
         ticks[_tickIndex] = ticks[ticks.length - 1];
         // remove last element
         ticks.pop();
-        return _burnLiquiditySingle(_tickIndex);
     }
 
     /**
