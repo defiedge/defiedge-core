@@ -34,12 +34,14 @@ interface IAggregatorV3Interface {
         );
 }
 
-contract ChainlinkRegistry {
+contract ChainlinkRegistryFreeze {
     /// map base currencies with quote currencies
     mapping(address => mapping(address => address)) public feeds;
 
     address public governance;
     address public pendingGovernance;
+
+    bool public isUpdateFrozen = false;
 
     constructor(address _governance) {
         governance = _governance;
@@ -60,12 +62,28 @@ contract ChainlinkRegistry {
         (roundId, answer, startedAt, updatedAt, answeredInRound) = feed.latestRoundData();
     }
 
+    function frozeUpdate() external {
+        require(msg.sender == governance, "not allowed");
+        isUpdateFrozen = true;
+    }
+
+    function update(
+        address _feed,
+        address _base,
+        address _quote
+    ) external {
+        require(msg.sender == governance, "not allowed");
+        require(!isUpdateFrozen, "update frozen");
+        feeds[_base][_quote] = _feed;
+    }
+
     function setFeed(
         address _feed,
         address _base,
         address _quote
     ) external {
         require(msg.sender == governance, "not allowed");
+        require(feeds[_base][_quote] == address(0), "already added");
         feeds[_base][_quote] = _feed;
     }
 
